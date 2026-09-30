@@ -1,0 +1,68 @@
+import { describe, expect, it } from 'vitest';
+import { freeSlots, generateSlots, occupancyMinutes } from './slots';
+
+/** Julien Morel, mardi 6 oct. 2026, sans le rendez-vous en cours d’Alex (14 h 30). */
+const julienBusy = [
+  { start: 540, end: 600 },
+  { start: 615, end: 675 },
+  { start: 675, end: 695 },
+  { start: 705, end: 735 },
+  { start: 735, end: 795 },
+  { start: 795, end: 825 },
+  { start: 825, end: 855 },
+  { start: 960, end: 1020 },
+  { start: 1020, end: 1080 },
+  { start: 1095, end: 1115 },
+];
+
+describe('créneaux', () => {
+  it('arrondit 20 min au palier de 30', () => {
+    expect(occupancyMinutes(20)).toBe(30);
+    expect(occupancyMinutes(30)).toBe(30);
+    expect(occupancyMinutes(45)).toBe(45);
+    expect(occupancyMinutes(60)).toBe(60);
+  });
+
+  it('ferme le dimanche et le lundi', () => {
+    expect(generateSlots({ weekday: 0, durationMinutes: 30 })).toEqual([]);
+    expect(generateSlots({ weekday: 1, durationMinutes: 30 })).toEqual([]);
+  });
+
+  it('aligne les départs sur 15 min et rien ne dépasse 19 h', () => {
+    const slots = generateSlots({ weekday: 2, durationMinutes: 60 });
+    expect(slots[0].startMinute).toBe(9 * 60);
+    expect(slots[slots.length - 1].startMinute).toBe(18 * 60);
+    expect(slots.every((slot) => slot.occupancyEndMinute <= 19 * 60)).toBe(true);
+    const beard = generateSlots({ weekday: 2, durationMinutes: 20 });
+    expect(beard[beard.length - 1].startMinute).toBe(18 * 60 + 30);
+    expect(beard[beard.length - 1].endMinute).toBe(18 * 60 + 50);
+  });
+
+  it('reproduit les trous de Julien le 6 octobre', () => {
+    const hour = (value: number) => value;
+    expect(freeSlots(generateSlots({ weekday: 2, durationMinutes: 60, busy: julienBusy })).map((slot) => slot.startMinute)).toEqual([
+      hour(14 * 60 + 15),
+      hour(14 * 60 + 30),
+      hour(14 * 60 + 45),
+      hour(15 * 60),
+    ]);
+    expect(freeSlots(generateSlots({ weekday: 2, durationMinutes: 45, busy: julienBusy }))).toHaveLength(5);
+    expect(freeSlots(generateSlots({ weekday: 2, durationMinutes: 30, busy: julienBusy }))).toHaveLength(6);
+    const selected = generateSlots({ weekday: 2, durationMinutes: 60, busy: julienBusy }).find(
+      (slot) => slot.startMinute === 14 * 60 + 30,
+    );
+    expect(selected?.endMinute).toBe(15 * 60 + 30);
+  });
+
+  it('respecte un blocage admin sur la fin de journée', () => {
+    const slots = freeSlots(
+      generateSlots({
+        weekday: 3,
+        durationMinutes: 30,
+        blocked: [{ start: 18 * 60 + 30, end: 19 * 60 }],
+      }),
+    );
+    expect(slots.some((slot) => slot.startMinute === 18 * 60 + 30)).toBe(false);
+    expect(slots.some((slot) => slot.startMinute === 18 * 60)).toBe(true);
+  });
+});

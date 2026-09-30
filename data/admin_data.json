@@ -1,0 +1,4491 @@
+{
+ "K": {
+  "jour": {
+   "revenue": 2465.77,
+   "revenue_services": 2455.0,
+   "fees": 12.5,
+   "fees_ht": 10.77,
+   "fees_tps": 0.6,
+   "fees_tvq": 1.13,
+   "ttc": 2822.58,
+   "count": 67,
+   "booked": 72,
+   "cancelled": 5,
+   "late": 3,
+   "cancel_rate": 0.06944444444444445,
+   "basket": 36.64179104477612,
+   "occupancy": 0.83,
+   "days": 1,
+   "top": [
+    [
+     "Coupe classique",
+     20,
+     700.0
+    ],
+    [
+     "Dégradé à blanc",
+     14,
+     560.0
+    ],
+    [
+     "Coupe enfant",
+     14,
+     350.0
+    ],
+    [
+     "Coupe + barbe",
+     9,
+     495.0
+    ],
+    [
+     "Taille de barbe",
+     5,
+     125.0
+    ],
+    [
+     "Rasage à l'ancienne",
+     5,
+     225.0
+    ]
+   ],
+   "hours": {
+    "9": 8,
+    "10": 5,
+    "11": 6,
+    "12": 9,
+    "13": 6,
+    "14": 6,
+    "15": 8,
+    "16": 6,
+    "17": 8,
+    "18": 5
+   },
+   "online": 40,
+   "onsite": 27,
+   "per_barber": {
+    "Karim B.": [
+     13,
+     480.0,
+     0.875
+    ],
+    "Julien Morel": [
+     9,
+     430.0,
+     0.7583333333333333
+    ],
+    "Samuel Tremblay": [
+     18,
+     555.0,
+     0.925
+    ],
+    "Ousmane Diallo": [
+     11,
+     435.0,
+     0.6666666666666666
+    ],
+    "Marco Rossi": [
+     16,
+     555.0,
+     0.925
+    ]
+   }
+  },
+  "jour_prec": {
+   "revenue": 2313.74,
+   "revenue_services": 2296.5,
+   "fees": 20.0,
+   "fees_ht": 17.24,
+   "fees_tps": 0.95,
+   "fees_tvq": 1.81,
+   "ttc": 2640.37,
+   "count": 64,
+   "booked": 70,
+   "cancelled": 6,
+   "late": 1,
+   "cancel_rate": 0.08571428571428572,
+   "basket": 35.8828125,
+   "occupancy": 0.785,
+   "days": 1,
+   "top": [
+    [
+     "Coupe classique",
+     16,
+     551.5
+    ],
+    [
+     "Dégradé à blanc",
+     15,
+     600.0
+    ],
+    [
+     "Coupe enfant",
+     14,
+     340.0
+    ],
+    [
+     "Rasage à l'ancienne",
+     8,
+     355.0
+    ],
+    [
+     "Coupe + barbe",
+     6,
+     330.0
+    ],
+    [
+     "Taille de barbe",
+     5,
+     120.0
+    ]
+   ],
+   "hours": {
+    "9": 8,
+    "10": 6,
+    "11": 7,
+    "12": 7,
+    "13": 9,
+    "14": 7,
+    "15": 5,
+    "16": 5,
+    "17": 7,
+    "18": 3
+   },
+   "online": 47,
+   "onsite": 17,
+   "per_barber": {
+    "Karim B.": [
+     11,
+     420.0,
+     0.775
+    ],
+    "Julien Morel": [
+     10,
+     442.5,
+     0.7583333333333333
+    ],
+    "Samuel Tremblay": [
+     16,
+     475.0,
+     0.8333333333333334
+    ],
+    "Ousmane Diallo": [
+     13,
+     517.5,
+     0.7833333333333333
+    ],
+    "Marco Rossi": [
+     14,
+     441.5,
+     0.775
+    ]
+   }
+  },
+  "semaine": {
+   "revenue": 11613.2,
+   "revenue_services": 11443.0,
+   "fees": 197.5,
+   "fees_ht": 170.2,
+   "fees_tps": 9.41,
+   "fees_tvq": 17.89,
+   "ttc": 13156.35,
+   "count": 311,
+   "booked": 341,
+   "cancelled": 30,
+   "late": 14,
+   "cancel_rate": 0.08797653958944282,
+   "basket": 36.79421221864952,
+   "occupancy": 0.756,
+   "days": 5,
+   "top": [
+    [
+     "Coupe classique",
+     109,
+     3805.0
+    ],
+    [
+     "Coupe + barbe",
+     50,
+     2750.0
+    ],
+    [
+     "Coupe enfant",
+     49,
+     1222.5
+    ],
+    [
+     "Dégradé à blanc",
+     44,
+     1755.0
+    ],
+    [
+     "Taille de barbe",
+     37,
+     925.0
+    ],
+    [
+     "Rasage à l'ancienne",
+     22,
+     985.5
+    ]
+   ],
+   "hours": {
+    "9": 33,
+    "10": 26,
+    "11": 30,
+    "12": 35,
+    "13": 33,
+    "14": 30,
+    "15": 36,
+    "16": 31,
+    "17": 34,
+    "18": 23
+   },
+   "online": 198,
+   "onsite": 113,
+   "per_barber": {
+    "Karim B.": [
+     54,
+     2077.5,
+     0.74
+    ],
+    "Julien Morel": [
+     49,
+     2205.0,
+     0.7566666666666667
+    ],
+    "Samuel Tremblay": [
+     83,
+     2565.0,
+     0.8416666666666667
+    ],
+    "Ousmane Diallo": [
+     53,
+     1990.5,
+     0.5966666666666667
+    ],
+    "Marco Rossi": [
+     72,
+     2605.0,
+     0.845
+    ]
+   }
+  },
+  "semaine_prec": {
+   "revenue": 11308.48,
+   "revenue_services": 11246.0,
+   "fees": 72.5,
+   "fees_ht": 62.48,
+   "fees_tps": 3.45,
+   "fees_tvq": 6.57,
+   "ttc": 12929.93,
+   "count": 301,
+   "booked": 328,
+   "cancelled": 27,
+   "late": 7,
+   "cancel_rate": 0.08231707317073171,
+   "basket": 37.36212624584718,
+   "occupancy": 0.756,
+   "days": 5,
+   "top": [
+    [
+     "Coupe classique",
+     91,
+     3166.5
+    ],
+    [
+     "Dégradé à blanc",
+     62,
+     2462.0
+    ],
+    [
+     "Coupe + barbe",
+     47,
+     2580.0
+    ],
+    [
+     "Coupe enfant",
+     44,
+     1090.0
+    ],
+    [
+     "Taille de barbe",
+     30,
+     742.5
+    ],
+    [
+     "Rasage à l'ancienne",
+     27,
+     1205.0
+    ]
+   ],
+   "hours": {
+    "9": 34,
+    "10": 29,
+    "11": 35,
+    "12": 33,
+    "13": 30,
+    "14": 27,
+    "15": 30,
+    "16": 28,
+    "17": 31,
+    "18": 24
+   },
+   "online": 178,
+   "onsite": 123,
+   "per_barber": {
+    "Karim B.": [
+     54,
+     2193.5,
+     0.7983333333333333
+    ],
+    "Julien Morel": [
+     52,
+     2327.5,
+     0.82
+    ],
+    "Samuel Tremblay": [
+     79,
+     2531.0,
+     0.8166666666666667
+    ],
+    "Ousmane Diallo": [
+     54,
+     2157.5,
+     0.66
+    ],
+    "Marco Rossi": [
+     62,
+     2036.5,
+     0.685
+    ]
+   }
+  },
+  "mois": {
+   "revenue": 50342.7,
+   "revenue_services": 49812.5,
+   "fees": 615.25,
+   "fees_ht": 530.2,
+   "fees_tps": 29.29,
+   "fees_tvq": 55.76,
+   "ttc": 57271.22,
+   "count": 1333,
+   "booked": 1447,
+   "cancelled": 114,
+   "late": 44,
+   "cancel_rate": 0.07878369039391846,
+   "basket": 37.368717179294826,
+   "occupancy": 0.7598484848484849,
+   "days": 22,
+   "top": [
+    [
+     "Coupe classique",
+     402,
+     13974.0
+    ],
+    [
+     "Dégradé à blanc",
+     256,
+     10179.0
+    ],
+    [
+     "Coupe + barbe",
+     223,
+     12198.0
+    ],
+    [
+     "Coupe enfant",
+     189,
+     4690.0
+    ],
+    [
+     "Taille de barbe",
+     150,
+     3730.0
+    ],
+    [
+     "Rasage à l'ancienne",
+     113,
+     5041.5
+    ]
+   ],
+   "hours": {
+    "9": 130,
+    "10": 122,
+    "11": 146,
+    "12": 138,
+    "13": 138,
+    "14": 120,
+    "15": 146,
+    "16": 145,
+    "17": 145,
+    "18": 103
+   },
+   "online": 809,
+   "onsite": 524,
+   "per_barber": {
+    "Karim B.": [
+     244,
+     9524.0,
+     0.7825757575757576
+    ],
+    "Julien Morel": [
+     222,
+     10036.0,
+     0.7950757575757575
+    ],
+    "Samuel Tremblay": [
+     324,
+     10156.0,
+     0.7515151515151515
+    ],
+    "Ousmane Diallo": [
+     250,
+     9859.0,
+     0.6871212121212121
+    ],
+    "Marco Rossi": [
+     293,
+     10237.5,
+     0.7829545454545455
+    ]
+   }
+  },
+  "mois_prec": {
+   "revenue": 48487.58,
+   "revenue_services": 48026.5,
+   "fees": 535.0,
+   "fees_ht": 461.08,
+   "fees_tps": 25.46,
+   "fees_tvq": 48.46,
+   "ttc": 55217.53,
+   "count": 1306,
+   "booked": 1406,
+   "cancelled": 100,
+   "late": 37,
+   "cancel_rate": 0.07112375533428165,
+   "basket": 36.77373660030628,
+   "occupancy": 0.7593650793650794,
+   "days": 21,
+   "top": [
+    [
+     "Coupe classique",
+     414,
+     14458.5
+    ],
+    [
+     "Dégradé à blanc",
+     230,
+     9192.0
+    ],
+    [
+     "Coupe + barbe",
+     197,
+     10785.5
+    ],
+    [
+     "Coupe enfant",
+     193,
+     4810.0
+    ],
+    [
+     "Taille de barbe",
+     171,
+     4262.5
+    ],
+    [
+     "Rasage à l'ancienne",
+     101,
+     4518.0
+    ]
+   ],
+   "hours": {
+    "9": 133,
+    "10": 131,
+    "11": 121,
+    "12": 150,
+    "13": 143,
+    "14": 125,
+    "15": 126,
+    "16": 142,
+    "17": 137,
+    "18": 98
+   },
+   "online": 819,
+   "onsite": 487,
+   "per_barber": {
+    "Karim B.": [
+     243,
+     9353.0,
+     0.7916666666666666
+    ],
+    "Julien Morel": [
+     216,
+     9505.5,
+     0.7801587301587302
+    ],
+    "Samuel Tremblay": [
+     313,
+     9601.5,
+     0.7515873015873016
+    ],
+    "Ousmane Diallo": [
+     245,
+     9375.0,
+     0.676984126984127
+    ],
+    "Marco Rossi": [
+     289,
+     10191.5,
+     0.7964285714285714
+    ]
+   }
+  }
+ },
+ "deltas": {
+  "jour": 6.6,
+  "semaine": 2.7,
+  "mois": 3.8
+ },
+ "reviews": [
+  {
+   "client": "Karl Caron",
+   "barber": "Samuel Tremblay",
+   "service": "Coupe classique",
+   "date": "2026-10-03",
+   "stars": 5,
+   "text": "Accueil au top et résultat parfait.",
+   "status": "en_attente"
+  },
+  {
+   "client": "Mathieu Pelletier",
+   "barber": "Karim B.",
+   "service": "Dégradé à blanc",
+   "date": "2026-10-03",
+   "stars": 4,
+   "text": "Très bien, un peu d'attente à l'arrivée.",
+   "status": "en_attente"
+  },
+  {
+   "client": "Maxime Bergeron",
+   "barber": "Karim B.",
+   "service": "Taille de barbe",
+   "date": "2026-10-02",
+   "stars": 4,
+   "text": "Très bien, un peu d'attente à l'arrivée.",
+   "status": "en_attente"
+  },
+  {
+   "client": "Compte non vérifié",
+   "barber": "Marco Rossi",
+   "service": "Coupe classique",
+   "date": "2026-10-02",
+   "stars": 1,
+   "text": "Promo -50 % sur www.coupe-pas-chere.biz !!!",
+   "status": "en_attente"
+  },
+  {
+   "client": "Étienne Simard",
+   "barber": "Karim B.",
+   "service": "Coupe + barbe",
+   "date": "2026-10-02",
+   "stars": 5,
+   "text": "Meilleure coupe + barbe en ville.",
+   "status": "en_attente"
+  },
+  {
+   "client": "Noah Girard",
+   "barber": "Karim B.",
+   "service": "Dégradé à blanc",
+   "date": "2026-10-02",
+   "stars": 5,
+   "text": "Dégradé impeccable, comme toujours.",
+   "status": "en_attente"
+  },
+  {
+   "client": "Jérémie Thibault",
+   "barber": "Ousmane Diallo",
+   "service": "Rasage à l'ancienne",
+   "date": "2026-10-01",
+   "stars": 4,
+   "text": "Très bien, un peu d'attente à l'arrivée.",
+   "status": "publie"
+  },
+  {
+   "client": "Zacharie Lefebvre",
+   "barber": "Karim B.",
+   "service": "Taille de barbe",
+   "date": "2026-10-01",
+   "stars": 5,
+   "text": "Rapide, précis, super ambiance.",
+   "status": "publie"
+  },
+  {
+   "client": "Sébastien Gauthier",
+   "barber": "Ousmane Diallo",
+   "service": "Rasage à l'ancienne",
+   "date": "2026-10-01",
+   "stars": 5,
+   "text": "Rasage à l'ancienne parfait, serviette chaude comprise.",
+   "status": "publie"
+  },
+  {
+   "client": "Vincent Ndiaye",
+   "barber": "Ousmane Diallo",
+   "service": "Taille de barbe",
+   "date": "2026-09-30",
+   "stars": 5,
+   "text": "Accueil au top et résultat parfait.",
+   "status": "publie"
+  },
+  {
+   "client": "Luca Moreau",
+   "barber": "Samuel Tremblay",
+   "service": "Coupe enfant",
+   "date": "2026-09-30",
+   "stars": 5,
+   "text": "Accueil au top et résultat parfait.",
+   "status": "publie"
+  },
+  {
+   "client": "Sébastien Moreau",
+   "barber": "Karim B.",
+   "service": "Coupe classique",
+   "date": "2026-09-30",
+   "stars": 5,
+   "text": "Très professionnel, je reviens dans 3 semaines.",
+   "status": "publie"
+  },
+  {
+   "client": "Olivier Pelletier",
+   "barber": "Samuel Tremblay",
+   "service": "Coupe enfant",
+   "date": "2026-09-30",
+   "stars": 5,
+   "text": "Rapide, précis, super ambiance.",
+   "status": "publie"
+  },
+  {
+   "client": "Étienne Caron",
+   "barber": "Julien Morel",
+   "service": "Coupe + barbe",
+   "date": "2026-09-30",
+   "stars": 5,
+   "text": "Meilleure coupe + barbe en ville.",
+   "status": "publie"
+  },
+  {
+   "client": "Félix Côté",
+   "barber": "Karim B.",
+   "service": "Dégradé à blanc",
+   "date": "2026-09-29",
+   "stars": 5,
+   "text": "Rapide, précis, super ambiance.",
+   "status": "publie"
+  },
+  {
+   "client": "Alexis Thibault",
+   "barber": "Samuel Tremblay",
+   "service": "Coupe classique",
+   "date": "2026-09-29",
+   "stars": 5,
+   "text": "Accueil au top et résultat parfait.",
+   "status": "publie"
+  },
+  {
+   "client": "Philippe Nguyen",
+   "barber": "Samuel Tremblay",
+   "service": "Coupe enfant",
+   "date": "2026-09-29",
+   "stars": 5,
+   "text": "Rapide, précis, super ambiance.",
+   "status": "publie"
+  },
+  {
+   "client": "Ibrahim Thibault",
+   "barber": "Samuel Tremblay",
+   "service": "Coupe classique",
+   "date": "2026-09-26",
+   "stars": 4,
+   "text": "Très bien, un peu d'attente à l'arrivée.",
+   "status": "publie"
+  },
+  {
+   "client": "Maxime Fournier",
+   "barber": "Julien Morel",
+   "service": "Coupe + barbe",
+   "date": "2026-09-26",
+   "stars": 5,
+   "text": "Accueil au top et résultat parfait.",
+   "status": "publie"
+  },
+  {
+   "client": "Léo Gagné",
+   "barber": "Julien Morel",
+   "service": "Coupe classique",
+   "date": "2026-09-26",
+   "stars": 5,
+   "text": "Rapide, précis, super ambiance.",
+   "status": "publie"
+  },
+  {
+   "client": "Thomas Boucher",
+   "barber": "Julien Morel",
+   "service": "Coupe + barbe",
+   "date": "2026-09-26",
+   "stars": 5,
+   "text": "Rapide, précis, super ambiance.",
+   "status": "publie"
+  },
+  {
+   "client": "Alex Gagnon",
+   "barber": "Karim B.",
+   "service": "Dégradé à blanc",
+   "date": "2026-09-26",
+   "stars": 5,
+   "text": "Dégradé impeccable, comme toujours.",
+   "status": "publie"
+  },
+  {
+   "client": "Antoine Bergeron",
+   "barber": "Ousmane Diallo",
+   "service": "Coupe classique",
+   "date": "2026-09-25",
+   "stars": 3,
+   "text": "Correct, mais rendez-vous commencé avec 15 min de retard.",
+   "status": "publie"
+  },
+  {
+   "client": "Samuel Paquette",
+   "barber": "Karim B.",
+   "service": "Dégradé à blanc",
+   "date": "2026-09-25",
+   "stars": 5,
+   "text": "Rapide, précis, super ambiance.",
+   "status": "publie"
+  },
+  {
+   "client": "Thomas Pelletier",
+   "barber": "Marco Rossi",
+   "service": "Coupe classique",
+   "date": "2026-09-25",
+   "stars": 5,
+   "text": "Accueil au top et résultat parfait.",
+   "status": "publie"
+  },
+  {
+   "client": "William Boucher",
+   "barber": "Julien Morel",
+   "service": "Coupe + barbe",
+   "date": "2026-09-24",
+   "stars": 5,
+   "text": "Accueil au top et résultat parfait.",
+   "status": "publie"
+  },
+  {
+   "client": "Charles Simard",
+   "barber": "Karim B.",
+   "service": "Coupe + barbe",
+   "date": "2026-09-23",
+   "stars": 5,
+   "text": "Rapide, précis, super ambiance.",
+   "status": "publie"
+  },
+  {
+   "client": "Marc-André Bergeron",
+   "barber": "Karim B.",
+   "service": "Dégradé à blanc",
+   "date": "2026-09-23",
+   "stars": 5,
+   "text": "Très professionnel, je reviens dans 3 semaines.",
+   "status": "publie"
+  },
+  {
+   "client": "Alexis Cloutier",
+   "barber": "Samuel Tremblay",
+   "service": "Taille de barbe",
+   "date": "2026-09-23",
+   "stars": 5,
+   "text": "Très professionnel, je reviens dans 3 semaines.",
+   "status": "publie"
+  },
+  {
+   "client": "Émile Fournier",
+   "barber": "Karim B.",
+   "service": "Dégradé à blanc",
+   "date": "2026-09-22",
+   "stars": 5,
+   "text": "Rapide, précis, super ambiance.",
+   "status": "publie"
+  },
+  {
+   "client": "Marc-André Nguyen",
+   "barber": "Karim B.",
+   "service": "Dégradé à blanc",
+   "date": "2026-09-22",
+   "stars": 5,
+   "text": "Rapide, précis, super ambiance.",
+   "status": "publie"
+  },
+  {
+   "client": "Charles Poirier",
+   "barber": "Karim B.",
+   "service": "Coupe classique",
+   "date": "2026-09-22",
+   "stars": 5,
+   "text": "Très professionnel, je reviens dans 3 semaines.",
+   "status": "publie"
+  },
+  {
+   "client": "Louis Morin",
+   "barber": "Julien Morel",
+   "service": "Taille de barbe",
+   "date": "2026-09-22",
+   "stars": 4,
+   "text": "Très bien, un peu d'attente à l'arrivée.",
+   "status": "publie"
+  },
+  {
+   "client": "Rémi Dubé",
+   "barber": "Marco Rossi",
+   "service": "Coupe classique",
+   "date": "2026-09-22",
+   "stars": 5,
+   "text": "Coupe classique propre et rapide.",
+   "status": "publie"
+  },
+  {
+   "client": "Alexis Dubé",
+   "barber": "Julien Morel",
+   "service": "Coupe + barbe",
+   "date": "2026-09-19",
+   "stars": 5,
+   "text": "Meilleure coupe + barbe en ville.",
+   "status": "publie"
+  },
+  {
+   "client": "Nicolas Thibault",
+   "barber": "Ousmane Diallo",
+   "service": "Rasage à l'ancienne",
+   "date": "2026-09-19",
+   "stars": 5,
+   "text": "Accueil au top et résultat parfait.",
+   "status": "publie"
+  },
+  {
+   "client": "Sébastien Traoré",
+   "barber": "Karim B.",
+   "service": "Dégradé à blanc",
+   "date": "2026-09-19",
+   "stars": 5,
+   "text": "Accueil au top et résultat parfait.",
+   "status": "publie"
+  },
+  {
+   "client": "Loïc Morin",
+   "barber": "Karim B.",
+   "service": "Dégradé à blanc",
+   "date": "2026-09-18",
+   "stars": 5,
+   "text": "Accueil au top et résultat parfait.",
+   "status": "publie"
+  },
+  {
+   "client": "Émile Nguyen",
+   "barber": "Julien Morel",
+   "service": "Taille de barbe",
+   "date": "2026-09-17",
+   "stars": 4,
+   "text": "Très bien, un peu d'attente à l'arrivée.",
+   "status": "publie"
+  },
+  {
+   "client": "Rémi Gagnon",
+   "barber": "Karim B.",
+   "service": "Coupe classique",
+   "date": "2026-09-17",
+   "stars": 5,
+   "text": "Accueil au top et résultat parfait.",
+   "status": "publie"
+  },
+  {
+   "client": "Kevin Boucher",
+   "barber": "Samuel Tremblay",
+   "service": "Coupe enfant",
+   "date": "2026-09-17",
+   "stars": 5,
+   "text": "Mon fils était ravi, très patient avec les enfants.",
+   "status": "publie"
+  },
+  {
+   "client": "Sébastien Lefebvre",
+   "barber": "Ousmane Diallo",
+   "service": "Rasage à l'ancienne",
+   "date": "2026-09-16",
+   "stars": 5,
+   "text": "Rapide, précis, super ambiance.",
+   "status": "publie"
+  },
+  {
+   "client": "Charles Leclerc",
+   "barber": "Julien Morel",
+   "service": "Coupe + barbe",
+   "date": "2026-09-16",
+   "stars": 4,
+   "text": "Très bien, un peu d'attente à l'arrivée.",
+   "status": "publie"
+  },
+  {
+   "client": "Mamadou Lapointe",
+   "barber": "Ousmane Diallo",
+   "service": "Taille de barbe",
+   "date": "2026-09-16",
+   "stars": 5,
+   "text": "Très professionnel, je reviens dans 3 semaines.",
+   "status": "publie"
+  },
+  {
+   "client": "Raphaël Boucher",
+   "barber": "Karim B.",
+   "service": "Dégradé à blanc",
+   "date": "2026-09-15",
+   "stars": 5,
+   "text": "Accueil au top et résultat parfait.",
+   "status": "publie"
+  }
+ ],
+ "karim_avg": 4.89,
+ "promo_use": {
+  "ETE20": 30,
+  "BIENVENUE10": 95,
+  "RENTREE5": 46,
+  "MARDI15": 0
+ },
+ "promos": {
+  "ETE20": {
+   "type": "%",
+   "value": 20,
+   "start": "2026-07-01",
+   "end": "2026-08-31",
+   "limit": 30
+  },
+  "BIENVENUE10": {
+   "type": "%",
+   "value": 10,
+   "start": "2026-07-01",
+   "end": "2026-12-31",
+   "limit": 100
+  },
+  "RENTREE5": {
+   "type": "$",
+   "value": 5,
+   "start": "2026-09-01",
+   "end": "2026-09-30",
+   "limit": 50
+  },
+  "MARDI15": {
+   "type": "%",
+   "value": 15,
+   "start": "2026-10-06",
+   "end": "2026-11-24",
+   "limit": 40
+  }
+ },
+ "top_clients": [
+  {
+   "name": "Jonathan Boucher",
+   "visits": 13,
+   "points": 515,
+   "stamps": 3,
+   "spent_ht": 515.0,
+   "history": [
+    [
+     "2026-09-08",
+     "Coupe + barbe",
+     "Julien Morel",
+     63.24,
+     "honore"
+    ],
+    [
+     "2026-09-11",
+     "Coupe classique",
+     "Marco Rossi",
+     40.24,
+     "honore"
+    ],
+    [
+     "2026-09-17",
+     "Coupe + barbe",
+     "Marco Rossi",
+     63.24,
+     "honore"
+    ],
+    [
+     "2026-09-25",
+     "Coupe + barbe",
+     "Ousmane Diallo",
+     63.24,
+     "honore"
+    ],
+    [
+     "2026-10-07",
+     "Taille de barbe",
+     "Karim B.",
+     28.74,
+     "a_venir"
+    ],
+    [
+     "2026-10-10",
+     "Coupe classique",
+     "Karim B.",
+     36.22,
+     "a_venir"
+    ]
+   ],
+   "next": [
+    [
+     "2026-10-07",
+     "10 h 00",
+     "Taille de barbe",
+     "Karim B."
+    ],
+    [
+     "2026-10-10",
+     "10 h 15",
+     "Coupe classique",
+     "Karim B."
+    ]
+   ]
+  },
+  {
+   "name": "Karl Lapointe",
+   "visits": 13,
+   "points": 480,
+   "stamps": 3,
+   "spent_ht": 480.0,
+   "history": [
+    [
+     "2026-08-22",
+     "Coupe classique",
+     "Marco Rossi",
+     40.24,
+     "honore"
+    ],
+    [
+     "2026-08-28",
+     "Coupe classique",
+     "Samuel Tremblay",
+     40.24,
+     "honore"
+    ],
+    [
+     "2026-09-03",
+     "Dégradé à blanc",
+     "Karim B.",
+     45.99,
+     "honore"
+    ],
+    [
+     "2026-09-04",
+     "Dégradé à blanc",
+     "Samuel Tremblay",
+     45.99,
+     "honore"
+    ],
+    [
+     "2026-10-02",
+     "Coupe classique",
+     "Marco Rossi",
+     40.24,
+     "honore"
+    ],
+    [
+     "2026-10-07",
+     "Coupe classique",
+     "Marco Rossi",
+     40.24,
+     "a_venir"
+    ]
+   ],
+   "next": [
+    [
+     "2026-10-07",
+     "11 h 15",
+     "Coupe classique",
+     "Marco Rossi"
+    ]
+   ]
+  },
+  {
+   "name": "Zacharie Girard",
+   "visits": 11,
+   "points": 395,
+   "stamps": 1,
+   "spent_ht": 395.0,
+   "history": [
+    [
+     "2026-08-25",
+     "Dégradé à blanc",
+     "Karim B.",
+     45.99,
+     "honore"
+    ],
+    [
+     "2026-08-26",
+     "Coupe enfant",
+     "Karim B.",
+     28.74,
+     "honore"
+    ],
+    [
+     "2026-09-04",
+     "Dégradé à blanc",
+     "Marco Rossi",
+     45.99,
+     "honore"
+    ],
+    [
+     "2026-09-11",
+     "Coupe + barbe",
+     "Julien Morel",
+     57.49,
+     "honore"
+    ],
+    [
+     "2026-09-22",
+     "Coupe classique",
+     "Samuel Tremblay",
+     40.24,
+     "honore"
+    ],
+    [
+     "2026-10-10",
+     "Dégradé à blanc",
+     "Karim B.",
+     45.99,
+     "a_venir"
+    ]
+   ],
+   "next": [
+    [
+     "2026-10-10",
+     "17 h 30",
+     "Dégradé à blanc",
+     "Karim B."
+    ]
+   ]
+  },
+  {
+   "name": "Noah Lapointe",
+   "visits": 11,
+   "points": 390,
+   "stamps": 1,
+   "spent_ht": 390.0,
+   "history": [
+    [
+     "2026-07-31",
+     "Coupe enfant",
+     "Samuel Tremblay",
+     28.74,
+     "honore"
+    ],
+    [
+     "2026-08-20",
+     "Taille de barbe",
+     "Ousmane Diallo",
+     28.74,
+     "honore"
+    ],
+    [
+     "2026-08-27",
+     "Coupe classique",
+     "Samuel Tremblay",
+     40.24,
+     "honore"
+    ],
+    [
+     "2026-08-28",
+     "Coupe classique",
+     "Marco Rossi",
+     40.24,
+     "honore"
+    ],
+    [
+     "2026-09-12",
+     "Coupe classique",
+     "Samuel Tremblay",
+     40.24,
+     "honore"
+    ],
+    [
+     "2026-09-19",
+     "Dégradé à blanc",
+     "Marco Rossi",
+     45.99,
+     "honore"
+    ]
+   ],
+   "next": []
+  },
+  {
+   "name": "Philippe Roy",
+   "visits": 11,
+   "points": 435,
+   "stamps": 1,
+   "spent_ht": 435.0,
+   "history": [
+    [
+     "2026-08-21",
+     "Dégradé à blanc",
+     "Karim B.",
+     45.99,
+     "honore"
+    ],
+    [
+     "2026-08-26",
+     "Rasage à l'ancienne",
+     "Ousmane Diallo",
+     51.74,
+     "honore"
+    ],
+    [
+     "2026-09-03",
+     "Rasage à l'ancienne",
+     "Ousmane Diallo",
+     51.74,
+     "honore"
+    ],
+    [
+     "2026-09-04",
+     "Taille de barbe",
+     "Ousmane Diallo",
+     28.74,
+     "honore"
+    ],
+    [
+     "2026-09-23",
+     "Coupe + barbe",
+     "Julien Morel",
+     63.24,
+     "honore"
+    ],
+    [
+     "2026-09-24",
+     "Coupe enfant",
+     "Marco Rossi",
+     28.74,
+     "honore"
+    ]
+   ],
+   "next": []
+  },
+  {
+   "name": "Benjamin Leblanc",
+   "visits": 11,
+   "points": 445,
+   "stamps": 1,
+   "spent_ht": 445.0,
+   "history": [
+    [
+     "2026-08-28",
+     "Coupe + barbe",
+     "Julien Morel",
+     63.24,
+     "honore"
+    ],
+    [
+     "2026-09-10",
+     "Dégradé à blanc",
+     "Karim B.",
+     45.99,
+     "honore"
+    ],
+    [
+     "2026-09-22",
+     "Coupe classique",
+     "Samuel Tremblay",
+     40.24,
+     "honore"
+    ],
+    [
+     "2026-09-25",
+     "Dégradé à blanc",
+     "Julien Morel",
+     45.99,
+     "honore"
+    ],
+    [
+     "2026-09-29",
+     "Dégradé à blanc",
+     "Karim B.",
+     45.99,
+     "honore"
+    ],
+    [
+     "2026-10-09",
+     "Coupe classique",
+     "Samuel Tremblay",
+     40.24,
+     "a_venir"
+    ]
+   ],
+   "next": [
+    [
+     "2026-10-09",
+     "16 h 15",
+     "Coupe classique",
+     "Samuel Tremblay"
+    ]
+   ]
+  }
+ ],
+ "alex": {
+  "name": "Alex Gagnon",
+  "visits": 7,
+  "points": 280,
+  "stamps": 7,
+  "spent_ht": 280.0,
+  "history": [
+   [
+    "2026-08-08",
+    "Dégradé à blanc",
+    "Karim B.",
+    45.99,
+    "honore"
+   ],
+   [
+    "2026-08-15",
+    "Coupe classique",
+    "Marco Rossi",
+    40.24,
+    "honore"
+   ],
+   [
+    "2026-08-29",
+    "Taille de barbe",
+    "Ousmane Diallo",
+    28.74,
+    "honore"
+   ],
+   [
+    "2026-09-12",
+    "Coupe + barbe",
+    "Julien Morel",
+    63.24,
+    "honore"
+   ],
+   [
+    "2026-09-26",
+    "Dégradé à blanc",
+    "Karim B.",
+    45.99,
+    "honore"
+   ],
+   [
+    "2026-10-06",
+    "Coupe + barbe",
+    "Julien Morel",
+    63.24,
+    "a_venir"
+   ]
+  ],
+  "next": [
+   [
+    "2026-10-06",
+    "14 h 30",
+    "Coupe + barbe",
+    "Julien Morel"
+   ]
+  ]
+ },
+ "n_clients": 1328,
+ "today": [
+  [
+   "Julien Morel",
+   "9 h 00",
+   30,
+   "Coupe classique",
+   "Rémi Bouchard",
+   "annule_tardif",
+   "surPlace"
+  ],
+  [
+   "Julien Morel",
+   "9 h 45",
+   60,
+   "Coupe + barbe",
+   "Loïc Bergeron",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Julien Morel",
+   "11 h 00",
+   60,
+   "Coupe + barbe",
+   "Youssef Boucher",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Julien Morel",
+   "12 h 00",
+   20,
+   "Taille de barbe",
+   "David Lapointe",
+   "annule",
+   "surPlace"
+  ],
+  [
+   "Julien Morel",
+   "12 h 30",
+   60,
+   "Coupe + barbe",
+   "Ibrahim Girard",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Julien Morel",
+   "13 h 30",
+   60,
+   "Coupe + barbe",
+   "Adam Thibault",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Julien Morel",
+   "14 h 30",
+   20,
+   "Taille de barbe",
+   "Loïc Poulin",
+   "annule",
+   "surPlace"
+  ],
+  [
+   "Julien Morel",
+   "15 h 00",
+   20,
+   "Taille de barbe",
+   "Félix Pelletier",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Julien Morel",
+   "15 h 30",
+   60,
+   "Coupe + barbe",
+   "Olivier Fournier",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Julien Morel",
+   "16 h 30",
+   60,
+   "Coupe + barbe",
+   "Samuel Moreau",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Julien Morel",
+   "17 h 30",
+   30,
+   "Coupe classique",
+   "Mathieu Haddad",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Julien Morel",
+   "18 h 15",
+   45,
+   "Dégradé à blanc",
+   "Samuel Traoré",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Karim B.",
+   "9 h 00",
+   45,
+   "Dégradé à blanc",
+   "Léo Bélanger",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Karim B.",
+   "9 h 45",
+   45,
+   "Dégradé à blanc",
+   "Mathieu Pelletier",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Karim B.",
+   "10 h 45",
+   30,
+   "Coupe classique",
+   "Rémi Lapointe",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Karim B.",
+   "11 h 15",
+   45,
+   "Dégradé à blanc",
+   "Félix Roy",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Karim B.",
+   "12 h 00",
+   45,
+   "Dégradé à blanc",
+   "Luca Côté",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Karim B.",
+   "12 h 45",
+   45,
+   "Dégradé à blanc",
+   "Karl Poulin",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Karim B.",
+   "13 h 30",
+   30,
+   "Coupe classique",
+   "Zacharie Leclerc",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Karim B.",
+   "14 h 15",
+   30,
+   "Coupe enfant",
+   "Hugo Gauthier",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Karim B.",
+   "14 h 45",
+   30,
+   "Coupe enfant",
+   "Mathieu Bergeron",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Karim B.",
+   "15 h 30",
+   45,
+   "Dégradé à blanc",
+   "Ibrahim Dubé",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Karim B.",
+   "16 h 45",
+   45,
+   "Dégradé à blanc",
+   "Simon Ouellet",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Karim B.",
+   "17 h 30",
+   45,
+   "Dégradé à blanc",
+   "Adam Roy",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Karim B.",
+   "18 h 15",
+   45,
+   "Dégradé à blanc",
+   "Mamadou Ouellet",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Marco Rossi",
+   "9 h 00",
+   30,
+   "Coupe enfant",
+   "Thomas Leblanc",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Marco Rossi",
+   "9 h 30",
+   30,
+   "Coupe classique",
+   "Olivier Leblanc",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Marco Rossi",
+   "10 h 00",
+   30,
+   "Coupe classique",
+   "Étienne Poulin",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Marco Rossi",
+   "10 h 30",
+   60,
+   "Coupe + barbe",
+   "Alex Haddad",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Marco Rossi",
+   "11 h 30",
+   30,
+   "Coupe classique",
+   "Simon Pelletier",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Marco Rossi",
+   "12 h 00",
+   45,
+   "Dégradé à blanc",
+   "Raphaël Poirier",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Marco Rossi",
+   "12 h 45",
+   30,
+   "Coupe enfant",
+   "Léo Ouellet",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Marco Rossi",
+   "13 h 15",
+   30,
+   "Coupe classique",
+   "Léo Simard",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Marco Rossi",
+   "13 h 45",
+   30,
+   "Coupe enfant",
+   "Marc-André Gagné",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Marco Rossi",
+   "14 h 15",
+   45,
+   "Dégradé à blanc",
+   "Alexis Lapointe",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Marco Rossi",
+   "15 h 00",
+   30,
+   "Coupe classique",
+   "Loïc Simard",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Marco Rossi",
+   "15 h 45",
+   30,
+   "Coupe enfant",
+   "Alex Dubé",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Marco Rossi",
+   "16 h 15",
+   30,
+   "Coupe enfant",
+   "Alex Traoré",
+   "annule_tardif",
+   "enLigne"
+  ],
+  [
+   "Marco Rossi",
+   "16 h 45",
+   30,
+   "Coupe classique",
+   "Samuel Caron",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Marco Rossi",
+   "17 h 15",
+   30,
+   "Coupe classique",
+   "Vincent Fortin",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Marco Rossi",
+   "17 h 45",
+   30,
+   "Coupe classique",
+   "Philippe Boucher",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Marco Rossi",
+   "18 h 15",
+   45,
+   "Dégradé à blanc",
+   "Vincent Gagné",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Ousmane Diallo",
+   "9 h 15",
+   40,
+   "Rasage à l'ancienne",
+   "Charles Fortin",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Ousmane Diallo",
+   "10 h 00",
+   40,
+   "Rasage à l'ancienne",
+   "Antoine Roy",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Ousmane Diallo",
+   "11 h 45",
+   20,
+   "Taille de barbe",
+   "Thomas Bouchard",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Ousmane Diallo",
+   "12 h 15",
+   20,
+   "Taille de barbe",
+   "Mamadou Nguyen",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Ousmane Diallo",
+   "12 h 45",
+   40,
+   "Rasage à l'ancienne",
+   "Alexis Lavoie",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Ousmane Diallo",
+   "13 h 30",
+   20,
+   "Taille de barbe",
+   "Félix Haddad",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Ousmane Diallo",
+   "14 h 00",
+   20,
+   "Taille de barbe",
+   "Mamadou Cloutier",
+   "annule_tardif",
+   "surPlace"
+  ],
+  [
+   "Ousmane Diallo",
+   "14 h 30",
+   60,
+   "Coupe + barbe",
+   "Youssef Pelletier",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Ousmane Diallo",
+   "15 h 45",
+   40,
+   "Rasage à l'ancienne",
+   "Alexis Pelletier",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Ousmane Diallo",
+   "16 h 30",
+   40,
+   "Rasage à l'ancienne",
+   "Samuel Haddad",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Ousmane Diallo",
+   "17 h 15",
+   20,
+   "Taille de barbe",
+   "Benjamin Dubé",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Ousmane Diallo",
+   "17 h 45",
+   60,
+   "Coupe + barbe",
+   "Mathieu Nguyen",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Samuel Tremblay",
+   "9 h 00",
+   30,
+   "Coupe classique",
+   "Étienne Lefebvre",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Samuel Tremblay",
+   "9 h 30",
+   30,
+   "Coupe classique",
+   "Étienne Simard",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Samuel Tremblay",
+   "10 h 00",
+   30,
+   "Coupe classique",
+   "Marco Traoré",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Samuel Tremblay",
+   "11 h 00",
+   30,
+   "Coupe enfant",
+   "David Leblanc",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Samuel Tremblay",
+   "11 h 45",
+   30,
+   "Coupe classique",
+   "Nicolas Poulin",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Samuel Tremblay",
+   "12 h 15",
+   30,
+   "Coupe classique",
+   "Étienne Gagnon",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Samuel Tremblay",
+   "12 h 45",
+   45,
+   "Dégradé à blanc",
+   "Marco Simard",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Samuel Tremblay",
+   "13 h 30",
+   30,
+   "Coupe enfant",
+   "Marco Paquette",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Samuel Tremblay",
+   "14 h 00",
+   30,
+   "Coupe classique",
+   "Léo Pelletier",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Samuel Tremblay",
+   "14 h 30",
+   30,
+   "Coupe enfant",
+   "Luca Traoré",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Samuel Tremblay",
+   "15 h 00",
+   30,
+   "Coupe classique",
+   "Noah Dubé",
+   "honore",
+   "surPlace"
+  ],
+  [
+   "Samuel Tremblay",
+   "15 h 30",
+   30,
+   "Coupe enfant",
+   "Olivier Girard",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Samuel Tremblay",
+   "16 h 00",
+   30,
+   "Coupe enfant",
+   "Thomas Fournier",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Samuel Tremblay",
+   "16 h 30",
+   30,
+   "Coupe enfant",
+   "Benjamin Gagné",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Samuel Tremblay",
+   "17 h 00",
+   30,
+   "Coupe enfant",
+   "Alex Leblanc",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Samuel Tremblay",
+   "17 h 30",
+   30,
+   "Coupe classique",
+   "Jonathan Caron",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Samuel Tremblay",
+   "18 h 00",
+   30,
+   "Coupe classique",
+   "Karl Caron",
+   "honore",
+   "enLigne"
+  ],
+  [
+   "Samuel Tremblay",
+   "18 h 30",
+   30,
+   "Coupe enfant",
+   "Gabriel Fournier",
+   "honore",
+   "surPlace"
+  ]
+ ],
+ "pays": [
+  [
+   "2026-10-03",
+   "18 h 30",
+   "Gabriel Fournier",
+   "Coupe enfant",
+   "Samuel Tremblay",
+   "Sur place",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "18 h 15",
+   "Mamadou Ouellet",
+   "Dégradé à blanc",
+   "Karim B.",
+   "Carte",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "18 h 15",
+   "Samuel Traoré",
+   "Dégradé à blanc",
+   "Julien Morel",
+   "Sur place",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "18 h 15",
+   "Vincent Gagné",
+   "Dégradé à blanc",
+   "Marco Rossi",
+   "Sur place",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "18 h 00",
+   "Karl Caron",
+   "Coupe classique",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "17 h 45",
+   "Mathieu Nguyen",
+   "Coupe + barbe",
+   "Ousmane Diallo",
+   "Sur place",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "17 h 45",
+   "Philippe Boucher",
+   "Coupe classique",
+   "Marco Rossi",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "17 h 30",
+   "Adam Roy",
+   "Dégradé à blanc",
+   "Karim B.",
+   "Sur place",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "17 h 30",
+   "Mathieu Haddad",
+   "Coupe classique",
+   "Julien Morel",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "17 h 30",
+   "Jonathan Caron",
+   "Coupe classique",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "17 h 15",
+   "Benjamin Dubé",
+   "Taille de barbe",
+   "Ousmane Diallo",
+   "Sur place",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "17 h 15",
+   "Vincent Fortin",
+   "Coupe classique",
+   "Marco Rossi",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "17 h 00",
+   "Alex Leblanc",
+   "Coupe enfant",
+   "Samuel Tremblay",
+   "Apple Pay",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "16 h 45",
+   "Simon Ouellet",
+   "Dégradé à blanc",
+   "Karim B.",
+   "Sur place",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "16 h 45",
+   "Samuel Caron",
+   "Coupe classique",
+   "Marco Rossi",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "16 h 30",
+   "Samuel Moreau",
+   "Coupe + barbe",
+   "Julien Morel",
+   "Sur place",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "16 h 30",
+   "Benjamin Gagné",
+   "Coupe enfant",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "16 h 30",
+   "Samuel Haddad",
+   "Rasage à l'ancienne",
+   "Ousmane Diallo",
+   "Carte",
+   "paye",
+   51.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "16 h 15",
+   "Alex Traoré",
+   "Coupe enfant",
+   "Marco Rossi",
+   "Carte",
+   "frais",
+   28.74,
+   12.5,
+   16.24
+  ],
+  [
+   "2026-10-03",
+   "16 h 00",
+   "Thomas Fournier",
+   "Coupe enfant",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "15 h 45",
+   "Alexis Pelletier",
+   "Rasage à l'ancienne",
+   "Ousmane Diallo",
+   "Carte",
+   "paye",
+   51.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "15 h 45",
+   "Alex Dubé",
+   "Coupe enfant",
+   "Marco Rossi",
+   "Sur place",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "15 h 30",
+   "Ibrahim Dubé",
+   "Dégradé à blanc",
+   "Karim B.",
+   "Sur place",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "15 h 30",
+   "Olivier Fournier",
+   "Coupe + barbe",
+   "Julien Morel",
+   "Apple Pay",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "15 h 30",
+   "Olivier Girard",
+   "Coupe enfant",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "15 h 00",
+   "Félix Pelletier",
+   "Taille de barbe",
+   "Julien Morel",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "15 h 00",
+   "Noah Dubé",
+   "Coupe classique",
+   "Samuel Tremblay",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "15 h 00",
+   "Loïc Simard",
+   "Coupe classique",
+   "Marco Rossi",
+   "Apple Pay",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "14 h 45",
+   "Mathieu Bergeron",
+   "Coupe enfant",
+   "Karim B.",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "14 h 30",
+   "Luca Traoré",
+   "Coupe enfant",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "14 h 30",
+   "Youssef Pelletier",
+   "Coupe + barbe",
+   "Ousmane Diallo",
+   "Apple Pay",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "14 h 15",
+   "Hugo Gauthier",
+   "Coupe enfant",
+   "Karim B.",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "14 h 15",
+   "Alexis Lapointe",
+   "Dégradé à blanc",
+   "Marco Rossi",
+   "Carte",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "14 h 00",
+   "Léo Pelletier",
+   "Coupe classique",
+   "Samuel Tremblay",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "13 h 45",
+   "Marc-André Gagné",
+   "Coupe enfant",
+   "Marco Rossi",
+   "Apple Pay",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "13 h 30",
+   "Zacharie Leclerc",
+   "Coupe classique",
+   "Karim B.",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "13 h 30",
+   "Adam Thibault",
+   "Coupe + barbe",
+   "Julien Morel",
+   "Carte",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "13 h 30",
+   "Marco Paquette",
+   "Coupe enfant",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "13 h 30",
+   "Félix Haddad",
+   "Taille de barbe",
+   "Ousmane Diallo",
+   "Sur place",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "13 h 15",
+   "Léo Simard",
+   "Coupe classique",
+   "Marco Rossi",
+   "Apple Pay",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "12 h 45",
+   "Karl Poulin",
+   "Dégradé à blanc",
+   "Karim B.",
+   "Sur place",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "12 h 45",
+   "Marco Simard",
+   "Dégradé à blanc",
+   "Samuel Tremblay",
+   "Apple Pay",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "12 h 45",
+   "Alexis Lavoie",
+   "Rasage à l'ancienne",
+   "Ousmane Diallo",
+   "Carte",
+   "paye",
+   51.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "12 h 45",
+   "Léo Ouellet",
+   "Coupe enfant",
+   "Marco Rossi",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "12 h 30",
+   "Ibrahim Girard",
+   "Coupe + barbe",
+   "Julien Morel",
+   "Apple Pay",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "12 h 15",
+   "Étienne Gagnon",
+   "Coupe classique",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "12 h 15",
+   "Mamadou Nguyen",
+   "Taille de barbe",
+   "Ousmane Diallo",
+   "Sur place",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "12 h 00",
+   "Luca Côté",
+   "Dégradé à blanc",
+   "Karim B.",
+   "Sur place",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "12 h 00",
+   "Raphaël Poirier",
+   "Dégradé à blanc",
+   "Marco Rossi",
+   "Sur place",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "11 h 45",
+   "Nicolas Poulin",
+   "Coupe classique",
+   "Samuel Tremblay",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "11 h 45",
+   "Thomas Bouchard",
+   "Taille de barbe",
+   "Ousmane Diallo",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "11 h 30",
+   "Simon Pelletier",
+   "Coupe classique",
+   "Marco Rossi",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "11 h 15",
+   "Félix Roy",
+   "Dégradé à blanc",
+   "Karim B.",
+   "Carte",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "11 h 00",
+   "Youssef Boucher",
+   "Coupe + barbe",
+   "Julien Morel",
+   "Carte",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "11 h 00",
+   "David Leblanc",
+   "Coupe enfant",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "10 h 45",
+   "Rémi Lapointe",
+   "Coupe classique",
+   "Karim B.",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "10 h 30",
+   "Alex Haddad",
+   "Coupe + barbe",
+   "Marco Rossi",
+   "Carte",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "10 h 00",
+   "Marco Traoré",
+   "Coupe classique",
+   "Samuel Tremblay",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "10 h 00",
+   "Antoine Roy",
+   "Rasage à l'ancienne",
+   "Ousmane Diallo",
+   "Carte",
+   "paye",
+   51.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "10 h 00",
+   "Étienne Poulin",
+   "Coupe classique",
+   "Marco Rossi",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "9 h 45",
+   "Mathieu Pelletier",
+   "Dégradé à blanc",
+   "Karim B.",
+   "Carte",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "9 h 45",
+   "Loïc Bergeron",
+   "Coupe + barbe",
+   "Julien Morel",
+   "Sur place",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "9 h 30",
+   "Étienne Simard",
+   "Coupe classique",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "9 h 30",
+   "Olivier Leblanc",
+   "Coupe classique",
+   "Marco Rossi",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "9 h 15",
+   "Charles Fortin",
+   "Rasage à l'ancienne",
+   "Ousmane Diallo",
+   "Sur place",
+   "paye",
+   51.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "9 h 00",
+   "Léo Bélanger",
+   "Dégradé à blanc",
+   "Karim B.",
+   "Carte",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "9 h 00",
+   "Étienne Lefebvre",
+   "Coupe classique",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-03",
+   "9 h 00",
+   "Thomas Leblanc",
+   "Coupe enfant",
+   "Marco Rossi",
+   "Sur place",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "18 h 30",
+   "Maxime Moreau",
+   "Coupe classique",
+   "Samuel Tremblay",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "18 h 30",
+   "Sébastien Morin",
+   "Coupe classique",
+   "Marco Rossi",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "18 h 15",
+   "Maxime Bergeron",
+   "Taille de barbe",
+   "Karim B.",
+   "Sur place",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "18 h 15",
+   "Ibrahim Fournier",
+   "Coupe classique",
+   "Julien Morel",
+   "Carte",
+   "frais",
+   40.24,
+   17.5,
+   22.74
+  ],
+  [
+   "2026-10-02",
+   "18 h 15",
+   "Mathieu Bergeron",
+   "Rasage à l'ancienne",
+   "Ousmane Diallo",
+   "Carte",
+   "paye",
+   51.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "18 h 00",
+   "Gabriel Gauthier",
+   "Coupe classique",
+   "Marco Rossi",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "17 h 45",
+   "Youssef Lefebvre",
+   "Taille de barbe",
+   "Julien Morel",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "17 h 45",
+   "Thomas Beaulieu",
+   "Coupe enfant",
+   "Samuel Tremblay",
+   "Sur place",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "17 h 30",
+   "Loïc Roy",
+   "Taille de barbe",
+   "Ousmane Diallo",
+   "Sur place",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "17 h 30",
+   "Samuel Beaulieu",
+   "Coupe classique",
+   "Marco Rossi",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "17 h 15",
+   "Étienne Simard",
+   "Coupe + barbe",
+   "Karim B.",
+   "Sur place",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "17 h 15",
+   "Philippe Bélanger",
+   "Coupe classique",
+   "Julien Morel",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "17 h 15",
+   "Antoine Ndiaye",
+   "Coupe enfant",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "17 h 00",
+   "Sébastien Nguyen",
+   "Taille de barbe",
+   "Ousmane Diallo",
+   "Apple Pay",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "16 h 45",
+   "Thomas Boucher",
+   "Coupe classique",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "16 h 30",
+   "Félix Poulin",
+   "Dégradé à blanc",
+   "Karim B.",
+   "Apple Pay",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "16 h 30",
+   "Olivier Poulin",
+   "Dégradé à blanc",
+   "Marco Rossi",
+   "Apple Pay",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "16 h 15",
+   "Marc-André Moreau",
+   "Coupe + barbe",
+   "Julien Morel",
+   "Sur place",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "16 h 15",
+   "Youssef Cloutier",
+   "Rasage à l'ancienne",
+   "Ousmane Diallo",
+   "Carte",
+   "rembourse",
+   51.74,
+   0.0,
+   51.74
+  ],
+  [
+   "2026-10-02",
+   "16 h 00",
+   "Félix Dubé",
+   "Dégradé à blanc",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "16 h 00",
+   "Kevin Lévesque",
+   "Coupe classique",
+   "Marco Rossi",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "15 h 45",
+   "Luca Moreau",
+   "Dégradé à blanc",
+   "Karim B.",
+   "Carte",
+   "rembourse",
+   45.99,
+   0.0,
+   45.99
+  ],
+  [
+   "2026-10-02",
+   "15 h 45",
+   "Charles Fortin",
+   "Taille de barbe",
+   "Ousmane Diallo",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "15 h 30",
+   "Gabriel Traoré",
+   "Coupe classique",
+   "Samuel Tremblay",
+   "Apple Pay",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "15 h 15",
+   "Benjamin Leclerc",
+   "Coupe classique",
+   "Karim B.",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "15 h 15",
+   "Zacharie Poulin",
+   "Coupe + barbe",
+   "Julien Morel",
+   "Sur place",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "15 h 15",
+   "Étienne Beaulieu",
+   "Taille de barbe",
+   "Ousmane Diallo",
+   "Apple Pay",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "15 h 15",
+   "Vincent Bélanger",
+   "Dégradé à blanc",
+   "Marco Rossi",
+   "Sur place",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "15 h 00",
+   "Rémi Lévesque",
+   "Coupe enfant",
+   "Samuel Tremblay",
+   "Apple Pay",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "14 h 45",
+   "Ibrahim Bergeron",
+   "Coupe enfant",
+   "Karim B.",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "14 h 45",
+   "Kevin Lefebvre",
+   "Coupe classique",
+   "Marco Rossi",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "14 h 30",
+   "Simon Ndiaye",
+   "Coupe classique",
+   "Samuel Tremblay",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "14 h 15",
+   "William Beaulieu",
+   "Coupe + barbe",
+   "Ousmane Diallo",
+   "Apple Pay",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "14 h 00",
+   "Maxime Ouellet",
+   "Dégradé à blanc",
+   "Karim B.",
+   "Carte",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "14 h 00",
+   "Loïc Lefebvre",
+   "Coupe + barbe",
+   "Julien Morel",
+   "Sur place",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "14 h 00",
+   "Émile Beaulieu",
+   "Dégradé à blanc",
+   "Marco Rossi",
+   "Carte",
+   "rembourse",
+   45.99,
+   0.0,
+   45.99
+  ],
+  [
+   "2026-10-02",
+   "13 h 45",
+   "Ibrahim Côté",
+   "Coupe enfant",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "13 h 45",
+   "Gabriel Leblanc",
+   "Coupe classique",
+   "Ousmane Diallo",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "13 h 30",
+   "Sébastien Fournier",
+   "Coupe classique",
+   "Marco Rossi",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "13 h 15",
+   "Raphaël Beaulieu",
+   "Dégradé à blanc",
+   "Karim B.",
+   "Apple Pay",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "13 h 15",
+   "Sébastien Pelletier",
+   "Coupe classique",
+   "Samuel Tremblay",
+   "Apple Pay",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "13 h 15",
+   "Maxime Paquette",
+   "Taille de barbe",
+   "Ousmane Diallo",
+   "Sur place",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "13 h 00",
+   "Thomas Lavoie",
+   "Coupe + barbe",
+   "Julien Morel",
+   "Sur place",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "13 h 00",
+   "William Bouchard",
+   "Coupe classique",
+   "Marco Rossi",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "12 h 45",
+   "Noah Caron",
+   "Coupe classique",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "12 h 30",
+   "Adam Leclerc",
+   "Rasage à l'ancienne",
+   "Ousmane Diallo",
+   "Carte",
+   "paye",
+   51.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "12 h 30",
+   "Raphaël Lévesque",
+   "Coupe classique",
+   "Marco Rossi",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "12 h 15",
+   "Noah Girard",
+   "Dégradé à blanc",
+   "Karim B.",
+   "Sur place",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "12 h 15",
+   "Ibrahim Gagnon",
+   "Coupe classique",
+   "Samuel Tremblay",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "12 h 00",
+   "Thomas Bélanger",
+   "Taille de barbe",
+   "Ousmane Diallo",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "11 h 45",
+   "Benjamin Bouchard",
+   "Coupe + barbe",
+   "Julien Morel",
+   "Carte",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "11 h 30",
+   "Thomas Bergeron",
+   "Dégradé à blanc",
+   "Karim B.",
+   "Sur place",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "11 h 30",
+   "Marco Pelletier",
+   "Coupe + barbe",
+   "Marco Rossi",
+   "Sur place",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "11 h 15",
+   "Alexis Lapointe",
+   "Coupe classique",
+   "Julien Morel",
+   "Apple Pay",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "11 h 15",
+   "Raphaël Dubé",
+   "Coupe enfant",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "11 h 00",
+   "Marc-André Haddad",
+   "Taille de barbe",
+   "Ousmane Diallo",
+   "Sur place",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "11 h 00",
+   "Karl Lapointe",
+   "Coupe classique",
+   "Marco Rossi",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "10 h 45",
+   "Ibrahim Leblanc",
+   "Taille de barbe",
+   "Julien Morel",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "10 h 30",
+   "Karl Lévesque",
+   "Coupe + barbe",
+   "Karim B.",
+   "Apple Pay",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "10 h 30",
+   "Maxime Poulin",
+   "Coupe classique",
+   "Ousmane Diallo",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "10 h 15",
+   "Kevin Roy",
+   "Coupe classique",
+   "Julien Morel",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "10 h 15",
+   "Émile Lefebvre",
+   "Coupe classique",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "10 h 15",
+   "Rémi Simard",
+   "Coupe classique",
+   "Marco Rossi",
+   "Carte",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "10 h 00",
+   "Léo Lapointe",
+   "Coupe classique",
+   "Karim B.",
+   "Apple Pay",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "9 h 45",
+   "Vincent Roy",
+   "Coupe enfant",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "9 h 45",
+   "Kevin Traoré",
+   "Rasage à l'ancienne",
+   "Ousmane Diallo",
+   "Carte",
+   "paye",
+   51.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "9 h 45",
+   "Noah Haddad",
+   "Coupe classique",
+   "Marco Rossi",
+   "Sur place",
+   "paye",
+   40.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "9 h 15",
+   "Sébastien Lévesque",
+   "Coupe + barbe",
+   "Julien Morel",
+   "Carte",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "9 h 00",
+   "Thomas Paquette",
+   "Coupe + barbe",
+   "Karim B.",
+   "Apple Pay",
+   "paye",
+   63.24,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "9 h 00",
+   "Benjamin Morin",
+   "Coupe enfant",
+   "Samuel Tremblay",
+   "Carte",
+   "paye",
+   28.74,
+   0.0,
+   0.0
+  ],
+  [
+   "2026-10-02",
+   "9 h 00",
+   "Raphaël Côté",
+   "Dégradé à blanc",
+   "Marco Rossi",
+   "Apple Pay",
+   "paye",
+   45.99,
+   0.0,
+   0.0
+  ]
+ ],
+ "week": {
+  "2026-09-29": [
+   52,
+   0.6733333333333333,
+   2109.0
+  ],
+  "2026-09-30": [
+   62,
+   0.7133333333333334,
+   2245.85
+  ],
+  "2026-10-01": [
+   63,
+   0.7616666666666667,
+   2317.5
+  ],
+  "2026-10-02": [
+   67,
+   0.8016666666666666,
+   2475.08
+  ],
+  "2026-10-03": [
+   67,
+   0.83,
+   2465.77
+  ]
+ },
+ "n_bookings": 4943,
+ "day6": [
+  [
+   "Julien Morel",
+   540,
+   60,
+   "Coupe + barbe",
+   "Thomas Moreau",
+   "surPlace",
+   "a_encaisser"
+  ],
+  [
+   "Julien Morel",
+   615,
+   60,
+   "Coupe + barbe",
+   "Antoine Poulin",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Julien Morel",
+   675,
+   20,
+   "Taille de barbe",
+   "Léo Poirier",
+   "surPlace",
+   "a_encaisser"
+  ],
+  [
+   "Julien Morel",
+   705,
+   30,
+   "Coupe classique",
+   "Marc-André Gagné",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Julien Morel",
+   735,
+   60,
+   "Coupe + barbe",
+   "Zacharie Gagnon",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Julien Morel",
+   795,
+   30,
+   "Coupe classique",
+   "David Caron",
+   "surPlace",
+   "a_encaisser"
+  ],
+  [
+   "Julien Morel",
+   825,
+   30,
+   "Coupe classique",
+   "Benjamin Boucher",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Julien Morel",
+   870,
+   60,
+   "Coupe + barbe",
+   "Alex Gagnon",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Julien Morel",
+   960,
+   60,
+   "Coupe + barbe",
+   "Loïc Fournier",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Julien Morel",
+   1020,
+   60,
+   "Coupe + barbe",
+   "Zacharie Côté",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Julien Morel",
+   1095,
+   20,
+   "Taille de barbe",
+   "Olivier Lavoie",
+   "surPlace",
+   "a_encaisser"
+  ],
+  [
+   "Karim B.",
+   555,
+   20,
+   "Taille de barbe",
+   "Jérémie Fournier",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Karim B.",
+   585,
+   45,
+   "Dégradé à blanc",
+   "Alexis Bergeron",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Karim B.",
+   630,
+   30,
+   "Coupe classique",
+   "Noah Ndiaye",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Karim B.",
+   675,
+   45,
+   "Dégradé à blanc",
+   "Alex Leblanc",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Karim B.",
+   720,
+   20,
+   "Taille de barbe",
+   "Gabriel Bouchard",
+   "surPlace",
+   "a_encaisser"
+  ],
+  [
+   "Karim B.",
+   750,
+   60,
+   "Coupe + barbe",
+   "Émile Pelletier",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Karim B.",
+   810,
+   45,
+   "Dégradé à blanc",
+   "Alexis Leclerc",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Karim B.",
+   870,
+   45,
+   "Dégradé à blanc",
+   "Zacharie Bouchard",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Karim B.",
+   915,
+   45,
+   "Dégradé à blanc",
+   "Karl Lavoie",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Karim B.",
+   990,
+   45,
+   "Dégradé à blanc",
+   "Ibrahim Ndiaye",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Karim B.",
+   1050,
+   60,
+   "Coupe + barbe",
+   "Noah Leblanc",
+   "surPlace",
+   "a_encaisser"
+  ],
+  [
+   "Marco Rossi",
+   540,
+   30,
+   "Coupe classique",
+   "Maxime Haddad",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Marco Rossi",
+   615,
+   30,
+   "Coupe enfant",
+   "Zacharie Bergeron",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Marco Rossi",
+   660,
+   30,
+   "Coupe enfant",
+   "Marc-André Poulin",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Marco Rossi",
+   705,
+   60,
+   "Coupe + barbe",
+   "David Gagné",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Marco Rossi",
+   765,
+   30,
+   "Coupe classique",
+   "Samuel Lévesque",
+   "surPlace",
+   "a_encaisser"
+  ],
+  [
+   "Marco Rossi",
+   810,
+   45,
+   "Dégradé à blanc",
+   "Simon Paquette",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Marco Rossi",
+   855,
+   30,
+   "Coupe classique",
+   "Simon Gauthier",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Marco Rossi",
+   885,
+   30,
+   "Coupe classique",
+   "Loïc Pelletier",
+   "surPlace",
+   "a_encaisser"
+  ],
+  [
+   "Marco Rossi",
+   930,
+   30,
+   "Coupe classique",
+   "Olivier Beaulieu",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Marco Rossi",
+   960,
+   30,
+   "Coupe classique",
+   "Alexis Gauthier",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Marco Rossi",
+   990,
+   30,
+   "Coupe classique",
+   "Mamadou Gagnon",
+   "surPlace",
+   "a_encaisser"
+  ],
+  [
+   "Marco Rossi",
+   1020,
+   45,
+   "Dégradé à blanc",
+   "Léo Bélanger",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Marco Rossi",
+   1065,
+   30,
+   "Coupe classique",
+   "David Lévesque",
+   "surPlace",
+   "a_encaisser"
+  ],
+  [
+   "Marco Rossi",
+   1095,
+   30,
+   "Coupe enfant",
+   "Marc-André Pelletier",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Ousmane Diallo",
+   540,
+   60,
+   "Coupe + barbe",
+   "Zacharie Fortin",
+   "surPlace",
+   "a_encaisser"
+  ],
+  [
+   "Ousmane Diallo",
+   600,
+   20,
+   "Taille de barbe",
+   "Alex Poulin",
+   "surPlace",
+   "a_encaisser"
+  ],
+  [
+   "Ousmane Diallo",
+   630,
+   40,
+   "Rasage à l'ancienne",
+   "Vincent Paquette",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Ousmane Diallo",
+   705,
+   40,
+   "Rasage à l'ancienne",
+   "Nicolas Caron",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Ousmane Diallo",
+   750,
+   20,
+   "Taille de barbe",
+   "Kevin Lapointe",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Ousmane Diallo",
+   780,
+   40,
+   "Rasage à l'ancienne",
+   "Ibrahim Caron",
+   "surPlace",
+   "a_encaisser"
+  ],
+  [
+   "Ousmane Diallo",
+   840,
+   20,
+   "Taille de barbe",
+   "Hugo Leblanc",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Ousmane Diallo",
+   900,
+   20,
+   "Taille de barbe",
+   "Philippe Girard",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Ousmane Diallo",
+   960,
+   40,
+   "Rasage à l'ancienne",
+   "Nicolas Gagnon",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Ousmane Diallo",
+   1005,
+   40,
+   "Rasage à l'ancienne",
+   "Nicolas Lefebvre",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Ousmane Diallo",
+   1050,
+   60,
+   "Coupe + barbe",
+   "Léo Gagnon",
+   "surPlace",
+   "a_encaisser"
+  ],
+  [
+   "Ousmane Diallo",
+   1110,
+   20,
+   "Taille de barbe",
+   "Marc-André Leblanc",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Samuel Tremblay",
+   570,
+   30,
+   "Coupe classique",
+   "Nicolas Paquette",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Samuel Tremblay",
+   600,
+   30,
+   "Coupe enfant",
+   "Zacharie Ouellet",
+   "surPlace",
+   "a_encaisser"
+  ],
+  [
+   "Samuel Tremblay",
+   660,
+   30,
+   "Coupe enfant",
+   "Étienne Bélanger",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Samuel Tremblay",
+   720,
+   20,
+   "Taille de barbe",
+   "Benjamin Bélanger",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Samuel Tremblay",
+   780,
+   20,
+   "Taille de barbe",
+   "Charles Fortin",
+   "surPlace",
+   "a_encaisser"
+  ],
+  [
+   "Samuel Tremblay",
+   825,
+   45,
+   "Dégradé à blanc",
+   "Karl Dubé",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Samuel Tremblay",
+   870,
+   30,
+   "Coupe enfant",
+   "Alexis Gagnon",
+   "surPlace",
+   "a_encaisser"
+  ],
+  [
+   "Samuel Tremblay",
+   915,
+   30,
+   "Coupe classique",
+   "Ibrahim Roy",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Samuel Tremblay",
+   945,
+   30,
+   "Coupe enfant",
+   "Mathieu Caron",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Samuel Tremblay",
+   975,
+   30,
+   "Coupe enfant",
+   "William Gagnon",
+   "surPlace",
+   "a_encaisser"
+  ],
+  [
+   "Samuel Tremblay",
+   1005,
+   45,
+   "Dégradé à blanc",
+   "Mamadou Ndiaye",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Samuel Tremblay",
+   1065,
+   30,
+   "Coupe enfant",
+   "Olivier Bouchard",
+   "enLigne",
+   "paye"
+  ],
+  [
+   "Samuel Tremblay",
+   1095,
+   30,
+   "Coupe classique",
+   "Raphaël Leclerc",
+   "surPlace",
+   "a_encaisser"
+  ]
+ ],
+ "gaps6": {
+  "Karim B.": [
+   [
+    960,
+    990
+   ],
+   [
+    1110,
+    1140
+   ]
+  ],
+  "Julien Morel": [
+   [
+    930,
+    960
+   ]
+  ],
+  "Samuel Tremblay": [
+   [
+    540,
+    570
+   ],
+   [
+    630,
+    660
+   ],
+   [
+    690,
+    720
+   ],
+   [
+    750,
+    780
+   ]
+  ],
+  "Ousmane Diallo": [
+   [
+    675,
+    705
+   ],
+   [
+    870,
+    900
+   ],
+   [
+    930,
+    960
+   ]
+  ],
+  "Marco Rossi": [
+   [
+    570,
+    615
+   ]
+  ]
+ },
+ "week2": {
+  "2026-10-06": [
+   61,
+   0.75
+  ],
+  "2026-10-07": [
+   66,
+   0.7666666666666667
+  ],
+  "2026-10-08": [
+   64,
+   0.8066666666666666
+  ],
+  "2026-10-09": [
+   71,
+   0.8866666666666667
+  ],
+  "2026-10-10": [
+   71,
+   0.8766666666666667
+  ]
+ },
+ "pay_today": {
+  "online": 1678.6,
+  "onsite": 1143.98,
+  "n_online": 40,
+  "n_onsite": 27,
+  "refunds": 16.24,
+  "fees": 12.5,
+  "fees_ht": 10.77,
+  "fees_tps": 0.6,
+  "fees_tvq": 1.13
+ },
+ "fee_rule": "Frais d'annulation tardive taxes incluses (LTA art. 182, LTVQ art. 318) — à confirmer par le comptable du salon",
+ "fee_split_examples": {
+  "27.50": [
+   1.31,
+   2.49,
+   23.7
+  ],
+  "20.00": [
+   0.95,
+   1.81,
+   17.24
+  ],
+  "17.50": [
+   0.83,
+   1.59,
+   15.08
+  ],
+  "12.50": [
+   0.6,
+   1.13,
+   10.77
+  ],
+  "22.50": [
+   1.07,
+   2.04,
+   19.39
+  ],
+  "25.00": [
+   1.19,
+   2.27,
+   21.54
+  ]
+ },
+ "late_cb": [
+  [
+   "2026-09-29",
+   "11 h 30",
+   "Félix Poulin",
+   "Karim B.",
+   63.24,
+   27.5,
+   35.74
+  ],
+  [
+   "2026-09-29",
+   "12 h 30",
+   "David Gauthier",
+   "Julien Morel",
+   63.24,
+   27.5,
+   35.74
+  ],
+  [
+   "2026-09-29",
+   "13 h 45",
+   "Raphaël Simard",
+   "Julien Morel",
+   63.24,
+   27.5,
+   35.74
+  ]
+ ],
+ "discounts": {
+  "ETE20": 222.0,
+  "BIENVENUE10": 364.5,
+  "RENTREE5": 230.0,
+  "MARDI15": 0.0
+ },
+ "serv_month": {
+  "Coupe classique": 402,
+  "Dégradé à blanc": 256,
+  "Coupe + barbe": 223,
+  "Taille de barbe": 150,
+  "Rasage à l'ancienne": 113,
+  "Coupe enfant": 189
+ },
+ "rev_counts": {
+  "en_attente": 6,
+  "publie": 39
+ },
+ "rev_barber": {
+  "Karim B.": [
+   4.89,
+   18
+  ],
+  "Julien Morel": [
+   4.67,
+   9
+  ],
+  "Samuel Tremblay": [
+   4.88,
+   8
+  ],
+  "Ousmane Diallo": [
+   4.57,
+   7
+  ],
+  "Marco Rossi": [
+   3.67,
+   3
+  ]
+ }
+}
