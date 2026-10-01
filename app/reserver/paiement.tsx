@@ -135,6 +135,24 @@ export default function PaiementScreen() {
     }
   }
 
+  const draftReady = Boolean(
+    pendingId || (draft.serviceId && draft.barberId && draft.date && draft.startMinute != null),
+  );
+
+  if (!draftReady) {
+    return (
+      <Screen>
+        <Header back title="Paiement" />
+        <StateMessage
+          title="Parcours incomplet"
+          body="Le récapitulatif a été perdu. Reprends à la prestation."
+          actionLabel="Recommencer"
+          onAction={() => router.replace('/reserver/prestation')}
+        />
+      </Screen>
+    );
+  }
+
   if (phase === 'processing') {
     return (
       <Screen>

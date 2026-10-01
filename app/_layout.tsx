@@ -15,6 +15,7 @@ import { ToastProvider } from '../src/components/Toast';
 import { SCREEN_MS } from '../src/motion';
 import { AppStateProvider } from '../src/providers/AppState';
 import { AppStripe } from '../src/providers/AppStripe';
+import { BookingDraftProvider } from '../src/providers/BookingDraft';
 import { useTheme } from '../src/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -39,9 +40,11 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <AppStripe>
           <AppStateProvider>
-            <ToastProvider>
-              <RootStack />
-            </ToastProvider>
+            <BookingDraftProvider>
+              <ToastProvider>
+                <RootStack />
+              </ToastProvider>
+            </BookingDraftProvider>
           </AppStateProvider>
         </AppStripe>
       </SafeAreaProvider>
