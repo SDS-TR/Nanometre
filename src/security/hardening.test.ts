@@ -15,7 +15,7 @@ import { safeNext } from '../lib/safeNext';
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const hardening = read('../../supabase/migrations/20261001160100_security_hardening.sql');
-const webhook = read('../../supabase/functions/stripe-webhook/index.ts');
+    const webhook = read('../../supabase/functions/stripe-webhook/handler.ts');
 const refundFn = read('../../supabase/functions/process-refund/index.ts');
 const dispatch = read('../../supabase/functions/dispatch-notifications/index.ts');
 const intent = read('../../supabase/functions/create-payment-intent/index.ts');
@@ -37,7 +37,7 @@ describe('durcissement', () => {
     expect(webhook).toContain('createSubtleCryptoProvider');
     expect(webhook).toContain('p_amount: amount');
     expect(webhook).toContain('p_currency: currency');
-    const handler = read('../lib/stripeWebhook.ts');
+    const handler = read('../../supabase/functions/_shared/stripeWebhook.ts');
     expect(handler).toContain("event.type === 'payment_intent.payment_failed'");
     expect(handler).toContain("event.type === 'charge.refunded'");
     expect(handler).toContain("event.type === 'charge.dispute.created'");
@@ -57,8 +57,10 @@ describe('durcissement', () => {
 
   it('émet le remboursement chez Stripe et masque les autres failles SQL', () => {
     expect(refundFn).toContain('stripe.refunds.create');
+    expect(refundFn).toContain('claim_refund_job');
     expect(refundFn).toContain('refund-${bookingId}-cancel');
     expect(refundFn).toContain('refund-${bookingId}-fee');
+    expect(refundFn).not.toContain('refunded_cents');
     expect(hardening).toContain("'remboursement_en_cours'");
     expect(hardening).toContain('coiffeur_requires_barber');
     expect(hardening).toContain('if v_mine is null');
@@ -138,6 +140,12 @@ describe('durcissement', () => {
     expect(googlePayTestEnv({ dev: false, flag: undefined })).toBe(false);
     expect(googlePayTestEnv({ dev: true, flag: undefined })).toBe(true);
     expect(googlePayTestEnv({ dev: false, flag: 'true' })).toBe(true);
+    const functions = read('../../supabase/functions/stripe-webhook/index.ts');
+    expect(functions).toContain('./handler.ts');
+    expect(functions).not.toContain('../../../src/');
+    expect(read('../../supabase/functions/expire-checkouts/index.ts')).toContain('../_shared/payments.ts');
+    expect(read('../../supabase/functions/expire-checkouts/index.ts')).toContain('claim_intent_jobs');
+    expect(read('../../supabase/functions/_shared/stripeWebhook.ts')).toContain("from './payments.ts'");
   });
 
   it('anonymise un client et protège le dernier propriétaire', async () => {

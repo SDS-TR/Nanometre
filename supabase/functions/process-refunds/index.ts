@@ -1,8 +1,9 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 import Stripe from 'npm:stripe@18.5.0';
-import { STRIPE_API_VERSION, cronAuthorized, stripeAlreadyRefunded } from '../../../src/lib/payments.ts';
+import { STRIPE_API_VERSION, cronAuthorized, stripeAlreadyRefunded } from '../_shared/payments.ts';
+import { serve } from '../_shared/serve.ts';
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   if (!cronAuthorized(req.headers.get('Authorization'), Deno.env.get('CRON_SECRET'))) {
     return new Response('Accès refusé', { status: 403 });
   }

@@ -47,6 +47,7 @@ export default function RendezVousScreen() {
         status: target.status,
         gstNumber: query.data?.salon.gstNumber,
         qstNumber: query.data?.salon.qstNumber,
+        taxNumbersPlaceholder: query.data?.salon.taxNumbersPlaceholder ?? true,
       })
     : null;
 
@@ -117,6 +118,7 @@ export default function RendezVousScreen() {
         loading={busy}
         gstNumber={query.data?.salon.gstNumber ?? ''}
         qstNumber={query.data?.salon.qstNumber ?? ''}
+        taxNumbersPlaceholder={query.data?.salon.taxNumbersPlaceholder ?? true}
         onClose={() => setTarget(null)}
         onConfirm={confirmCancel}
       />

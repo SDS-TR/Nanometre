@@ -3,8 +3,9 @@ import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import pg from 'pg';
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
+import { resolveTestDatabase } from './databaseGuard';
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = resolveTestDatabase() ?? undefined;
 const root = path.resolve(import.meta.dirname, '../..');
 const clientId = '11111111-1111-4111-8111-111111111111';
 const ownerId = '22222222-2222-4222-8222-222222222222';
@@ -226,6 +227,149 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
       [bookingId],
     );
     expect(notes.rows[0].n).toBe(0);
+  });
+
+  it('plafonne les demandes de suppression anonymes et prévient le propriétaire', async () => {
+    await withRole(pool, 'anon', {}, async (client) => {
+      for (let index = 0; index < 4; index += 1) {
+        await client.query(`select public.request_account_deletion($1)`, ['alex.gagnon@exemple.ca']);
+      }
+      for (let index = 0; index < 25; index += 1) {
+        await client.query(`select public.request_account_deletion($1)`, [`visiteur${index}@exemple.ca`]);
+      }
+    });
+    const requests = await pool.query(`select count(*)::int as n from public.deletion_requests`);
+    expect(requests.rows[0].n).toBe(20);
+    const same = await pool.query(`select count(*)::int as n from public.deletion_requests where email = 'alex.gagnon@exemple.ca'`);
+    expect(same.rows[0].n).toBe(3);
+    const notices = await pool.query(
+      `select count(*)::int as n from public.notification_jobs where kind = 'suppression_compte' and user_id = $1`,
+      [ownerId],
+    );
+    expect(notices.rows[0].n).toBe(20);
+  });
+
+  it('pose un bail sur la file de remboursement et rejoue un panier expiré', async () => {
+    await pool.query(`delete from public.refund_jobs`);
+    await pool.query(`delete from public.stripe_intent_jobs`);
+    const bookingId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5';
+    await pool.query(`delete from public.bookings where id = $1`, [bookingId]);
+    await insertBooking(pool, {
+      id: bookingId,
+      clientId,
+      method: 'en_ligne',
+      status: 'confirme',
+      pay: 'remboursement_en_cours',
+      intent: 'pi_lease',
+      total: 6324,
+      price: 5500,
+      offsetHours: 11,
+    });
+    await pool.query(
+      `insert into public.refund_jobs (booking_id, amount_cents, idempotency_key, kind)
+       values ($1::uuid, 3574, $2, 'cancel')`,
+      [bookingId, `refund-${bookingId}-cancel`],
+    );
+    const first = await withRole(pool, 'service_role', {}, (client) => client.query(`select public.claim_refund_jobs() as jobs`));
+    const second = await withRole(pool, 'service_role', {}, (client) => client.query(`select public.claim_refund_jobs() as jobs`));
+    expect(first.rows[0].jobs).toHaveLength(1);
+    expect(first.rows[0].jobs[0].amount).toBe(3574);
+    expect(second.rows[0].jobs).toHaveLength(0);
+
+    const staleId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa6';
+    await pool.query(`delete from public.bookings where id = $1`, [staleId]);
+    await insertBooking(pool, {
+      id: staleId,
+      clientId,
+      method: 'en_ligne',
+      status: 'en_attente_paiement',
+      pay: 'en_attente',
+      intent: 'pi_expire',
+      total: 4024,
+      price: 3500,
+      createdAt: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
+      offsetHours: 13,
+    });
+    await withRole(pool, 'service_role', {}, (client) => client.query(`select public.expire_stale_checkouts()`));
+    const queued = await pool.query(`select status from public.stripe_intent_jobs where booking_id = $1`, [staleId]);
+    expect(queued.rows[0].status).toBe('en_attente');
+    const claimed = await withRole(pool, 'service_role', {}, (client) => client.query(`select public.claim_intent_jobs() as jobs`));
+    const again = await withRole(pool, 'service_role', {}, (client) => client.query(`select public.claim_intent_jobs() as jobs`));
+    expect(claimed.rows[0].jobs).toHaveLength(1);
+    expect(again.rows[0].jobs).toHaveLength(0);
+    await withRole(pool, 'service_role', {}, (client) =>
+      client.query(`select public.mark_intent_job($1::uuid, 'pi_expire', false, 'stripe down')`, [staleId]),
+    );
+    const replay = await withRole(pool, 'service_role', {}, (client) => client.query(`select public.claim_intent_jobs() as jobs`));
+    expect(replay.rows[0].jobs).toHaveLength(1);
+  });
+
+  it('signale un remboursement en échec et exige aal2 pour le tableau de bord', async () => {
+    const bookingId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa7';
+    await pool.query(`delete from public.bookings where id = $1`, [bookingId]);
+    await insertBooking(pool, {
+      id: bookingId,
+      clientId,
+      method: 'en_ligne',
+      status: 'annule',
+      pay: 'remboursement_en_cours',
+      intent: 'pi_alert',
+      total: 6324,
+      price: 5500,
+      offsetHours: 15,
+    });
+    await pool.query(
+      `insert into public.refund_jobs (booking_id, amount_cents, idempotency_key, kind, status, attempts, last_error)
+       values ($1::uuid, 1000, $2, 'cancel', 'echec', 8, 'bloqué')`,
+      [bookingId, `refund-${bookingId}-cancel`],
+    );
+    await pool.query(`select public.alert_stale_refunds()`);
+    const audit = await pool.query(`select count(*)::int as n from public.audit_log where action = 'remboursement_echec'`);
+    const push = await pool.query(
+      `select count(*)::int as n from public.notification_jobs where kind = 'remboursement_bloque' and user_id = $1`,
+      [ownerId],
+    );
+    expect(audit.rows[0].n).toBeGreaterThan(0);
+    expect(push.rows[0].n).toBe(1);
+    await expect(
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal1' }, (client) =>
+        client.query(`select public.admin_dashboard(current_date, 'jour')`),
+      ),
+    ).rejects.toThrow(/Vérification renforcée requise/);
+    await expect(
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal1' }, (client) => client.query(`select public.admin_clients()`)),
+    ).rejects.toThrow(/Vérification renforcée requise/);
+    for (const sql of [
+      `select public.admin_move('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa7'::uuid, current_date, 600)`,
+      `select public.admin_block('20000000-0000-4000-8000-000000000002'::uuid, current_date, 600, 60, 'pause')`,
+      `select public.admin_barber_setup()`,
+      `select public.admin_moderate_review('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa7'::uuid, 'masque')`,
+    ]) {
+      await expect(
+        withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal1' }, (client) => client.query(sql)),
+      ).rejects.toThrow(/Vérification renforcée requise/);
+    }
+    const dashboard = await withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) =>
+      client.query(`select public.admin_dashboard(current_date, 'jour') as data`),
+    );
+    expect(dashboard.rows[0].data).toBeTruthy();
+  });
+
+  it('ferme les nouvelles tables à anon et garde le RLS sur les tables existantes', async () => {
+    await pool.query(`drop table if exists public.privilege_probe`);
+    const open = await pool.query(
+      `select c.relname
+       from pg_class c
+       join pg_namespace n on n.oid = c.relnamespace
+       where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity`,
+    );
+    expect(open.rows).toEqual([]);
+    await pool.query(`create table public.privilege_probe (id int)`);
+    const priv = await pool.query(`select has_table_privilege('anon', 'public.privilege_probe', 'SELECT') as ok`);
+    expect(priv.rows[0].ok).toBe(false);
+    await pool.query(`drop table public.privilege_probe`);
+    const salon = await pool.query(`select public.salon_public() as data`);
+    expect(salon.rows[0].data[0].taxNumbersPlaceholder).toBe(true);
   });
 });
 

@@ -67,8 +67,16 @@ export function extractIncludedTaxes(feeCents: number): TaxExtraction {
   };
 }
 
-export function cancellationReceipt(extraction: TaxExtraction, gstNumber: string, qstNumber: string): string {
-  return `Frais d'annulation tardive ${formatCad(extraction.feeCents)} (TPS ${formatCad(extraction.gstCents)}, TVQ ${formatCad(extraction.qstCents)} incluses). TPS ${gstNumber}. TVQ ${qstNumber}.`;
+export const TAX_PLACEHOLDER_NOTICE = 'Ces numéros sont des espaces réservés, pas des numéros fiscaux du salon.';
+
+export function cancellationReceipt(
+  extraction: TaxExtraction,
+  gstNumber: string,
+  qstNumber: string,
+  placeholder = false,
+): string {
+  const base = `Frais d'annulation tardive ${formatCad(extraction.feeCents)} (TPS ${formatCad(extraction.gstCents)}, TVQ ${formatCad(extraction.qstCents)} incluses). TPS ${gstNumber}. TVQ ${qstNumber}.`;
+  return placeholder ? `${base} ${TAX_PLACEHOLDER_NOTICE}` : base;
 }
 
 const blocked = (reason: 'deja_passe' | 'deja_annule'): CancelQuote => ({
@@ -93,6 +101,8 @@ export function quoteCancellation(input: {
   status: BookingLifecycle;
   gstNumber?: string;
   qstNumber?: string;
+  /** Vrai tant que les numéros du salon ne sont pas ceux du comptable. */
+  taxNumbersPlaceholder?: boolean;
   /** Défaut : aucun frais sur une annulation tardive payée sur place. */
   onsiteLatePolicy?: OnsiteLatePolicy;
 }): CancelQuote {
@@ -102,6 +112,10 @@ export function quoteCancellation(input: {
   if (input.status === 'honore' || input.startsAt.getTime() <= input.now.getTime()) {
     return blocked('deja_passe');
   }
+
+  const gstNumber = input.gstNumber || '123456789 RT0001';
+  const qstNumber = input.qstNumber || '1234567890 TQ0001';
+  const placeholder = input.taxNumbersPlaceholder ?? !input.gstNumber;
 
   const within24h = input.startsAt.getTime() - input.now.getTime() < CANCEL_FREE_HOURS * 60 * 60 * 1000;
   const paidOnline = input.paymentMethod === 'en_ligne' && input.paymentStatus === 'paye';
@@ -123,7 +137,7 @@ export function quoteCancellation(input: {
       refundCents: !within24h && paidOnline ? input.totalCents : 0,
       extraction: owing ? extractIncludedTaxes(feeOwingCents) : null,
       receipt: owing
-        ? `Montant dû à la prochaine visite : ${cancellationReceipt(extractIncludedTaxes(feeOwingCents), input.gstNumber ?? '123456789 RT0001', input.qstNumber ?? '1234567890 TQ0001')}`
+        ? `Montant dû à la prochaine visite : ${cancellationReceipt(extractIncludedTaxes(feeOwingCents), gstNumber, qstNumber, placeholder)}`
         : null,
     };
   }
@@ -138,10 +152,6 @@ export function quoteCancellation(input: {
     feeOwingCents: 0,
     refundCents: input.totalCents - feeCents,
     extraction,
-    receipt: cancellationReceipt(
-      extraction,
-      input.gstNumber ?? '123456789 RT0001',
-      input.qstNumber ?? '1234567890 TQ0001',
-    ),
+    receipt: cancellationReceipt(extraction, gstNumber, qstNumber, placeholder),
   };
 }

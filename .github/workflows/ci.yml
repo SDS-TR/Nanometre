@@ -21,7 +21,8 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/nanometre
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/nanometre
+      TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/nanometre
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -32,3 +33,11 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno check supabase/functions/stripe-webhook/index.ts supabase/functions/dispatch-notifications/index.ts supabase/functions/expire-checkouts/index.ts supabase/functions/process-refunds/index.ts supabase/functions/purge-notes/index.ts supabase/functions/create-payment-intent/index.ts supabase/functions/process-refund/index.ts supabase/functions/delete-account/index.ts supabase/functions/abandon-checkout/index.ts supabase/functions/invite-team-member/index.ts
+      - run: node scripts/boot-functions.mjs
+      - run: deno test --node-modules-dir=none --allow-env --allow-net --allow-read supabase/functions/stripe-webhook/webhook_test.ts
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/nanometre

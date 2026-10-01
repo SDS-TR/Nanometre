@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
+import { serve } from '../_shared/serve.ts';
 import { accessLevel, inviteAck, planTeamInvite } from './logic.ts';
 
 const json = (body: unknown, status = 200) =>
@@ -7,7 +8,7 @@ const json = (body: unknown, status = 200) =>
     headers: { 'Content-Type': 'application/json' },
   });
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   if (req.method !== 'POST') {
     return json({ error: 'Méthode refusée.' }, 405);
   }

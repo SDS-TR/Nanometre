@@ -1,3 +1,6 @@
+import { gcm } from '@noble/ciphers/aes';
+import { bytesToUtf8, utf8ToBytes } from '@noble/ciphers/utils';
+
 function bytesToHex(bytes: Uint8Array): string {
   let hex = '';
   for (const byte of bytes) {
@@ -6,40 +9,28 @@ function bytesToHex(bytes: Uint8Array): string {
   return hex;
 }
 
-function hexToBytes(hex: string): Uint8Array<ArrayBuffer> {
-  const bytes = new Uint8Array(new ArrayBuffer(hex.length / 2));
+function hexToBytes(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
   for (let index = 0; index < bytes.length; index += 1) {
     bytes[index] = Number.parseInt(hex.slice(index * 2, index * 2 + 2), 16);
   }
   return bytes;
 }
 
-function asBuffer(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
-  const copy = new Uint8Array(new ArrayBuffer(bytes.byteLength));
-  copy.set(bytes);
-  return copy;
-}
-
-async function aesKey(key: Uint8Array, usage: 'encrypt' | 'decrypt'): Promise<CryptoKey> {
-  return crypto.subtle.importKey('raw', asBuffer(key), 'AES-GCM', false, [usage]);
-}
-
-/** AES-GCM : le tag d'authentification refuse un texte modifié. */
+/** AES-GCM en JavaScript pur : le tag refuse un texte modifié, sans WebCrypto. */
 export async function encryptSession(key: Uint8Array, value: string): Promise<string> {
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const cryptoKey = await aesKey(key, 'encrypt');
-  const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, new TextEncoder().encode(value));
-  return `${bytesToHex(iv)}.${bytesToHex(new Uint8Array(cipher))}`;
+  const cipher = gcm(key, iv).encrypt(utf8ToBytes(value));
+  return `${bytesToHex(iv)}.${bytesToHex(cipher)}`;
 }
 
 export async function decryptSession(key: Uint8Array, value: string): Promise<string> {
   const [ivHex, cipherHex] = value.split('.');
-  if (!ivHex || !cipherHex) {
+  if (!ivHex || !cipherHex || ivHex.length !== 24) {
     throw new Error('Session illisible.');
   }
-  const cryptoKey = await aesKey(key, 'decrypt');
-  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: hexToBytes(ivHex) }, cryptoKey, hexToBytes(cipherHex));
-  return new TextDecoder().decode(plain);
+  const plain = gcm(key, hexToBytes(ivHex)).decrypt(hexToBytes(cipherHex));
+  return bytesToUtf8(plain);
 }
 
 export function sessionKeyHex(key: Uint8Array): string {

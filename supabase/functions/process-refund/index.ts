@@ -1,12 +1,13 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 import Stripe from 'npm:stripe@18.5.0';
 import { accessLevel } from '../invite-team-member/logic.ts';
-import { STRIPE_API_VERSION, stripeAlreadyRefunded } from '../../../src/lib/payments.ts';
+import { STRIPE_API_VERSION, stripeAlreadyRefunded } from '../_shared/payments.ts';
+import { serve } from '../_shared/serve.ts';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   if (req.method !== 'POST') {
     return json({ error: 'Méthode refusée.' }, 405);
   }
@@ -48,35 +49,27 @@ Deno.serve(async (req) => {
     return json({ error: 'Accès refusé' }, 403);
   }
 
-  const { data: payment } = await admin
-    .from('payments')
-    .select('stripe_payment_intent_id, refunded_cents, stripe_refund_cents, status')
-    .eq('booking_id', bookingId)
-    .maybeSingle();
-  if (!payment?.stripe_payment_intent_id || payment.status !== 'remboursement_en_cours') {
-    return json({ issued: false });
-  }
-  const amount = payment.refunded_cents - payment.stripe_refund_cents;
-  if (amount <= 0) {
-    return json({ issued: false });
-  }
   const idempotencyKey = kind === 'fee' ? `refund-${bookingId}-fee` : `refund-${bookingId}-cancel`;
+  const claimed = await admin.rpc('claim_refund_job', { p_key: idempotencyKey });
+  if (claimed.error) {
+    return json({ error: claimed.error.message }, 500);
+  }
+  const job = claimed.data as { amount?: number; key?: string; intentId?: string } | null;
+  if (!job?.intentId || !job.amount || !job.key) {
+    return json({ issued: false });
+  }
   const stripe = new Stripe(stripeSecret, { apiVersion: STRIPE_API_VERSION, httpClient: Stripe.createFetchHttpClient() });
   try {
     await stripe.refunds.create(
-      { payment_intent: payment.stripe_payment_intent_id, amount, metadata: { bookingId, kind } },
-      { idempotencyKey },
+      { payment_intent: job.intentId, amount: job.amount, metadata: { bookingId, kind } },
+      { idempotencyKey: job.key },
     );
   } catch (error) {
     if (!stripeAlreadyRefunded(error)) {
-      await admin.rpc('mark_refund_job', { p_key: idempotencyKey, p_ok: false, p_error: error instanceof Error ? error.message : 'Stripe' });
+      await admin.rpc('mark_refund_job', { p_key: job.key, p_ok: false, p_error: error instanceof Error ? error.message : 'Stripe' });
       return json({ error: 'Remboursement Stripe impossible.' }, 502);
     }
   }
-  await admin
-    .from('payments')
-    .update({ stripe_refund_cents: payment.stripe_refund_cents + amount })
-    .eq('booking_id', bookingId);
-  await admin.rpc('mark_refund_job', { p_key: idempotencyKey, p_ok: true, p_error: null });
+  await admin.rpc('mark_refund_job', { p_key: job.key, p_ok: true, p_error: null });
   return json({ issued: true });
 });

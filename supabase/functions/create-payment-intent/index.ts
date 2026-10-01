@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 import Stripe from 'npm:stripe@18.5.0';
+import { serve } from '../_shared/serve.ts';
 
 const STRIPE_API_VERSION = '2025-08-27.basil';
 
@@ -9,7 +10,7 @@ const json = (body: unknown, status = 200) =>
     headers: { 'Content-Type': 'application/json' },
   });
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   if (req.method !== 'POST') {
     return json({ error: 'Méthode refusée.' }, 405);
   }

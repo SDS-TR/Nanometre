@@ -762,6 +762,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
         status: booking.status,
         gstNumber: seed.salon.gstNumber,
         qstNumber: seed.salon.qstNumber,
+        taxNumbersPlaceholder: seed.salon.taxNumbersPlaceholder,
         onsiteLatePolicy: state.onsiteLatePolicy,
       });
       if (!quote.allowed) {

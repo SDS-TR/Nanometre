@@ -1,4 +1,4 @@
-import { formatCad } from '../domain';
+import { formatCad, cancellationReceipt } from '../domain';
 import type { CancelQuote } from '../domain';
 import { useTheme } from '../theme';
 import { BottomSheet } from './BottomSheet';
@@ -13,9 +13,10 @@ type Props = {
   loading?: boolean;
   gstNumber: string;
   qstNumber: string;
+  taxNumbersPlaceholder?: boolean;
 };
 
-export function FeuilleAnnulation({ visible, quote, onClose, onConfirm, loading, gstNumber, qstNumber }: Props) {
+export function FeuilleAnnulation({ visible, quote, onClose, onConfirm, loading, gstNumber, qstNumber, taxNumbersPlaceholder = true }: Props) {
   const theme = useTheme();
   const withFee = Boolean(quote?.feeApplies);
   const owing = Boolean(quote && quote.feeOwingCents > 0);
@@ -49,7 +50,9 @@ export function FeuilleAnnulation({ visible, quote, onClose, onConfirm, loading,
           ) : null}
           {withFee && quote.extraction ? (
             <Text variant="caption" color={theme.color.text.muted}>
-              {`Frais d'annulation tardive ${formatCad(quote.feeCents)} (TPS ${formatCad(quote.extraction.gstCents)}, TVQ ${formatCad(quote.extraction.qstCents)} incluses). TPS ${gstNumber}. TVQ ${qstNumber}.`}
+              {quote.extraction
+                ? cancellationReceipt(quote.extraction, gstNumber, qstNumber, taxNumbersPlaceholder)
+                : null}
             </Text>
           ) : null}
           <Button

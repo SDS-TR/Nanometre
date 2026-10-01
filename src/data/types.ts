@@ -12,6 +12,7 @@ export type Salon = {
   closeMinute: number;
   gstNumber: string;
   qstNumber: string;
+  taxNumbersPlaceholder: boolean;
   phone: string;
   onsiteLatePolicy: 'aucun' | 'a_la_prochaine';
 };

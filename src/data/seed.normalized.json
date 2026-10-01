@@ -9,6 +9,7 @@
     "closeMinute": 1140,
     "gstNumber": "123456789 RT0001",
     "qstNumber": "1234567890 TQ0001",
+    "taxNumbersPlaceholder": true,
     "phone": "418 555-0199"
   },
   "users": [

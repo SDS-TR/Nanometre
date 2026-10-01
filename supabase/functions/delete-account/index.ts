@@ -1,13 +1,14 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 import Stripe from 'npm:stripe@18.5.0';
-import { STRIPE_API_VERSION, stripeAlreadyRefunded } from '../../../src/lib/payments.ts';
+import { STRIPE_API_VERSION, stripeAlreadyRefunded } from '../_shared/payments.ts';
+import { serve } from '../_shared/serve.ts';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
 const TEN_MINUTES = 10 * 60 * 1000;
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   if (req.method !== 'POST') {
     return json({ error: 'Méthode refusée.' }, 405);
   }

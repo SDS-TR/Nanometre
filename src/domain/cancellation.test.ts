@@ -102,6 +102,40 @@ describe('frais d’annulation tardive', () => {
     expect(quote.feeOwingCents).toBe(2750);
     expect(quote.refundCents).toBe(0);
     expect(quote.receipt).toContain('27,50');
+    expect(quote.receipt).toContain('Ces numéros sont des espaces réservés');
+  });
+
+  it('inscrit les numéros du salon et retire l’avertissement quand ils sont réels', () => {
+    const startsAt = new Date('2026-10-02T14:00:00.000Z');
+    const quote = quoteCancellation({
+      startsAt,
+      now: new Date(startsAt.getTime() - 2 * 60 * 60 * 1000),
+      preTaxCents: 5500,
+      totalCents: 6324,
+      paymentMethod: 'en_ligne',
+      paymentStatus: 'paye',
+      status: 'confirme',
+      gstNumber: '123456789 RT0001',
+      qstNumber: '1234567890 TQ0001',
+      taxNumbersPlaceholder: true,
+    });
+    expect(quote.receipt).toContain('123456789 RT0001');
+    expect(quote.receipt).toContain('1234567890 TQ0001');
+    expect(quote.receipt).toContain('espaces réservés');
+    const real = quoteCancellation({
+      startsAt,
+      now: new Date(startsAt.getTime() - 2 * 60 * 60 * 1000),
+      preTaxCents: 5500,
+      totalCents: 6324,
+      paymentMethod: 'en_ligne',
+      paymentStatus: 'paye',
+      status: 'confirme',
+      gstNumber: '999999999 RT0001',
+      qstNumber: '9999999999 TQ0001',
+      taxNumbersPlaceholder: false,
+    });
+    expect(real.receipt).toContain('999999999 RT0001');
+    expect(real.receipt).not.toContain('espaces réservés');
   });
 
   it('refuse une annulation déjà passée ou déjà faite', () => {

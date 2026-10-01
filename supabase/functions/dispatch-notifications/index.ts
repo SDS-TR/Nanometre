@@ -1,9 +1,10 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
-import { cronAuthorized } from '../../../src/lib/payments.ts';
+import { cronAuthorized } from '../_shared/payments.ts';
+import { serve } from '../_shared/serve.ts';
 
 type Ticket = { status?: string; details?: { error?: string } };
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   if (!cronAuthorized(req.headers.get('Authorization'), Deno.env.get('CRON_SECRET'))) {
     return new Response('Accès refusé', { status: 403 });
   }

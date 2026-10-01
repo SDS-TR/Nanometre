@@ -2,8 +2,8 @@
 -- C'est le seul seed applicable à un projet hébergé, et encore : de préférence à la main.
 
 -- Généré par scripts/generate_seed.py — ne pas éditer à la main.
-insert into public.salon_settings (id, name, tagline, address, city, timezone, open_minute, close_minute, gst_number, qst_number, phone)
-values (1, 'Le Nanomètre', 'Barbier pour hommes', '425, rue Saint-Vallier Ouest', 'Québec (Québec) G1K 1K8', 'America/Toronto', 540, 1140, '123456789 RT0001', '1234567890 TQ0001', '418 555-0199')
+insert into public.salon_settings (id, name, tagline, address, city, timezone, open_minute, close_minute, gst_number, qst_number, phone, tax_numbers_placeholder)
+values (1, 'Le Nanomètre', 'Barbier pour hommes', '425, rue Saint-Vallier Ouest', 'Québec (Québec) G1K 1K8', 'America/Toronto', 540, 1140, '123456789 RT0001', '1234567890 TQ0001', '418 555-0199', true)
 on conflict (id) do update set name = excluded.name;
 
 insert into public.barbers (id, slug, full_name, short_name, specialty, bio, years, photo_path, rating, review_count, sort_order) values
