@@ -20,6 +20,7 @@ export type PaymentStatus =
   | 'a_encaisser'
   | 'rembourse_partiel'
   | 'rembourse'
+  | 'remboursement_en_cours'
   | 'echoue';
 
 export type OnsiteLatePolicy = 'aucun' | 'a_la_prochaine';

@@ -517,11 +517,16 @@ lines.append("cross join (values (2), (3), (4), (5), (6)) as d(weekday)")
 lines.append("on conflict do nothing;")
 lines.append("")
 
-# Auth users for local Supabase. Hosted projects should use scripts/seed-hosted.mjs.
-lines.append("do $$ begin")
+# Auth users for local Supabase only. Written to seed.demo.sql, never to the hosted seed.
+demo_lines = [
+    "-- Comptes de démonstration. Uniquement `supabase db reset` en local.",
+    "-- Ne jamais appliquer ce fichier sur un projet hébergé.",
+    "",
+    "do $$ begin",
+]
 for user in USERS:
     meta = json.dumps({"full_name": user["fullName"], "role": user["role"]}, ensure_ascii=False).replace("'", "''")
-    lines.append(
+    demo_lines.append(
         f"""
   if not exists (select 1 from auth.users where id = '{user["id"]}') then
     insert into auth.users (
@@ -541,9 +546,11 @@ for user in USERS:
     );
   end if;"""
     )
-lines.append("exception when undefined_table then")
-lines.append("  raise notice 'auth.users absent — utilise scripts/seed-hosted.mjs';")
-lines.append("end $$;")
+demo_lines.append("exception when undefined_table then")
+demo_lines.append("  raise notice 'auth.users absent — le seed local continue sans comptes Auth';")
+demo_lines.append("end $$;")
+demo_lines.append("")
+lines.append("-- Les comptes de démonstration sont dans seed.demo.sql, réservé au `supabase db reset` local.")
 lines.append("")
 
 lines.append("insert into public.profiles (id, role, full_name, phone, barber_id, active) values")
@@ -664,4 +671,6 @@ lines.append(",\n".join(promo_rows) + " on conflict (code) do nothing;")
 lines.append("")
 
 (ROOT / "supabase" / "seed.sql").write_text("\n".join(lines) + "\n")
+(ROOT / "supabase" / "seed.demo.sql").write_text("\n".join(demo_lines) + "\n")
 print(f"supabase/seed.sql ({len(lines)} lignes)")
+print(f"supabase/seed.demo.sql ({len(demo_lines)} lignes)")

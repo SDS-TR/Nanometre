@@ -9,14 +9,16 @@ major_version = 15
 
 [db.seed]
 enabled = true
-sql_paths = ["./seed.sql"]
+# seed.demo.sql uniquement pour `supabase start` / `db reset`. Jamais sur le projet hébergé.
+sql_paths = ["./seed.demo.sql", "./seed.sql"]
 
 [auth]
+# Projet local. Sur le projet hébergé, site_url et les redirections sont uniquement https://lenanometre.ca (sans joker, sans localhost).
 site_url = "http://127.0.0.1:43123"
 additional_redirect_urls = [
   "http://127.0.0.1:43123/auth/callback",
   "http://localhost:43123/auth/callback",
-  "lenanometre://auth/callback",
+  "https://lenanometre.ca/auth/callback",
 ]
 
 [functions.create-payment-intent]
@@ -26,6 +28,18 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.dispatch-notifications]
+verify_jwt = false
+
+[functions.expire-checkouts]
+verify_jwt = false
+
+[functions.process-refund]
+verify_jwt = true
+
+[functions.delete-account]
+verify_jwt = true
+
+[functions.abandon-checkout]
 verify_jwt = true
 
 [functions.invite-team-member]

@@ -129,6 +129,7 @@ export interface Repository {
   sendMagicLink(email: string): Promise<{ demo: boolean }>;
   completeMagicLink(email: string): Promise<SessionUser>;
   signOut(): Promise<void>;
+  deleteAccount(confirmation: string): Promise<void>;
   updateProfile(input: { fullName: string; phone: string | null }): Promise<SessionUser>;
   getSalon(): Promise<Salon>;
   getBarbers(): Promise<Barber[]>;

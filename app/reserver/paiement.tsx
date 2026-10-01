@@ -110,8 +110,21 @@ export default function PaiementScreen() {
           setError('Paiement refusé par la banque. Réessaie ou paie sur place.');
           return;
         }
-        const paid = await repo.markPaid(created.id);
-        await finish(paid.id);
+        const deadline = Date.now() + 20_000;
+        let confirmed = created;
+        while (Date.now() < deadline) {
+          confirmed = await repo.getBooking(created.id);
+          if (confirmed.status === 'confirme') {
+            await finish(confirmed.id);
+            return;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+        setError('Paiement en cours de validation. Ton rendez-vous se confirme dès que Stripe nous répond.');
+        return;
+      }
+      if (repo.mode !== 'local') {
+        setError('Paiement en ligne indisponible sur cet appareil, paie sur place.');
         return;
       }
       setDemoOpen(true);

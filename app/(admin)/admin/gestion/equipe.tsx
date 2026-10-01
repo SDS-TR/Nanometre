@@ -103,7 +103,13 @@ export default function EquipeScreen() {
             setError(null);
             void repo
               .inviteMember({ fullName: name, email, role, barberId: role === 'coiffeur' ? barberId : null })
-              .then(() => setMessage(repo.mode === 'local' ? 'Compte ajouté à l’équipe.' : 'Invitation envoyée. La personne reçoit un courriel pour ouvrir son compte.'))
+              .then(() =>
+                setMessage(
+                  repo.mode === 'local'
+                    ? 'Compte ajouté à l’équipe.'
+                    : 'Invitation envoyée. Le lien dure au plus 24 h (réglage Auth « Email OTP expiration »). Le compte s’active à la première connexion. Tu peux renvoyer la même invitation.',
+                ),
+              )
               .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Invitation impossible.'));
           }}
         />

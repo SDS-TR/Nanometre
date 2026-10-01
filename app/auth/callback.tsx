@@ -1,3 +1,4 @@
+import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
@@ -11,12 +12,17 @@ export default function AuthCallbackScreen() {
   const { repo } = useAppState();
   const [error, setError] = useState<string | null>(null);
 
+  const url = Linking.useURL();
+
   useEffect(() => {
+    const parsed = url ? Linking.parse(url) : null;
+    const code = typeof parsed?.queryParams?.code === 'string' ? parsed.queryParams.code : '';
+    setError(null);
     repo
-      .completeMagicLink('')
+      .completeMagicLink(code)
       .then(() => router.replace('/'))
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Lien invalide.'));
-  }, [repo, router]);
+  }, [repo, router, url]);
 
   return (
     <Screen>

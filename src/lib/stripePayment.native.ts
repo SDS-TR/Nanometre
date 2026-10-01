@@ -1,4 +1,5 @@
 import { initPaymentSheet, presentPaymentSheet } from '@stripe/stripe-react-native';
+import { googlePayTestEnv } from './googlePay';
 
 export const nativePayAvailable = Boolean(process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
@@ -7,7 +8,7 @@ export async function presentNativePaymentSheet(clientSecret: string): Promise<'
     merchantDisplayName: 'Le Nanomètre',
     paymentIntentClientSecret: clientSecret,
     applePay: { merchantCountryCode: 'CA' },
-    googlePay: { merchantCountryCode: 'CA', currencyCode: 'CAD', testEnv: true },
+    googlePay: { merchantCountryCode: 'CA', currencyCode: 'CAD', testEnv: googlePayTestEnv() },
     defaultBillingDetails: { address: { country: 'CA' } },
     returnURL: 'lenanometre://stripe-redirect',
   });

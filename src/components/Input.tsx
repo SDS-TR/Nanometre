@@ -10,8 +10,8 @@ type Props = {
   placeholder?: string;
   error?: string;
   secureTextEntry?: boolean;
-  keyboardType?: 'default' | 'email-address' | 'phone-pad';
-  autoCapitalize?: 'none' | 'words' | 'sentences';
+  keyboardType?: 'default' | 'email-address' | 'phone-pad' | 'number-pad';
+  autoCapitalize?: 'none' | 'words' | 'sentences' | 'characters';
   disabled?: boolean;
 };
 

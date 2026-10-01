@@ -4,6 +4,7 @@ import {
   emptyLoyalty,
   generateSlots,
   isOpenWeekday,
+  assertLastOwnerSurvives,
   quoteCancellation,
   restoreReward,
   type PromoCode,
@@ -15,6 +16,7 @@ import {
   type PaymentMethod,
   type PaymentStatus,
 } from '../domain';
+import { maskClientName } from '../lib/privacy';
 import { createAdmin, defaultPromos, type BlockSlot, type StoredNotification } from './localAdmin';
 import seed from './seed.normalized.json';
 import type { KeyValueStore } from './storage';
@@ -482,6 +484,45 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       state.sessionUserId = null;
       emit();
     },
+    async deleteAccount(confirmation) {
+      await ready;
+      if (confirmation !== 'SUPPRIMER') {
+        throw new Error('Écris SUPPRIMER pour confirmer.');
+      }
+      const user = requireUser();
+      if (user.role === 'proprietaire') {
+        assertLastOwnerSurvives({
+          owners: state.users.filter((item) => item.role === 'proprietaire').map((item) => ({ id: item.id, active: item.active !== false })),
+          targetId: user.id,
+          nextActive: false,
+          nextRole: 'client',
+        });
+      }
+      const now = new Date();
+      for (const booking of state.bookings) {
+        if (booking.clientId !== user.id) {
+          continue;
+        }
+        const upcoming = zonedDateTime(booking.date, booking.startMinute) > now && (booking.status === 'confirme' || booking.status === 'en_attente_paiement');
+        if (upcoming) {
+          booking.status = 'annule';
+          booking.paymentStatus = booking.paymentStatus === 'paye' ? 'rembourse' : 'echoue';
+        }
+        booking.clientId = null;
+        booking.clientName = 'Client supprimé';
+      }
+      for (const review of state.reviews) {
+        if (review.clientName === user.fullName) {
+          review.clientName = 'Client';
+        }
+      }
+      state.loyalty.delete(user.id);
+      state.notes.delete(user.id);
+      state.notes.delete(`user:${user.id}`);
+      state.users = state.users.filter((item) => item.id !== user.id);
+      state.sessionUserId = null;
+      emit();
+    },
     async updateProfile({ fullName, phone }) {
       await ready;
       const user = requireUser();
@@ -509,7 +550,9 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
     },
     async getReviews(barberId) {
       await ready;
-      return state.reviews.filter((review) => review.barberId === barberId && review.status === 'publie');
+      return state.reviews
+        .filter((review) => review.barberId === barberId && review.status === 'publie')
+        .map((review) => ({ ...review, clientName: maskClientName(review.clientName) }));
     },
     async getSlots({ barberId, serviceId, date, now = new Date() }) {
       await ready;
@@ -671,8 +714,8 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       await ready;
       const user = requireUser();
       const booking = state.bookings.find((item) => item.id === bookingId && item.clientId === user.id);
-      if (!booking) {
-        throw new Error('Rendez-vous introuvable.');
+      if (!booking || booking.status !== 'en_attente_paiement' || booking.paymentStatus === 'paye') {
+        throw new Error('Ce rendez-vous est déjà payé en ligne.');
       }
       booking.paymentMethod = 'sur_place';
       booking.status = 'confirme';

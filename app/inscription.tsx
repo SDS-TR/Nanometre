@@ -43,6 +43,9 @@ export default function InscriptionScreen() {
         <Input label="Nom" value={fullName} onChangeText={setFullName} autoCapitalize="words" />
         <Input label="Courriel" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
         <Input label="Mot de passe" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" error={error ?? undefined} />
+        <Text variant="caption" color={theme.color.text.muted}>
+          {repo.mode === 'supabase' ? 'Au moins 12 caractères.' : 'Au moins 8 caractères en mode démo.'}
+        </Text>
         <Button label="Créer mon compte" size="lg" fullWidth loading={loading} onPress={submit} />
       </View>
     </Screen>

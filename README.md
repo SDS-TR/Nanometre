@@ -88,7 +88,7 @@ supabase start
 supabase db reset
 ```
 
-`db reset` applique la migration puis `supabase/seed.sql` (généré depuis `data/admin_data.json`).
+`db reset` applique les migrations, puis `supabase/seed.demo.sql` (comptes locaux) et `supabase/seed.sql`. Le script `scripts/seed-hosted.mjs` refuse toute base qui n’est pas locale et n’insère jamais ces comptes.
 
 Pour régénérer le SQL et `src/data/seed.normalized.json` :
 
@@ -96,11 +96,7 @@ Pour régénérer le SQL et `src/data/seed.normalized.json` :
 npm run seed:sql
 ```
 
-Sur un projet hébergé, avec une chaîne Postgres :
-
-```bash
-SUPABASE_DB_URL=postgresql://… node scripts/seed-hosted.mjs
-```
+Ne pas lancer `seed-hosted.mjs` contre le projet hébergé : il s’arrête. Les comptes de démo ne doivent pas y exister. S’ils y sont déjà, les supprimer dans Authentication et révoquer leurs sessions.
 
 Puis, dans l’app :
 
@@ -120,7 +116,12 @@ Le dernier propriétaire actif ne peut pas être rétrogradé ni désactivé. Un
 ```bash
 supabase functions deploy create-payment-intent
 supabase functions deploy stripe-webhook
-supabase secrets set STRIPE_SECRET_KEY=sk_test_… STRIPE_WEBHOOK_SECRET=whsec_…
+supabase functions deploy process-refund
+supabase functions deploy abandon-checkout
+supabase functions deploy delete-account
+supabase functions deploy dispatch-notifications
+supabase functions deploy expire-checkouts
+supabase secrets set STRIPE_SECRET_KEY=sk_test_… STRIPE_WEBHOOK_SECRET=whsec_… CRON_SECRET=… EXPO_ACCESS_TOKEN=…
 ```
 
 `create-payment-intent` vérifie la session, lit le total du rendez-vous et crée un PaymentIntent en CAD. Le client appelle ensuite :
@@ -130,19 +131,19 @@ initPaymentSheet({
   merchantDisplayName: 'Le Nanomètre',
   paymentIntentClientSecret,
   applePay: { merchantCountryCode: 'CA' },
-  googlePay: { merchantCountryCode: 'CA', currencyCode: 'CAD', testEnv: true },
+  googlePay: { merchantCountryCode: 'CA', currencyCode: 'CAD', testEnv: __DEV__ },
   defaultBillingDetails: { address: { country: 'CA' } },
   returnURL: 'lenanometre://stripe-redirect',
 });
 ```
 
-Le webhook `stripe-webhook` confirme le rendez-vous si PaymentSheet réussit sans que l’app rappelle le serveur. L’URL à coller dans le tableau Stripe est `https://<projet>.supabase.co/functions/v1/stripe-webhook`.
+Seul le webhook `stripe-webhook` confirme un paiement en ligne, après `constructEventAsync`, et seulement si l’identifiant du PaymentIntent, le montant reçu et la devise CAD correspondent. L’app interroge le rendez-vous ; elle n’appelle plus `confirm_online_payment`. L’URL à coller dans le tableau Stripe est `https://<projet>.supabase.co/functions/v1/stripe-webhook`. Événements : `payment_intent.succeeded`, `payment_intent.payment_failed`, `charge.refunded`, `refund.updated`, `charge.dispute.created`. Un remboursement part de `process-refund` (`stripe.refunds.create`) et se termine quand le webhook passe le paiement à `rembourse`.
 
 Identifiant marchand Apple prévu : `merchant.ca.lenanometre` (à remplacer par le vrai Merchant ID).
 
 ### Builds EAS
 
-Profils dans `eas.json` : `development` (client de dev), `preview` (distribution interne), `production` (`autoIncrement`). Schéma d’URL `lenanometre`, iOS `ca.lenanometre.app`, Android `ca.lenanometre.app`. Architecture nouvelle et Hermes, fournis par Expo SDK 57.
+Profils dans `eas.json` : `development` et `preview` restent en source locale. `production` force `EXPO_PUBLIC_DATA_SOURCE=supabase` et refuse de démarrer si l’URL ou la clé anon manque. Schéma d’URL `lenanometre`, iOS `ca.lenanometre.app`, Android `ca.lenanometre.app` avec sauvegarde automatique désactivée. Architecture nouvelle et Hermes, fournis par Expo SDK 57.
 
 ```bash
 eas build --profile development --platform ios
@@ -162,7 +163,7 @@ Le jeu `admin_data.json` décrit la journée du 3 octobre 2026, le 6 octobre (Ju
 
 `/admin` exige une session. Un client tombe sur « Accès refusé ». Le propriétaire a Tableau, Agenda, Paiements et Gestion. Le coiffeur a Ma journée, son agenda, ses clients (sans montant) et ses avis publiés, en lecture seule. `TabBarAdmin` reçoit le rôle. Les mêmes refus sont appliqués dans le dépôt local et dans les fonctions SQL (`Accès refusé`, SQLSTATE 42501). Le dernier propriétaire actif ne peut pas être rétrogradé ni désactivé. Les changements de rôle, les désactivations et les remboursements de frais sont écrits dans le journal.
 
-Dans Gestion, une invitation hébergée appelle la fonction Edge `invite-team-member`. Elle vérifie que l’appelant est propriétaire, puis, avec la clé `service_role`, envoie `auth.admin.inviteUserByEmail`, rattache le profil au rôle et à la chaise choisis, et écrit le journal. La réponse est `{ invited: true }` : aucun mot de passe n’est renvoyé ni affiché. En mode local, le compte est créé dans l’application et se connecte avec le mot de passe de démonstration déjà documenté.
+Dans Gestion, une invitation hébergée appelle la fonction Edge `invite-team-member`. Elle vérifie que l’appelant est propriétaire, exige une vérification en deux étapes pour inviter un autre propriétaire, puis, avec la clé `service_role`, envoie `auth.admin.inviteUserByEmail`. Le profil est inactif jusqu’à la première connexion. Un coiffeur doit avoir une chaise, et une seule compte actif par chaise. La réponse est `{ invited: true }` : aucun mot de passe n’est renvoyé ni affiché. Le lien dure au plus 24 h, selon le réglage Auth. En mode local, le compte est créé dans l’application et se connecte avec le mot de passe de démonstration déjà documenté.
 
 Le tableau calcule les revenus hors taxes et TTC, l’occupation et les coupes à partir des rendez-vous chargés. La vue de démonstration s’ouvre sur le samedi 3 octobre 2026. Ce ne sont pas les agrégats publiés du grand livre (4 943 rendez-vous).
 
@@ -176,11 +177,11 @@ L’annulation tardive payée sur place est un réglage du salon : aucun frais (
 
 Le profil active ou coupe les avis. Sans opt-in, rien n’est planifié. Avec opt-in : confirmation au client et au coiffeur, rappels 24 h et 2 h avant (omis s’ils sont déjà passés), et un avis au client et au coiffeur si le rendez-vous est annulé ou déplacé. Le lien interne est `/rendez-vous?booking=…` (schéma `lenanometre://`).
 
-Dans Expo Go (SDK 53 et suivants), les notifications distantes ne sont plus fournies. L’app ne charge pas `expo-notifications` dans ce cas : l’opt-in et la liste dans le profil restent disponibles, sans jeton et sans erreur. Un development build ou un build EAS demande la permission et enregistre le jeton Expo. `Constants.executionEnvironment` vaut `storeClient` aussi pour `expo-dev-client`, donc le critère utilisé est la présence d’Expo Go, pas cet environnement. Le web affiche la liste dans le profil. L’envoi serveur est la fonction `dispatch-notifications`, à appeler en cron avec la clé `service_role` :
+Dans Expo Go (SDK 53 et suivants), les notifications distantes ne sont plus fournies. L’app ne charge pas `expo-notifications` dans ce cas : l’opt-in et la liste dans le profil restent disponibles, sans jeton et sans erreur. Un development build ou un build EAS demande la permission et enregistre le jeton Expo. `Constants.executionEnvironment` vaut `storeClient` aussi pour `expo-dev-client`, donc le critère utilisé est la présence d’Expo Go, pas cet environnement. Le web affiche la liste dans le profil. L’envoi serveur est `dispatch-notifications`, appelée par `pg_cron` / `pg_net` avec `CRON_SECRET` (pas la clé service_role). La même clé déclenche `expire-checkouts` toutes les 5 minutes. La déconnexion et le refus des avis effacent le jeton.
 
 ```bash
 curl -X POST "$SUPABASE_URL/functions/v1/dispatch-notifications" \
-  -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY"
+  -H "Authorization: Bearer $CRON_SECRET"
 ```
 
 ## Avant la soumission en boutique
@@ -189,12 +190,14 @@ curl -X POST "$SUPABASE_URL/functions/v1/dispatch-notifications" \
 - Identifiant marchand Apple, clés Stripe live, URL du webhook.
 - Identifiants Expo pour les notifications push, et le cron ci-dessus en production.
 - Politique de confidentialité, fiches App Store et Play Store, `eas submit`.
-- Clés d’accès (passkeys). Le profil dit encore « bientôt ».
+- Clés d’accès (passkeys). Le profil dit encore « bientôt ». Le RP ID prévu est `lenanometre.ca` (`src/lib/passkey.ts`, phases A à C). On n’enrôle pas de passkey tant que Supabase les laisse en bêta. Le propriétaire utilise le TOTP (écran Vérification) avant les actions d’argent, d’équipe et de réglages.
+- Page web de suppression : `/suppression`. Dans l’app, Profil → Supprimer mon compte.
 
 ## Écarts connus
 
 - Expo SDK 57, et non 54. Rien dans le projet n’est spécifique au SDK 54.
-- Le web ne charge pas `@stripe/stripe-react-native`. La feuille de paiement y est une simulation étiquetée. Le build natif utilise PaymentSheet dès que la clé publiable est présente.
+- Le web ne charge pas `@stripe/stripe-react-native`. La feuille de paiement simulée n’existe qu’en mode local. En mode Supabase, sans PaymentSheet, l’app propose de payer sur place.
+- La session Supabase native est chiffrée (clé dans le trousseau, contenu dans AsyncStorage). Le web garde le stockage du navigateur. Les liens de connexion passent par PKCE et `https://lenanometre.ca/auth/callback`.
 - Le mode local est le défaut, pour que l’app tourne sans compte Supabase. Un rendez-vous d’Alex payé en ligne est ajouté dans les 24 prochaines heures afin de pouvoir montrer l’annulation tardive.
 - Les pauses ne sont pas retirées de la capacité, comme le brief le demande.
 - Le fichier `.ics` se télécharge sur le web seulement.

@@ -122,8 +122,8 @@ export function createSupabaseRepository(supabase: SupabaseClient): Repository {
       return session;
     },
     async signUp({ fullName, email, password }) {
-      if (password.length < 8) {
-        throw new Error('Le mot de passe doit contenir au moins 8 caractères.');
+      if (password.length < 12) {
+        throw new Error('Le mot de passe doit contenir au moins 12 caractères.');
       }
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
@@ -142,7 +142,7 @@ export function createSupabaseRepository(supabase: SupabaseClient): Repository {
       return session;
     },
     async sendMagicLink(email) {
-      const redirect = typeof window === 'undefined' ? 'lenanometre://auth/callback' : `${window.location.origin}/auth/callback`;
+      const redirect = typeof window === 'undefined' ? 'https://lenanometre.ca/auth/callback' : `${window.location.origin}/auth/callback`;
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: { emailRedirectTo: redirect },
@@ -150,7 +150,11 @@ export function createSupabaseRepository(supabase: SupabaseClient): Repository {
       fail(error);
       return { demo: false };
     },
-    async completeMagicLink() {
+    async completeMagicLink(code: string) {
+      if (code && !code.includes('@')) {
+        const exchanged = await supabase.auth.exchangeCodeForSession(code);
+        fail(exchanged.error);
+      }
       const { data, error } = await supabase.auth.getSession();
       fail(error);
       if (!data.session?.user.email) {
@@ -164,8 +168,20 @@ export function createSupabaseRepository(supabase: SupabaseClient): Repository {
       return session;
     },
     async signOut() {
+      await supabase.rpc('clear_my_push_tokens');
       const { error } = await supabase.auth.signOut();
       fail(error);
+      session = null;
+      emit();
+    },
+    async deleteAccount(confirmation) {
+      if (confirmation !== 'SUPPRIMER') {
+        throw new Error('Écris SUPPRIMER pour confirmer.');
+      }
+      const { data, error } = await supabase.functions.invoke('delete-account', { body: { confirmation } });
+      if (error || (data && typeof data === 'object' && 'error' in data && data.error)) {
+        throw new Error(await inviteFailure(error, data));
+      }
       session = null;
       emit();
     },
@@ -233,19 +249,28 @@ export function createSupabaseRepository(supabase: SupabaseClient): Repository {
       return this.getBooking(id);
     },
     async markPaid(bookingId) {
-      await rows(supabase.rpc('confirm_online_payment', { p_booking: bookingId }));
-      return this.getBooking(bookingId);
+      const current = await this.getBooking(bookingId);
+      if (current.status !== 'confirme') {
+        throw new Error('Paiement en cours de validation.');
+      }
+      return current;
     },
     async confirmOnSite(bookingId) {
       await rows(supabase.rpc('confirm_on_site', { p_booking: bookingId }));
       return this.getBooking(bookingId);
     },
     async abandonCheckout(bookingId) {
-      const { error } = await supabase.rpc('abandon_checkout', { p_booking: bookingId });
-      fail(error);
+      const { data, error } = await supabase.functions.invoke('abandon-checkout', { body: { bookingId } });
+      if (error || (data && typeof data === 'object' && 'error' in data && data.error)) {
+        throw new Error(await inviteFailure(error, data));
+      }
     },
     async cancelBooking(bookingId) {
       await rows(supabase.rpc('cancel_booking', { p_booking: bookingId }));
+      const { data, error } = await supabase.functions.invoke('process-refund', { body: { bookingId, kind: 'cancel' } });
+      if (error || (data && typeof data === 'object' && 'error' in data && data.error)) {
+        throw new Error(await inviteFailure(error, data));
+      }
       return this.getBooking(bookingId);
     },
     async getLoyalty() {
@@ -316,6 +341,10 @@ export function createSupabaseRepository(supabase: SupabaseClient): Repository {
     async refundFee(bookingId) {
       const { error } = await supabase.rpc('admin_refund_fee', { p_booking: bookingId });
       fail(error);
+      const refunded = await supabase.functions.invoke('process-refund', { body: { bookingId, kind: 'fee' } });
+      if (refunded.error || (refunded.data && typeof refunded.data === 'object' && 'error' in refunded.data && refunded.data.error)) {
+        throw new Error(await inviteFailure(refunded.error, refunded.data));
+      }
     },
     listClients: () => rows(supabase.rpc('admin_clients')),
     async saveClientNote(clientId, note) {

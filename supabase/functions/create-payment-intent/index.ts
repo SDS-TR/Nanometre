@@ -1,6 +1,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 import Stripe from 'npm:stripe@18.5.0';
 
+const STRIPE_API_VERSION = '2025-08-27.basil';
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -53,26 +55,29 @@ Deno.serve(async (req) => {
     return json({ error: 'Aucun montant à encaisser.' }, 400);
   }
 
-  const stripe = new Stripe(stripeSecret);
+  const stripe = new Stripe(stripeSecret, { apiVersion: STRIPE_API_VERSION, httpClient: Stripe.createFetchHttpClient() });
   const { data: payment } = await admin
     .from('payments')
-    .select('stripe_payment_intent_id')
+    .select('stripe_payment_intent_id, amount_cents')
     .eq('booking_id', bookingId)
     .maybeSingle();
 
   if (payment?.stripe_payment_intent_id) {
     const existing = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent_id);
-    if (existing.client_secret && existing.status !== 'canceled') {
+    if (existing.client_secret && existing.status !== 'canceled' && existing.amount === booking.total_cents && existing.currency === 'cad') {
       return json({ clientSecret: existing.client_secret });
     }
   }
 
-  const intent = await stripe.paymentIntents.create({
-    amount: booking.total_cents,
-    currency: 'cad',
-    automatic_payment_methods: { enabled: true },
-    metadata: { bookingId },
-  });
-  await admin.from('payments').update({ stripe_payment_intent_id: intent.id }).eq('booking_id', bookingId);
+  const intent = await stripe.paymentIntents.create(
+    {
+      amount: booking.total_cents,
+      currency: 'cad',
+      automatic_payment_methods: { enabled: true },
+      metadata: { bookingId },
+    },
+    { idempotencyKey: `pi-${bookingId}-${booking.total_cents}` },
+  );
+  await admin.from('payments').update({ stripe_payment_intent_id: intent.id, amount_cents: booking.total_cents }).eq('booking_id', bookingId);
   return json({ clientSecret: intent.client_secret });
 });

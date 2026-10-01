@@ -78,6 +78,9 @@ describe('invitation équipe', () => {
     expect(source).toContain('barber_id');
     expect(source).toContain("from('audit_log')");
     expect(source).toContain('inviteAck()');
+    expect(source).toContain('active: false');
+    expect(source).toContain('https://lenanometre.ca/auth/callback');
+    expect(source).toContain('Vérification renforcée requise');
     expect(source).not.toMatch(/password/i);
     expect(sql).toContain('L’invitation se fait par le serveur.');
     expect(sql).not.toMatch(/password/i);

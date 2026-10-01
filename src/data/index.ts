@@ -1,5 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
+import { assertRuntimeConfig } from '../lib/productionConfig';
+import { LargeSecureStore } from './largeSecureStore';
 import { createLocalRepository } from './localRepository';
 import { createSupabaseRepository } from './supabaseRepository';
 import type { KeyValueStore } from './storage';
@@ -24,6 +27,8 @@ export function getRepository(): Repository {
   const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
   const key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
   const source = process.env.EXPO_PUBLIC_DATA_SOURCE;
+  const dev = typeof __DEV__ === 'undefined' || __DEV__;
+  assertRuntimeConfig({ dev, source, url, key });
   const useSupabase = source === 'supabase' || (source !== 'local' && Boolean(url && key));
   if (useSupabase) {
     if (!url || !key) {
@@ -31,7 +36,8 @@ export function getRepository(): Repository {
     }
     supabase = createClient(url, key, {
       auth: {
-        storage: AsyncStorage,
+        storage: Platform.OS === 'web' ? undefined : new LargeSecureStore(),
+        flowType: 'pkce',
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: typeof window !== 'undefined',

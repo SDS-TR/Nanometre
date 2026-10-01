@@ -6,6 +6,8 @@ import { Header } from '../src/components/Header';
 import { Input } from '../src/components/Input';
 import { Screen } from '../src/components/Screen';
 import { Text } from '../src/components/Text';
+import { demoLoginPrefill } from '../src/lib/demoAuth';
+import { safeNext } from '../src/lib/safeNext';
 import { useAppState } from '../src/providers/AppState';
 import { useTheme } from '../src/theme';
 
@@ -20,8 +22,9 @@ export default function ConnexionScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ next?: string }>();
   const { repo } = useAppState();
-  const [email, setEmail] = useState('alex.gagnon@exemple.ca');
-  const [password, setPassword] = useState('nanometre');
+  const prefill = demoLoginPrefill(repo.mode, typeof __DEV__ === 'undefined' ? false : __DEV__);
+  const [email, setEmail] = useState(prefill.email);
+  const [password, setPassword] = useState(prefill.password);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -30,7 +33,7 @@ export default function ConnexionScreen() {
     setError(null);
     try {
       await repo.signIn(email, password);
-      router.replace((params.next as '/') || '/');
+      router.replace(safeNext(params.next) as '/');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Connexion impossible.');
     } finally {

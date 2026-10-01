@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
-import { inviteAck, planTeamInvite } from './logic.ts';
+import { accessLevel, inviteAck, planTeamInvite } from './logic.ts';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -50,6 +50,10 @@ Deno.serve(async (req) => {
     return json({ error: message }, message === 'Accès refusé' ? 403 : 400);
   }
 
+  if (plan.role === 'proprietaire' && accessLevel(authorization) !== 'aal2') {
+    return json({ error: 'Vérification renforcée requise' }, 403);
+  }
+
   if (plan.barberId) {
     const { data: barber } = await admin.from('barbers').select('id').eq('id', plan.barberId).maybeSingle();
     if (!barber) {
@@ -57,7 +61,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  const redirectTo = Deno.env.get('INVITE_REDIRECT_URL') ?? 'lenanometre://auth/callback';
+  const redirectTo = Deno.env.get('INVITE_REDIRECT_URL') ?? 'https://lenanometre.ca/auth/callback';
   const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(plan.email, {
     data: plan.metadata,
     redirectTo,
@@ -72,7 +76,8 @@ Deno.serve(async (req) => {
     full_name: plan.fullName,
     role: plan.role,
     barber_id: plan.barberId,
-    active: true,
+    active: false,
+    invited_at: new Date().toISOString(),
   });
   if (profileError) {
     return json({ error: 'Le profil n’a pas pu être lié.' }, 500);

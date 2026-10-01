@@ -10,10 +10,20 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ca.lenanometre.app"
+      "bundleIdentifier": "ca.lenanometre.app",
+      "associatedDomains": ["applinks:lenanometre.ca", "webcredentials:lenanometre.ca"]
     },
     "android": {
+      "allowBackup": false,
       "package": "ca.lenanometre.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [{ "scheme": "https", "host": "lenanometre.ca", "pathPrefix": "/auth/callback" }],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#111113",
         "foregroundImage": "./assets/android-icon-foreground.png",

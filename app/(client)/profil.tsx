@@ -2,8 +2,10 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { Avatar } from '../../src/components/Avatar';
+import { BottomSheet } from '../../src/components/BottomSheet';
 import { Button } from '../../src/components/Button';
 import { Header } from '../../src/components/Header';
+import { Input } from '../../src/components/Input';
 import { ListItem } from '../../src/components/ListItem';
 import { Screen } from '../../src/components/Screen';
 import { SegmentedControl } from '../../src/components/SegmentedControl';
@@ -20,6 +22,9 @@ export default function ProfilScreen() {
   const opted = useAsync((repository) => (user ? repository.notificationOptIn() : Promise.resolve(false)), [user?.id]);
   const notices = useAsync((repository) => (user ? repository.listMyNotifications() : Promise.resolve([])), [user?.id]);
   const [note, setNote] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   return (
     <Screen>
       <Header title="Profil" />
@@ -86,6 +91,13 @@ export default function ProfilScreen() {
               <ListItem key={item.id} title={item.title} subtitle={item.body} onPress={() => router.push(item.path as '/rendez-vous')} />
             ))}
             <ListItem title="Clés d’accès" subtitle="Bientôt — les passkeys arriveront après cette phase" />
+            {user.role === 'proprietaire' ? (
+              <ListItem
+                title="Vérification en deux étapes"
+                subtitle={repo.mode === 'supabase' ? 'Application d’authentification, exigée pour l’argent et l’équipe' : 'Offerte sur le projet hébergé'}
+                onPress={() => router.push('/mfa')}
+              />
+            ) : null}
             {user.role !== 'client' ? (
               <ListItem title="Espace équipe" subtitle={user.role === 'proprietaire' ? 'Propriétaire' : 'Coiffeur'} onPress={() => router.push('/admin')} />
             ) : null}
@@ -96,6 +108,26 @@ export default function ProfilScreen() {
                 void repo.signOut();
               }}
             />
+            <Button label="Supprimer mon compte" variant="ghost" onPress={() => setDeleteOpen(true)} />
+            <BottomSheet visible={deleteOpen} onClose={() => setDeleteOpen(false)} title="Supprimer le compte">
+              <Text variant="body-sm" color={theme.color.text.secondary}>
+                Tes rendez-vous à venir sont annulés. Les reçus restent, sans ton nom. Écris SUPPRIMER pour confirmer.
+              </Text>
+              <Input label="Confirmation" value={confirmation} onChangeText={setConfirmation} autoCapitalize="characters" error={deleteError ?? undefined} />
+              <Button
+                label="Supprimer définitivement"
+                onPress={() => {
+                  setDeleteError(null);
+                  void repo.deleteAccount(confirmation).then(
+                    () => {
+                      setDeleteOpen(false);
+                      router.replace('/');
+                    },
+                    (reason: unknown) => setDeleteError(reason instanceof Error ? reason.message : 'Suppression impossible.'),
+                  );
+                }}
+              />
+            </BottomSheet>
           </View>
         ) : null}
         <Text variant="caption" color={theme.color.text.muted}>

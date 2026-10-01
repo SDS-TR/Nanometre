@@ -433,7 +433,7 @@ export function createAdmin(input: {
         if (barberId && booking.barberId !== barberId) {
           continue;
         }
-        const key = booking.clientId ?? booking.clientName;
+        const key = booking.clientId ? `user:${booking.clientId}` : `guest:${booking.id}`;
         groups.set(key, [...(groups.get(key) ?? []), booking]);
       }
       return [...groups.entries()].map(([id, rows]) => {
@@ -464,7 +464,9 @@ export function createAdmin(input: {
       const user = actor();
       assertCan(user.role, 'clients');
       if (user.role === 'coiffeur') {
-        const known = state.bookings.some((booking) => (booking.clientId ?? booking.clientName) === clientId && booking.barberId === user.barberId);
+        const known = state.bookings.some(
+          (booking) => (booking.clientId ? `user:${booking.clientId}` : `guest:${booking.id}`) === clientId && booking.barberId === user.barberId,
+        );
         if (!known) {
           throw new AccessDeniedError();
         }
@@ -567,6 +569,9 @@ export function createAdmin(input: {
       }
       if (payload.role === 'client') {
         throw new AccessDeniedError();
+      }
+      if (payload.role === 'coiffeur' && !payload.barberId) {
+        throw new Error('Choisis la chaise de ce coiffeur.');
       }
       state.users.push({
         id: crypto.randomUUID(),
