@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { View } from 'react-native';
 import { Avatar } from '../../src/components/Avatar';
 import { Button } from '../../src/components/Button';
@@ -7,6 +8,8 @@ import { ListItem } from '../../src/components/ListItem';
 import { Screen } from '../../src/components/Screen';
 import { SegmentedControl } from '../../src/components/SegmentedControl';
 import { Text } from '../../src/components/Text';
+import { useAsync } from '../../src/hooks/useAsync';
+import { registerForPush } from '../../src/lib/push';
 import { useAppState } from '../../src/providers/AppState';
 import { useTheme, type ThemePreference } from '../../src/theme';
 
@@ -14,6 +17,9 @@ export default function ProfilScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { user, repo, preference, setPreference } = useAppState();
+  const opted = useAsync((repository) => (user ? repository.notificationOptIn() : Promise.resolve(false)), [user?.id]);
+  const notices = useAsync((repository) => (user ? repository.listMyNotifications() : Promise.resolve([])), [user?.id]);
+  const [note, setNote] = useState<string | null>(null);
   return (
     <Screen>
       <Header title="Profil" />
@@ -55,6 +61,30 @@ export default function ProfilScreen() {
         {user ? (
           <View style={{ gap: theme.space[1] }}>
             <ListItem title="Carte de fidélité" subtitle="1 point par dollar, 10 coupes = 1 offerte" onPress={() => router.push('/fidelite')} />
+            <ListItem
+              title="Rappels"
+              subtitle={opted.data ? 'Activés — confirmation, 24 h et 2 h avant' : 'Désactivés'}
+              onPress={() => {
+                const next = !opted.data;
+                void repo.setNotificationOptIn(next).then(async () => {
+                  if (next) {
+                    const token = await registerForPush();
+                    if (token) {
+                      await repo.setPushToken(token);
+                    }
+                  }
+                  setNote(next ? 'Tu recevras les avis de tes rendez-vous.' : 'Les avis sont coupés.');
+                });
+              }}
+            />
+            {note ? (
+              <Text variant="body-sm" color={theme.color.text.secondary}>
+                {note}
+              </Text>
+            ) : null}
+            {notices.data?.slice(0, 4).map((item) => (
+              <ListItem key={item.id} title={item.title} subtitle={item.body} onPress={() => router.push(item.path as '/rendez-vous')} />
+            ))}
             <ListItem title="Clés d’accès" subtitle="Bientôt — les passkeys arriveront après cette phase" />
             {user.role !== 'client' ? (
               <ListItem title="Espace équipe" subtitle={user.role === 'proprietaire' ? 'Propriétaire' : 'Coiffeur'} onPress={() => router.push('/admin')} />

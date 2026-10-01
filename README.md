@@ -47,13 +47,13 @@ Fidélité : 1 point par dollar avant taxes, arrondi vers le bas, au moment où 
 ```
 app/                  Expo Router
   (client)/           onglets client
-  (admin)/admin/      garde de rôle, écran « Accès refusé », stub phase 2
-  reserver/           parcours de réservation
-src/domain/           créneaux, taxes, frais, fidélité (TypeScript pur, testé)
+  (admin)/admin/      Tableau, Agenda, Paiements, Gestion (propriétaire) ; Ma journée, Agenda, Clients, Avis (coiffeur)
+  reserver/           parcours de réservation, code promo au récapitulatif
+src/domain/           créneaux, taxes, frais, fidélité, droits, promos, notifications
 src/data/             dépôt local ou Supabase, même interface
-src/components/       composants de base et cartes métier
+src/components/       composants de base, cartes métier, TabBarAdmin
 supabase/migrations/  schéma, RLS, fonctions
-supabase/functions/   PaymentIntent et webhook Stripe
+supabase/functions/   PaymentIntent, webhook Stripe, envoi des notifications
 ```
 
 La logique métier est dans `src/domain`. Le dépôt local et les fonctions SQL appliquent les mêmes règles. Les tests de `src/domain` verrouillent les exemples du brief.
@@ -139,15 +139,36 @@ Les photos dans `assets/photos` sont des images provisoires. L’accueil le dit.
 
 Le jeu `admin_data.json` décrit la journée du 3 octobre 2026, le 6 octobre (Julien), l’historique d’Alex et des clients fréquents, et les annulations tardives du 29 septembre. Le fichier source annonce 4 943 rendez-vous au total ; le seed ne reprend que les lignes concrètes, pour que les montants restent ceux du fichier.
 
-## Phase 2
+## Espace équipe
 
-- Écrans équipe : Tableau, Agenda, Paiements, Gestion. La route `/admin` existe déjà. Un client voit « Accès refusé ». Un propriétaire ou un coiffeur voit un écran d’attente.
-- Honorer une visite (c’est là que les points et les tampons s’ajoutent).
-- Avis à publier, blocages de chaise, codes promo au paiement.
-- Notifications push.
-- Clés d’accès (passkeys). Le profil affiche « bientôt ».
-- Soumission App Store et Play Store.
-- Photos, adresse et numéros de taxes réels.
+`/admin` exige une session. Un client tombe sur « Accès refusé ». Le propriétaire a Tableau, Agenda, Paiements et Gestion. Le coiffeur a Ma journée, son agenda, ses clients (sans montant) et ses avis publiés, en lecture seule. `TabBarAdmin` reçoit le rôle. Les mêmes refus sont appliqués dans le dépôt local et dans les fonctions SQL (`Accès refusé`, SQLSTATE 42501). Le dernier propriétaire actif ne peut pas être rétrogradé ni désactivé. Les changements de rôle, les désactivations et les remboursements de frais sont écrits dans le journal.
+
+Le tableau calcule les revenus hors taxes et TTC, l’occupation et les coupes à partir des rendez-vous chargés. La vue de démonstration s’ouvre sur le samedi 3 octobre 2026. Ce ne sont pas les agrégats publiés du grand livre (4 943 rendez-vous).
+
+Honorer une visite confirmée dont l’heure est passée ajoute les points et le tampon. Une coupe offerte déjà consommée à la réservation n’en ajoute pas.
+
+Au récapitulatif, un code promo est validé avant les taxes. `BIENVENUE10` est encore valable en octobre 2026. `ETE20` est épuisé.
+
+L’annulation tardive payée sur place est un réglage du salon : aucun frais (défaut) ou montant dû à la prochaine visite. Le paiement en ligne garde les frais de 50 %.
+
+## Notifications
+
+Le profil active ou coupe les avis. Sans opt-in, rien n’est planifié. Avec opt-in : confirmation au client et au coiffeur, rappels 24 h et 2 h avant (omis s’ils sont déjà passés), et un avis au client et au coiffeur si le rendez-vous est annulé ou déplacé. Le lien interne est `/rendez-vous?booking=…` (schéma `lenanometre://`).
+
+Sur le natif, `expo-notifications` demande la permission et enregistre le jeton Expo. Le web affiche la liste dans le profil. L’envoi serveur est la fonction `dispatch-notifications`, à appeler en cron avec la clé `service_role` :
+
+```bash
+curl -X POST "$SUPABASE_URL/functions/v1/dispatch-notifications" \
+  -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY"
+```
+
+## Avant la soumission en boutique
+
+- Photos, adresse et numéros de TPS/TVQ réels, et confirmation comptable des frais taxes incluses.
+- Identifiant marchand Apple, clés Stripe live, URL du webhook.
+- Identifiants Expo pour les notifications push, et le cron ci-dessus en production.
+- Politique de confidentialité, fiches App Store et Play Store, `eas submit`.
+- Clés d’accès (passkeys). Le profil dit encore « bientôt ».
 
 ## Écarts connus
 

@@ -6,6 +6,7 @@ import {
   isOpenWeekday,
   quoteCancellation,
   restoreReward,
+  type PromoCode,
   weekdayOfIso,
   zonedDateTime,
   zonedParts,
@@ -14,6 +15,7 @@ import {
   type PaymentMethod,
   type PaymentStatus,
 } from '../domain';
+import { createAdmin, defaultPromos, type BlockSlot, type StoredNotification } from './localAdmin';
 import seed from './seed.normalized.json';
 import type { KeyValueStore } from './storage';
 import type {
@@ -30,16 +32,30 @@ import type {
   SlotView,
 } from './types';
 
-const STORAGE_KEY = 'lenanometre.delta.v1';
+const STORAGE_KEY = 'lenanometre.delta.v2';
 const DEMO_LATE_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const ACTIVE = new Set(['en_attente_paiement', 'confirme', 'honore']);
 
 type Delta = {
   sessionUserId: string | null;
   users: Account[];
+  staffPatches: { id: string; role: Account['role']; active: boolean; barberId: string | null }[];
   bookingPatches: BookingRecord[];
   loyaltyPatches: { clientId: string; points: number; stamps: number; rewardsAvailable: number }[];
   reviewPatches: Review[];
+  blocks: BlockSlot[];
+  notes: [string, string][];
+  promos: PromoCode[];
+  openMinute: number;
+  closeMinute: number;
+  onsiteLatePolicy: 'aucun' | 'a_la_prochaine';
+  schedules: [string, number[]][];
+  notifications: StoredNotification[];
+  optIn: string[];
+  audit: { id: string; action: string; detail: string; at: string }[];
+  servicePrices: { id: string; priceCents: number }[];
+  eligibility?: [string, string[]][];
+  pushTokens?: [string, string][];
 };
 
 type State = {
@@ -49,6 +65,19 @@ type State = {
   loyalty: Map<string, LoyaltyState>;
   reviews: Review[];
   pendingMagicEmail: string | null;
+  blocks: BlockSlot[];
+  notes: Map<string, string>;
+  promos: PromoCode[];
+  openMinute: number;
+  closeMinute: number;
+  onsiteLatePolicy: 'aucun' | 'a_la_prochaine';
+  schedules: Map<string, number[]>;
+  notifications: StoredNotification[];
+  optIn: Set<string>;
+  audit: { id: string; action: string; detail: string; at: string }[];
+  services: Service[];
+  eligibility: Map<string, string[]>;
+  pushTokens: Map<string, string>;
 };
 
 function cloneSeed(): State {
@@ -88,6 +117,19 @@ function cloneSeed(): State {
       }),
     ),
     pendingMagicEmail: null,
+    blocks: [],
+    notes: new Map(),
+    promos: defaultPromos(),
+    openMinute: seed.salon.openMinute,
+    closeMinute: seed.salon.closeMinute,
+    onsiteLatePolicy: 'aucun',
+    schedules: new Map(seed.barbers.map((barber) => [barber.id, [2, 3, 4, 5, 6]])),
+    notifications: [],
+    optIn: new Set(),
+    audit: [],
+    services: seed.services.map((service) => ({ ...service })) as Service[],
+    eligibility: new Map(),
+    pushTokens: new Map(),
   };
 }
 
@@ -103,9 +145,13 @@ function publicUser(user: Account): SessionUser {
 }
 
 function busyFor(state: State, barberId: string, date: string) {
-  return state.bookings
+  const bookings = state.bookings
     .filter((booking) => booking.barberId === barberId && booking.date === date && ACTIVE.has(booking.status))
     .map((booking) => ({ start: booking.startMinute, end: booking.startMinute + booking.durationMinutes }));
+  const blocks = state.blocks
+    .filter((block) => block.barberId === barberId && block.date === date)
+    .map((block) => ({ start: block.startMinute, end: block.endMinute }));
+  return [...bookings, ...blocks];
 }
 
 function present(state: State, booking: BookingRecord): BookingView {
@@ -248,6 +294,40 @@ function applyDelta(state: State, delta: Delta) {
   if (delta.sessionUserId && state.users.some((user) => user.id === delta.sessionUserId)) {
     state.sessionUserId = delta.sessionUserId;
   }
+  for (const patch of delta.staffPatches ?? []) {
+    const user = state.users.find((item) => item.id === patch.id);
+    if (user) {
+      user.role = patch.role;
+      user.active = patch.active;
+      user.barberId = patch.barberId;
+    }
+  }
+  state.blocks = delta.blocks ?? [];
+  state.notes = new Map(delta.notes ?? []);
+  if (delta.promos?.length) {
+    state.promos = delta.promos;
+  }
+  state.openMinute = delta.openMinute ?? state.openMinute;
+  state.closeMinute = delta.closeMinute ?? state.closeMinute;
+  state.onsiteLatePolicy = delta.onsiteLatePolicy ?? state.onsiteLatePolicy;
+  if (delta.schedules) {
+    state.schedules = new Map(delta.schedules);
+  }
+  state.notifications = delta.notifications ?? [];
+  state.optIn = new Set(delta.optIn ?? []);
+  state.audit = delta.audit ?? [];
+  for (const price of delta.servicePrices ?? []) {
+    const service = state.services.find((item) => item.id === price.id);
+    if (service) {
+      service.priceCents = price.priceCents;
+    }
+  }
+  if (delta.eligibility) {
+    state.eligibility = new Map(delta.eligibility);
+  }
+  if (delta.pushTokens) {
+    state.pushTokens = new Map(delta.pushTokens);
+  }
 }
 
 export function createLocalRepository(storage: KeyValueStore): Repository {
@@ -269,6 +349,13 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
     const delta: Delta = {
       sessionUserId: state.sessionUserId,
       users: state.users.filter((user) => !seed.users.some((item) => item.id === user.id)),
+      staffPatches: state.users
+        .filter((user) => seed.users.some((item) => item.id === user.id))
+        .filter((user) => {
+          const original = seed.users.find((item) => item.id === user.id);
+          return original && (original.role !== user.role || user.active === false || original.barberId !== user.barberId);
+        })
+        .map((user) => ({ id: user.id, role: user.role, active: user.active !== false, barberId: user.barberId })),
       bookingPatches: state.bookings.filter((booking) => {
         if (!seedIds.has(booking.id)) {
           return true;
@@ -280,6 +367,19 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
         .filter(([clientId, value]) => seedLoyalty.get(clientId) !== JSON.stringify({ clientId, ...value }))
         .map(([clientId, value]) => ({ clientId, ...value })),
       reviewPatches: state.reviews.filter((review) => !seed.reviews.some((item) => item.id === review.id)),
+      blocks: state.blocks,
+      notes: [...state.notes.entries()],
+      promos: state.promos,
+      openMinute: state.openMinute,
+      closeMinute: state.closeMinute,
+      onsiteLatePolicy: state.onsiteLatePolicy,
+      schedules: [...state.schedules.entries()],
+      notifications: state.notifications,
+      optIn: [...state.optIn],
+      audit: state.audit,
+      servicePrices: state.services.map((service) => ({ id: service.id, priceCents: service.priceCents })),
+      eligibility: [...state.eligibility.entries()],
+      pushTokens: [...state.pushTokens.entries()],
     };
     await storage.setItem(STORAGE_KEY, JSON.stringify(delta));
   }
@@ -301,6 +401,12 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
     return state.users.find((user) => user.email.toLowerCase() === email.trim().toLowerCase());
   }
 
+  const admin = createAdmin({
+    state,
+    barbers: seed.barbers.map((barber) => ({ id: barber.id, fullName: barber.fullName, shortName: barber.shortName })),
+    emit,
+  });
+
   const repository: Repository = {
     mode: 'local',
     ready,
@@ -317,6 +423,9 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       const user = findAccount(email);
       if (!user || user.password !== password) {
         throw new Error('Courriel ou mot de passe incorrect.');
+      }
+      if (user.active === false) {
+        throw new Error('Ce compte est désactivé.');
       }
       state.sessionUserId = user.id;
       emit();
@@ -388,7 +497,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
     },
     async getSalon() {
       await ready;
-      return seed.salon;
+      return { ...seed.salon, openMinute: state.openMinute, closeMinute: state.closeMinute, onsiteLatePolicy: state.onsiteLatePolicy };
     },
     async getBarbers() {
       await ready;
@@ -396,7 +505,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
     },
     async getServices() {
       await ready;
-      return [...seed.services].sort((a, b) => a.sortOrder - b.sortOrder) as Service[];
+      return [...state.services].sort((a, b) => a.sortOrder - b.sortOrder);
     },
     async getReviews(barberId) {
       await ready;
@@ -404,18 +513,30 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
     },
     async getSlots({ barberId, serviceId, date, now = new Date() }) {
       await ready;
-      const service = seed.services.find((item) => item.id === serviceId);
+      const service = state.services.find((item) => item.id === serviceId);
       if (!service) {
         throw new Error('Prestation introuvable.');
       }
       const weekday = weekdayOfIso(date);
       const today = zonedParts(now);
       const earliest = date === today.isoDate ? today.minuteOfDay + 1 : undefined;
+      const offers = (id: string) => {
+        const allowed = state.eligibility.get(id);
+        return !allowed || allowed.includes(serviceId);
+      };
       const candidates =
         barberId === 'any'
-          ? [...seed.barbers].sort((a, b) => busyFor(state, a.id, date).length - busyFor(state, b.id, date).length)
-          : seed.barbers.filter((item) => item.id === barberId);
-      const grid = generateSlots({ weekday, durationMinutes: service.durationMinutes, earliestStartMinute: earliest });
+          ? [...seed.barbers]
+              .filter((barber) => offers(barber.id) && (state.schedules.get(barber.id) ?? []).includes(weekday))
+              .sort((a, b) => busyFor(state, a.id, date).length - busyFor(state, b.id, date).length)
+          : seed.barbers.filter((item) => item.id === barberId && offers(item.id) && (state.schedules.get(item.id) ?? []).includes(weekday));
+      const grid = generateSlots({
+        weekday,
+        durationMinutes: service.durationMinutes,
+        earliestStartMinute: earliest,
+        openMinute: state.openMinute,
+        closeMinute: state.closeMinute,
+      });
       const merged: SlotView[] = grid.map((slot) => ({
         startMinute: slot.startMinute,
         endMinute: slot.endMinute,
@@ -428,6 +549,8 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
           durationMinutes: service.durationMinutes,
           busy: busyFor(state, barber.id, date),
           earliestStartMinute: earliest,
+          openMinute: state.openMinute,
+          closeMinute: state.closeMinute,
         });
         slots.forEach((slot, index) => {
           if (slot.available && !merged[index].available) {
@@ -464,7 +587,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
     async createBooking(input) {
       await ready;
       const user = requireUser();
-      const service = seed.services.find((item) => item.id === input.serviceId);
+      const service = state.services.find((item) => item.id === input.serviceId);
       const barber = seed.barbers.find((item) => item.id === input.barberId);
       if (!service || !barber) {
         throw new Error('Choix incomplet.');
@@ -479,6 +602,15 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
         throw new Error('Ce créneau n’est plus libre.');
       }
       let price = service.priceCents;
+      let promoCode: string | null = null;
+      let discountCents = 0;
+      if (input.promoCode && !input.redeemReward) {
+        const quote = admin.quotePromo(input.promoCode, input.date, price);
+        promoCode = quote.code;
+        discountCents = quote.discountCents;
+        price -= discountCents;
+        admin.consumePromo(promoCode);
+      }
       if (input.redeemReward) {
         const loyalty = ensureLoyalty(state, user.id);
         if (loyalty.rewardsAvailable < 1) {
@@ -510,8 +642,14 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
         feeQstCents: 0,
         feeHtCents: 0,
         loyaltyRedeemed: input.redeemReward,
+        promoCode,
+        discountCents,
+        feeOwingCents: 0,
       };
       state.bookings.push(booking);
+      if (booking.status === 'confirme') {
+        admin.notifyConfirmed(booking);
+      }
       emit();
       return present(state, booking);
     },
@@ -525,6 +663,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       booking.status = 'confirme';
       booking.paymentStatus = 'paye';
       booking.paymentMethod = 'en_ligne';
+      admin.notifyConfirmed(booking);
       emit();
       return present(state, booking);
     },
@@ -538,6 +677,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       booking.paymentMethod = 'sur_place';
       booking.status = 'confirme';
       booking.paymentStatus = 'a_encaisser';
+      admin.notifyConfirmed(booking);
       emit();
       return present(state, booking);
     },
@@ -552,6 +692,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
         const loyalty = ensureLoyalty(state, user.id);
         state.loyalty.set(user.id, restoreReward(loyalty));
       }
+      admin.releasePromo(booking.promoCode);
       state.bookings = state.bookings.filter((item) => item.id !== bookingId);
       emit();
     },
@@ -572,6 +713,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
         status: booking.status,
         gstNumber: seed.salon.gstNumber,
         qstNumber: seed.salon.qstNumber,
+        onsiteLatePolicy: state.onsiteLatePolicy,
       });
       if (!quote.allowed) {
         throw new Error(quote.reason === 'deja_annule' ? 'Ce rendez-vous est déjà annulé.' : 'Ce rendez-vous ne peut plus être annulé.');
@@ -581,7 +723,8 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       booking.feeCents = quote.feeCents;
       booking.feeGstCents = quote.extraction?.gstCents ?? 0;
       booking.feeQstCents = quote.extraction?.qstCents ?? 0;
-      booking.feeHtCents = quote.extraction?.netCents ?? 0;
+      booking.feeHtCents = quote.feeApplies ? (quote.extraction?.netCents ?? 0) : 0;
+      booking.feeOwingCents = quote.feeOwingCents;
       if (quote.feeApplies) {
         booking.paymentStatus = 'rembourse_partiel';
       } else if (booking.paymentStatus === 'paye') {
@@ -593,6 +736,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
         state.loyalty.set(user.id, restoreReward(ensureLoyalty(state, user.id)));
         booking.loyaltyRedeemed = false;
       }
+      admin.notifyChange(booking, 'annulation', `Ton rendez-vous du ${booking.date} est annulé.`);
       emit();
       return present(state, booking);
     },
@@ -631,11 +775,141 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       await ready;
       return { mode: 'demo', clientSecret: null };
     },
+    async validatePromo(input) {
+      await ready;
+      return admin.quotePromo(input.code, input.date, input.subtotalCents);
+    },
+    setNotificationOptIn: (enabled) => admin.setNotificationOptIn(enabled),
+    notificationOptIn: () => admin.notificationOptIn(),
+    listMyNotifications: () => admin.listMyNotifications(),
+    async getDashboard(input) {
+      await ready;
+      return admin.getDashboard(input.anchor, input.period);
+    },
+    async getDay(date) {
+      await ready;
+      return admin.getDay(date);
+    },
+    async getAgenda(input) {
+      await ready;
+      return admin.getAgenda(input.date, input.barberId ?? null);
+    },
+    async blockSlot(input) {
+      await ready;
+      await admin.blockSlot(input);
+    },
+    async unblockSlot(blockId) {
+      await ready;
+      await admin.unblockSlot(blockId);
+    },
+    async moveBooking(input) {
+      await ready;
+      await admin.moveBooking(input);
+    },
+    async honorBooking(bookingId) {
+      await ready;
+      await admin.honorBooking(bookingId);
+    },
+    async cancelClientBooking(bookingId) {
+      await ready;
+      await admin.cancelClientBooking(bookingId, async (id) => {
+        const booking = state.bookings.find((item) => item.id === id);
+        if (!booking?.clientId) {
+          throw new Error('Ce rendez-vous n’a pas de compte client.');
+        }
+        const previous = state.sessionUserId;
+        state.sessionUserId = booking.clientId;
+        try {
+          return await repository.cancelBooking(id);
+        } finally {
+          state.sessionUserId = previous;
+        }
+      });
+    },
+    async listPayments(input) {
+      await ready;
+      return admin.listPayments(input.from, input.to);
+    },
+    async refundFee(bookingId) {
+      await ready;
+      await admin.refundFee(bookingId);
+    },
+    listClients: async () => {
+      await ready;
+      return admin.listClients();
+    },
+    saveClientNote: async (clientId, note) => {
+      await ready;
+      await admin.saveClientNote(clientId, note);
+    },
+    listStaffReviews: async () => {
+      await ready;
+      return admin.listStaffReviews();
+    },
+    moderateReview: async (reviewId, status) => {
+      await ready;
+      await admin.moderateReview(reviewId, status);
+    },
+    listPromos: async () => {
+      await ready;
+      return admin.listPromos();
+    },
+    savePromo: async (promo) => {
+      await ready;
+      await admin.savePromo(promo);
+    },
+    listTeam: async () => {
+      await ready;
+      return admin.listTeam();
+    },
+    setMemberRole: async (userId, role) => {
+      await ready;
+      await admin.setMemberRole(userId, role);
+    },
+    setMemberActive: async (userId, active) => {
+      await ready;
+      await admin.setMemberActive(userId, active);
+    },
+    inviteMember: async (input) => {
+      await ready;
+      return admin.inviteMember(input);
+    },
+    async updateSalonSettings(input) {
+      await ready;
+      await admin.updateSalonSettings(input);
+      return repository.getSalon();
+    },
+    updateService: async (input) => {
+      await ready;
+      await admin.updateService(input.serviceId, input.priceCents);
+    },
+    setBarberWeekday: async (input) => {
+      await ready;
+      await admin.setBarberWeekday(input.barberId, input.weekday, input.open);
+    },
+    listAudit: async () => {
+      await ready;
+      return admin.listAudit();
+    },
+    getBarberSetup: async () => {
+      await ready;
+      return admin.barberSetup();
+    },
+    setBarberService: async (input) => {
+      await ready;
+      await admin.setBarberService(input.barberId, input.serviceId, input.eligible);
+    },
+    setPushToken: async (token) => {
+      await ready;
+      const user = requireUser();
+      state.pushTokens.set(user.id, token);
+      emit();
+    },
   };
 
   return repository;
 }
 
 export function salonFromSeed(): Salon {
-  return seed.salon;
+  return { ...seed.salon, onsiteLatePolicy: 'aucun' };
 }

@@ -18,8 +18,10 @@ type Props = {
 export function FeuilleAnnulation({ visible, quote, onClose, onConfirm, loading, gstNumber, qstNumber }: Props) {
   const theme = useTheme();
   const withFee = Boolean(quote?.feeApplies);
+  const owing = Boolean(quote && quote.feeOwingCents > 0);
+  const title = withFee ? 'Annulation tardive' : owing ? 'Montant à la prochaine visite' : 'Annulation gratuite';
   return (
-    <BottomSheet visible={visible} onClose={onClose} title={withFee ? 'Annulation tardive' : 'Annulation gratuite'}>
+    <BottomSheet visible={visible} onClose={onClose} title={title}>
       {quote ? (
         <>
           <Text
@@ -34,8 +36,17 @@ export function FeuilleAnnulation({ visible, quote, onClose, onConfirm, loading,
           >
             {withFee
               ? `Moins de 24 h : des frais de ${formatCad(quote.feeCents)} (taxes incluses) sont retenus. Le reste, ${formatCad(quote.refundCents)}, est remboursé.`
-              : 'Tu es à plus de 24 h du rendez-vous. Aucun frais ne s’applique.'}
+              : owing
+                ? `Moins de 24 h, payé sur place. Aucun prélèvement maintenant. ${formatCad(quote.feeOwingCents)} seront dus à ta prochaine visite.`
+                : quote.within24h
+                  ? 'Moins de 24 h, mais ce rendez-vous est payé sur place. Le salon ne retient aucun frais.'
+                  : 'Tu es à plus de 24 h du rendez-vous. Aucun frais ne s’applique.'}
           </Text>
+          {owing && quote.receipt ? (
+            <Text variant="caption" color={theme.color.text.muted}>
+              {quote.receipt}
+            </Text>
+          ) : null}
           {withFee && quote.extraction ? (
             <Text variant="caption" color={theme.color.text.muted}>
               {`Frais d'annulation tardive ${formatCad(quote.feeCents)} (TPS ${formatCad(quote.extraction.gstCents)}, TVQ ${formatCad(quote.extraction.qstCents)} incluses). TPS ${gstNumber}. TVQ ${qstNumber}.`}

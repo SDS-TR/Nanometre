@@ -11,6 +11,8 @@ export type Draft = {
   paymentMethod: PaymentMethod;
   redeem: boolean;
   bookingId?: string;
+  promoCode?: string | null;
+  discountCents?: number;
 };
 
 type DraftContext = {

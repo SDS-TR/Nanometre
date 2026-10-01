@@ -209,6 +209,10 @@ export function createSupabaseRepository(supabase: SupabaseClient): Repository {
           p_redeem: input.redeemReward,
         }),
       );
+      if (input.promoCode && !input.redeemReward) {
+        const { error } = await supabase.rpc('apply_promo', { p_booking: id, p_code: input.promoCode });
+        fail(error);
+      }
       return this.getBooking(id);
     },
     async markPaid(bookingId) {
@@ -247,6 +251,116 @@ export function createSupabaseRepository(supabase: SupabaseClient): Repository {
         throw new Error('Stripe n’a pas renvoyé de PaymentIntent.');
       }
       return { mode: 'stripe' as const, clientSecret };
+    },
+    async validatePromo(input) {
+      const data = await rows<{ code: string; discountCents: number }>(
+        supabase.rpc('validate_promo', { p_code: input.code, p_date: input.date, p_subtotal: input.subtotalCents }),
+      );
+      return data;
+    },
+    async setNotificationOptIn(enabled) {
+      const { error } = await supabase.rpc('set_notification_opt_in', { p_enabled: enabled });
+      fail(error);
+    },
+    async notificationOptIn() {
+      return rows<boolean>(supabase.rpc('notification_opt_in'));
+    },
+    listMyNotifications: () => rows(supabase.rpc('my_notifications')),
+    getDashboard: (input) => rows(supabase.rpc('admin_dashboard', { p_anchor: input.anchor, p_period: input.period })),
+    getDay: (date) => rows(supabase.rpc('admin_day', { p_date: date })),
+    getAgenda: (input) => rows(supabase.rpc('admin_agenda', { p_date: input.date, p_barber: input.barberId ?? null })),
+    async blockSlot(input) {
+      const { error } = await supabase.rpc('admin_block', {
+        p_barber: input.barberId,
+        p_date: input.date,
+        p_start: input.startMinute,
+        p_end: input.endMinute,
+        p_reason: input.reason,
+      });
+      fail(error);
+    },
+    async unblockSlot(blockId) {
+      const { error } = await supabase.rpc('admin_unblock', { p_id: blockId });
+      fail(error);
+    },
+    async moveBooking(input) {
+      const { error } = await supabase.rpc('admin_move', { p_booking: input.bookingId, p_date: input.date, p_start: input.startMinute });
+      fail(error);
+    },
+    async honorBooking(bookingId) {
+      const { error } = await supabase.rpc('admin_honor', { p_booking: bookingId });
+      fail(error);
+    },
+    async cancelClientBooking(bookingId) {
+      const { error } = await supabase.rpc('admin_cancel', { p_booking: bookingId });
+      fail(error);
+    },
+    listPayments: (input) => rows(supabase.rpc('admin_payments', { p_from: input.from, p_to: input.to })),
+    async refundFee(bookingId) {
+      const { error } = await supabase.rpc('admin_refund_fee', { p_booking: bookingId });
+      fail(error);
+    },
+    listClients: () => rows(supabase.rpc('admin_clients')),
+    async saveClientNote(clientId, note) {
+      const { error } = await supabase.rpc('admin_save_note', { p_client: clientId, p_note: note });
+      fail(error);
+    },
+    listStaffReviews: () => rows(supabase.rpc('admin_reviews')),
+    async moderateReview(reviewId, status) {
+      const { error } = await supabase.rpc('admin_moderate_review', { p_id: reviewId, p_status: status });
+      fail(error);
+    },
+    listPromos: () => rows(supabase.rpc('admin_promos')),
+    async savePromo(promo) {
+      const { error } = await supabase.rpc('admin_save_promo', { p_promo: promo });
+      fail(error);
+    },
+    listTeam: () => rows(supabase.rpc('admin_team')),
+    async setMemberRole(userId, role) {
+      const { error } = await supabase.rpc('admin_set_role', { p_user: userId, p_role: role });
+      fail(error);
+    },
+    async setMemberActive(userId, active) {
+      const { error } = await supabase.rpc('admin_set_active', { p_user: userId, p_active: active });
+      fail(error);
+    },
+    inviteMember: (input) =>
+      rows(supabase.rpc('admin_invite', { p_email: input.email, p_name: input.fullName, p_role: input.role, p_barber: input.barberId })),
+    async updateSalonSettings(input) {
+      const { error } = await supabase.rpc('admin_update_salon', {
+        p_open: input.openMinute,
+        p_close: input.closeMinute,
+        p_policy: input.onsiteLatePolicy,
+      });
+      fail(error);
+      const salon = await rows<Salon[]>(supabase.rpc('salon_public'));
+      return salon[0];
+    },
+    async updateService(input) {
+      const { error } = await supabase.rpc('admin_update_service', { p_id: input.serviceId, p_price: input.priceCents });
+      fail(error);
+    },
+    async setBarberWeekday(input) {
+      const { error } = await supabase.rpc('admin_set_weekday', {
+        p_barber: input.barberId,
+        p_weekday: input.weekday,
+        p_open: input.open,
+      });
+      fail(error);
+    },
+    listAudit: () => rows(supabase.rpc('admin_audit')),
+    getBarberSetup: () => rows(supabase.rpc('admin_barber_setup')),
+    async setBarberService(input) {
+      const { error } = await supabase.rpc('admin_set_service', {
+        p_barber: input.barberId,
+        p_service: input.serviceId,
+        p_eligible: input.eligible,
+      });
+      fail(error);
+    },
+    async setPushToken(token) {
+      const { error } = await supabase.rpc('set_push_token', { p_token: token });
+      fail(error);
     },
   };
 }

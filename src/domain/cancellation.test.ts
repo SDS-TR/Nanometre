@@ -82,7 +82,26 @@ describe('frais d’annulation tardive', () => {
     expect(quote.allowed).toBe(true);
     expect(quote.within24h).toBe(true);
     expect(quote.feeApplies).toBe(false);
+    expect(quote.feeOwingCents).toBe(0);
     expect(quote.refundCents).toBe(0);
+  });
+
+  it('peut inscrire le frais tardif sur place comme dû à la prochaine visite', () => {
+    const startsAt = new Date('2026-10-02T14:00:00.000Z');
+    const quote = quoteCancellation({
+      startsAt,
+      now: new Date(startsAt.getTime() - 2 * 60 * 60 * 1000),
+      preTaxCents: 5500,
+      totalCents: 6324,
+      paymentMethod: 'sur_place',
+      paymentStatus: 'a_encaisser',
+      status: 'confirme',
+      onsiteLatePolicy: 'a_la_prochaine',
+    });
+    expect(quote.feeApplies).toBe(false);
+    expect(quote.feeOwingCents).toBe(2750);
+    expect(quote.refundCents).toBe(0);
+    expect(quote.receipt).toContain('27,50');
   });
 
   it('refuse une annulation déjà passée ou déjà faite', () => {

@@ -40,7 +40,13 @@ export default function PaiementScreen() {
     const services = await repository.getServices();
     return services.find((service) => service.id === draft.serviceId) ?? null;
   }, [draft.serviceId, booking?.id]);
-  const preTax = booking ? booking.priceCents : draft.redeem ? 0 : preview.data?.priceCents;
+  const preTax = booking
+    ? booking.priceCents
+    : draft.redeem
+      ? 0
+      : preview.data
+        ? Math.max(0, preview.data.priceCents - (draft.discountCents ?? 0))
+        : undefined;
   const shown = preTax == null ? null : booking ? booking.totalCents : computeLineTaxes(preTax).totalCents;
   const label = shown == null ? 'Payer' : shown === 0 ? 'Confirmer · coupe offerte' : `Payer ${formatCad(shown)}`;
 
@@ -66,6 +72,7 @@ export default function PaiementScreen() {
       startMinute: draft.startMinute,
       paymentMethod: draft.paymentMethod,
       redeemReward: draft.redeem,
+      promoCode: draft.redeem ? null : draft.promoCode,
     });
     setPendingId(created.id);
     update({ bookingId: created.id });

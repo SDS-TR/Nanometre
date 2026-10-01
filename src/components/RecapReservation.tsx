@@ -14,6 +14,9 @@ type Props = {
   gstCents: number;
   qstCents: number;
   totalCents: number;
+  discountCents?: number;
+  promoCode?: string | null;
+  policyNote?: string;
 };
 
 export function RecapReservation(props: Props) {
@@ -40,6 +43,7 @@ export function RecapReservation(props: Props) {
         ))}
       </View>
       <View style={{ gap: theme.space[2] }}>
+        {props.discountCents ? <TaxRow label={props.promoCode ? `Code ${props.promoCode}` : 'Réduction'} value={`-${formatCad(props.discountCents)}`} /> : null}
         <TaxRow label="Sous-total" value={formatCad(props.subtotalCents)} />
         <TaxRow label="TPS (5 %)" value={formatCad(props.gstCents)} />
         <TaxRow label="TVQ (9,975 %)" value={formatCad(props.qstCents)} />
@@ -48,7 +52,8 @@ export function RecapReservation(props: Props) {
       </View>
       <View style={{ backgroundColor: theme.color.info.subtle, borderRadius: theme.radius.md, padding: theme.space[3] }}>
         <Text variant="body-sm" color={theme.color.info.onSubtle}>
-          Annulation gratuite jusqu’à 24 h avant. Moins de 24 h : des frais de 50 % du prix avant taxes sont retenus si le rendez-vous est payé en ligne.
+          {props.policyNote ??
+            'Annulation gratuite jusqu’à 24 h avant. Moins de 24 h : des frais de 50 % du prix avant taxes sont retenus si le rendez-vous est payé en ligne. Sur place, aucun frais par défaut.'}
         </Text>
       </View>
     </View>

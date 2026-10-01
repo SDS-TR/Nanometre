@@ -45,15 +45,19 @@ export function generateSlots(input: {
   blocked?: Interval[];
   /** Si le jour est aujourd'hui, les départs déjà passés sont indisponibles. */
   earliestStartMinute?: number;
+  openMinute?: number;
+  closeMinute?: number;
 }): Slot[] {
   if (!isOpenWeekday(input.weekday)) {
     return [];
   }
+  const openMinute = input.openMinute ?? OPEN_MINUTE;
+  const closeMinute = input.closeMinute ?? CLOSE_MINUTE;
   const occupancy = occupancyMinutes(input.durationMinutes);
-  const lastStart = CLOSE_MINUTE - occupancy;
+  const lastStart = closeMinute - occupancy;
   const busy = [...(input.busy ?? []), ...(input.blocked ?? [])];
   const slots: Slot[] = [];
-  for (let start = OPEN_MINUTE; start <= lastStart; start += STEP_MINUTES) {
+  for (let start = openMinute; start <= lastStart; start += STEP_MINUTES) {
     const occupancyEnd = start + occupancy;
     const window = { start, end: occupancyEnd };
     const overlaps = busy.some((interval) => intervalsOverlap(window, interval));

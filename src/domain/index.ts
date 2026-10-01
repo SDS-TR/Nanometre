@@ -5,3 +5,7 @@ export * from './format';
 export * from './slots';
 export * from './loyalty';
 export * from './zonedTime';
+export * from './permissions';
+export * from './promo';
+export * from './notifications';
+export * from './dashboard';
