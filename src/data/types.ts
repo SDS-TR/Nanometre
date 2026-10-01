@@ -168,7 +168,7 @@ export interface Repository {
   listTeam(): Promise<TeamMember[]>;
   setMemberRole(userId: string, role: Role): Promise<void>;
   setMemberActive(userId: string, active: boolean): Promise<void>;
-  inviteMember(input: { fullName: string; email: string; role: Role; barberId: string | null }): Promise<{ password: string }>;
+  inviteMember(input: { fullName: string; email: string; role: Role; barberId: string | null }): Promise<{ invited: true }>;
   updateSalonSettings(input: { openMinute: number; closeMinute: number; onsiteLatePolicy: Salon['onsiteLatePolicy'] }): Promise<Salon>;
   updateService(input: { serviceId: string; priceCents: number }): Promise<void>;
   setBarberWeekday(input: { barberId: string; weekday: number; open: boolean }): Promise<void>;

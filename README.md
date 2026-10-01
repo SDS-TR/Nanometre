@@ -143,6 +143,8 @@ Le jeu `admin_data.json` décrit la journée du 3 octobre 2026, le 6 octobre (Ju
 
 `/admin` exige une session. Un client tombe sur « Accès refusé ». Le propriétaire a Tableau, Agenda, Paiements et Gestion. Le coiffeur a Ma journée, son agenda, ses clients (sans montant) et ses avis publiés, en lecture seule. `TabBarAdmin` reçoit le rôle. Les mêmes refus sont appliqués dans le dépôt local et dans les fonctions SQL (`Accès refusé`, SQLSTATE 42501). Le dernier propriétaire actif ne peut pas être rétrogradé ni désactivé. Les changements de rôle, les désactivations et les remboursements de frais sont écrits dans le journal.
 
+Dans Gestion, une invitation hébergée appelle la fonction Edge `invite-team-member`. Elle vérifie que l’appelant est propriétaire, puis, avec la clé `service_role`, envoie `auth.admin.inviteUserByEmail`, rattache le profil au rôle et à la chaise choisis, et écrit le journal. La réponse est `{ invited: true }` : aucun mot de passe n’est renvoyé ni affiché. En mode local, le compte est créé dans l’application et se connecte avec le mot de passe de démonstration déjà documenté.
+
 Le tableau calcule les revenus hors taxes et TTC, l’occupation et les coupes à partir des rendez-vous chargés. La vue de démonstration s’ouvre sur le samedi 3 octobre 2026. Ce ne sont pas les agrégats publiés du grand livre (4 943 rendez-vous).
 
 Honorer une visite confirmée dont l’heure est passée ajoute les points et le tampon. Une coupe offerte déjà consommée à la réservation n’en ajoute pas.

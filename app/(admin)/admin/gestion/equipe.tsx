@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { Button } from '../../../../src/components/Button';
+import { Chip } from '../../../../src/components/Chip';
 import { Header } from '../../../../src/components/Header';
 import { Input } from '../../../../src/components/Input';
 import { Screen } from '../../../../src/components/Screen';
@@ -17,9 +18,11 @@ export default function EquipeScreen() {
   const { user, repo } = useAppState();
   const team = useAsync((repository) => repository.listTeam(), [user?.id]);
   const audit = useAsync((repository) => repository.listAudit(), [user?.id]);
+  const barbers = useAsync((repository) => repository.getBarbers(), []);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('coiffeur');
+  const [barberId, setBarberId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   if (user?.role !== 'proprietaire') {
@@ -82,14 +85,25 @@ export default function EquipeScreen() {
             { value: 'proprietaire', label: 'Propriétaire' },
           ]}
         />
+        {role === 'coiffeur' ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space[2] }}>
+            {barbers.data?.map((barber) => (
+              <Chip key={barber.id} label={barber.shortName} selected={barberId === barber.id} onPress={() => setBarberId(barber.id)} />
+            ))}
+          </View>
+        ) : null}
         {message ? <Text variant="body-sm">{message}</Text> : null}
         <Button
           label="Envoyer l’invitation"
           onPress={() => {
+            if (role === 'coiffeur' && !barberId) {
+              setError('Choisis la chaise de ce coiffeur.');
+              return;
+            }
             setError(null);
             void repo
-              .inviteMember({ fullName: name, email, role, barberId: null })
-              .then((result) => setMessage(`Compte créé. Mot de passe de démonstration : ${result.password}`))
+              .inviteMember({ fullName: name, email, role, barberId: role === 'coiffeur' ? barberId : null })
+              .then(() => setMessage(repo.mode === 'local' ? 'Compte ajouté à l’équipe.' : 'Invitation envoyée. La personne reçoit un courriel pour ouvrir son compte.'))
               .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Invitation impossible.'));
           }}
         />

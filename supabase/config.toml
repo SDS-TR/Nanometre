@@ -27,3 +27,6 @@ verify_jwt = false
 
 [functions.dispatch-notifications]
 verify_jwt = true
+
+[functions.invite-team-member]
+verify_jwt = true

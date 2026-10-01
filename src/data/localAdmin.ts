@@ -565,20 +565,22 @@ export function createAdmin(input: {
       if (state.users.some((item) => item.email.toLowerCase() === payload.email.trim().toLowerCase())) {
         throw new Error('Ce courriel a déjà un compte.');
       }
-      const password = 'nanometre';
+      if (payload.role === 'client') {
+        throw new AccessDeniedError();
+      }
       state.users.push({
         id: crypto.randomUUID(),
         email: payload.email.trim().toLowerCase(),
-        password,
+        password: 'nanometre',
         fullName: payload.fullName.trim(),
         role: payload.role,
         barberId: payload.barberId,
         phone: null,
         active: true,
       });
-      audit('invitation', `${payload.fullName} · ${payload.role}`);
+      audit('invitation', `${payload.fullName.trim()} · ${payload.role} · ${payload.barberId ?? ''}`);
       emit();
-      return { password };
+      return { invited: true as const };
     },
     async updateSalonSettings(payload: { openMinute: number; closeMinute: number; onsiteLatePolicy: Salon['onsiteLatePolicy'] }) {
       const user = actor();

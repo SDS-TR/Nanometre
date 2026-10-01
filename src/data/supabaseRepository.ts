@@ -21,6 +21,23 @@ type ProfileRow = {
   barber_id: string | null;
 };
 
+async function inviteFailure(error: unknown, data: unknown): Promise<string> {
+  if (data && typeof data === 'object' && 'error' in data && typeof data.error === 'string') {
+    return data.error;
+  }
+  const context = error && typeof error === 'object' && 'context' in error ? (error as { context?: { json?: () => Promise<unknown> } }).context : undefined;
+  if (context && typeof context.json === 'function') {
+    const body = await context.json().catch(() => null);
+    if (body && typeof body === 'object' && 'error' in body && typeof body.error === 'string') {
+      return body.error;
+    }
+  }
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return 'Invitation impossible.';
+}
+
 function fail(error: { message: string } | null): void {
   if (error) {
     throw new Error(error.message);
@@ -324,8 +341,20 @@ export function createSupabaseRepository(supabase: SupabaseClient): Repository {
       const { error } = await supabase.rpc('admin_set_active', { p_user: userId, p_active: active });
       fail(error);
     },
-    inviteMember: (input) =>
-      rows(supabase.rpc('admin_invite', { p_email: input.email, p_name: input.fullName, p_role: input.role, p_barber: input.barberId })),
+    async inviteMember(input) {
+      const { data, error } = await supabase.functions.invoke('invite-team-member', {
+        body: {
+          fullName: input.fullName,
+          email: input.email,
+          role: input.role,
+          barberId: input.barberId,
+        },
+      });
+      if (error || (data && typeof data === 'object' && 'error' in data && data.error)) {
+        throw new Error(await inviteFailure(error, data));
+      }
+      return { invited: true as const };
+    },
     async updateSalonSettings(input) {
       const { error } = await supabase.rpc('admin_update_salon', {
         p_open: input.openMinute,
