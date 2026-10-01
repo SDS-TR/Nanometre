@@ -6,13 +6,32 @@ Le thème sombre est le défaut. Le thème clair suit le réglage du profil. Tou
 
 ## Lancer l’app
 
+Il faut Node.js 22 (https://nodejs.org). Les commandes ci-dessous partent du dossier du projet.
+
+macOS ou Linux :
+
 ```bash
 npm install
 cp .env.example .env
-npm run web
+npx expo start
 ```
 
-Le serveur web écoute sur [http://127.0.0.1:43123](http://127.0.0.1:43123). Sans variable d’environnement, les données sont locales : le catalogue, les rendez-vous de démonstration et les trois comptes vivent dans l’application.
+Windows (PowerShell) :
+
+```powershell
+npm install
+Copy-Item .env.example .env
+npx expo start
+```
+
+Si `npm install` s’arrête sur un conflit de dépendances, relancer avec `npm install --legacy-peer-deps`.
+
+`npx expo start` ouvre Metro. Ensuite :
+
+- **Web** : appuyer sur `w`. Le script `npm run web` ouvre aussi le navigateur sur http://127.0.0.1:43123.
+- **Expo Go** : installer Expo Go sur le téléphone, le mettre sur le même Wi-Fi que le PC, puis scanner le QR code du terminal. Sur Windows, autoriser Node dans le pare-feu si le téléphone ne joint pas Metro.
+
+Sans variable d’environnement, ou avec `EXPO_PUBLIC_DATA_SOURCE=local` dans `.env`, les données restent dans l’application : catalogue, rendez-vous de démonstration et comptes ci-dessous. Ne pas y coller de clé secrète Stripe ni de clé `service_role`.
 
 | Compte | Courriel | Mot de passe | Rôle |
 | --- | --- | --- | --- |
