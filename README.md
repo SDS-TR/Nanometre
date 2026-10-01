@@ -176,7 +176,7 @@ L’annulation tardive payée sur place est un réglage du salon : aucun frais (
 
 Le profil active ou coupe les avis. Sans opt-in, rien n’est planifié. Avec opt-in : confirmation au client et au coiffeur, rappels 24 h et 2 h avant (omis s’ils sont déjà passés), et un avis au client et au coiffeur si le rendez-vous est annulé ou déplacé. Le lien interne est `/rendez-vous?booking=…` (schéma `lenanometre://`).
 
-Sur le natif, `expo-notifications` demande la permission et enregistre le jeton Expo. Le web affiche la liste dans le profil. L’envoi serveur est la fonction `dispatch-notifications`, à appeler en cron avec la clé `service_role` :
+Dans Expo Go (SDK 53 et suivants), les notifications distantes ne sont plus fournies. L’app ne charge pas `expo-notifications` dans ce cas : l’opt-in et la liste dans le profil restent disponibles, sans jeton et sans erreur. Un development build ou un build EAS demande la permission et enregistre le jeton Expo. `Constants.executionEnvironment` vaut `storeClient` aussi pour `expo-dev-client`, donc le critère utilisé est la présence d’Expo Go, pas cet environnement. Le web affiche la liste dans le profil. L’envoi serveur est la fonction `dispatch-notifications`, à appeler en cron avec la clé `service_role` :
 
 ```bash
 curl -X POST "$SUPABASE_URL/functions/v1/dispatch-notifications" \
