@@ -38,6 +38,6 @@ jobs:
           deno-version: v2.x
       - run: deno check supabase/functions/stripe-webhook/index.ts supabase/functions/dispatch-notifications/index.ts supabase/functions/expire-checkouts/index.ts supabase/functions/process-refunds/index.ts supabase/functions/purge-notes/index.ts supabase/functions/create-payment-intent/index.ts supabase/functions/process-refund/index.ts supabase/functions/delete-account/index.ts supabase/functions/abandon-checkout/index.ts supabase/functions/invite-team-member/index.ts
       - run: node scripts/boot-functions.mjs
-      - run: deno test --node-modules-dir=none --allow-env --allow-net --allow-read supabase/functions/stripe-webhook/webhook_test.ts
+      - run: deno test --node-modules-dir=none --allow-env --allow-net --allow-read supabase/functions/_shared/serve_test.ts supabase/functions/stripe-webhook/webhook_test.ts
         env:
           TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/nanometre

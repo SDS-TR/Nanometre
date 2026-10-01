@@ -1,7 +1,7 @@
 import Stripe from 'stripe';
 import { describe, expect, it, vi } from 'vitest';
 import { orphanRefundCents } from '../lib/payments';
-import { handleStripeEvent, type WebhookDeps, type WebhookEvent } from '../lib/stripeWebhook';
+import { handleStripeEvent, type StripeClaim, type WebhookDeps, type WebhookEvent } from '../lib/stripeWebhook';
 
 const secret = `whsec_${'a'.repeat(32)}`;
 const stripe = new Stripe('sk_test_51Nanometre', { apiVersion: '2025-08-27.basil' });
@@ -20,7 +20,7 @@ function signed(object: Record<string, unknown>, type: string, id = 'evt_test'):
 
 function deps(partial: Partial<WebhookDeps> = {}): WebhookDeps {
   return {
-    claimEvent: vi.fn(async () => true),
+    claimEvent: vi.fn(async () => 'acquis' as const),
     finishEvent: vi.fn(async () => undefined),
     getBooking: vi.fn(async () => ({ id: 'b1', status: 'en_attente_paiement' })),
     getPayment: vi.fn(async () => ({ feeCents: 0, stripeRefundCents: 0 })),
@@ -46,7 +46,7 @@ describe('webhook Stripe signé', () => {
     const confirmPayment = vi.fn(async () => null);
     const result = await handleStripeEvent(
       signed({ id: 'pi_1', object: 'payment_intent', amount_received: 6324, currency: 'cad', metadata: { bookingId: 'b1' } }, 'payment_intent.succeeded', 'evt_dup'),
-      deps({ claimEvent: async () => false, confirmPayment }),
+      deps({ claimEvent: async () => 'traite', confirmPayment }),
     );
     expect(result.status).toBe(200);
     expect(result.body.duplicate).toBe(true);
@@ -143,13 +143,13 @@ describe('webhook Stripe signé', () => {
   it('relâche un échec puis traite la relivraison', async () => {
     const state = new Map<string, 'en_cours' | 'traite'>();
     let confirms = 0;
-    const claimEvent = async (id: string) => {
+    const claimEvent = async (id: string): Promise<StripeClaim> => {
       const current = state.get(id);
       if (current === 'traite' || current === 'en_cours') {
-        return false;
+        return current;
       }
       state.set(id, 'en_cours');
-      return true;
+      return 'acquis';
     };
     const finishEvent = async (id: string, ok: boolean) => {
       if (ok) {
@@ -178,5 +178,21 @@ describe('webhook Stripe signé', () => {
     const third = await handleStripeEvent(event, wired());
     expect(third.body.duplicate).toBe(true);
     expect(confirms).toBe(2);
+  });
+
+  it('répond 503 pendant le bail pour que Stripe relivre', async () => {
+    const finishEvent = vi.fn(async () => undefined);
+    const confirmPayment = vi.fn(async () => null);
+    const result = await handleStripeEvent(
+      signed(
+        { id: 'pi_1', object: 'payment_intent', amount_received: 6324, currency: 'cad', metadata: { bookingId: 'b1' } },
+        'payment_intent.succeeded',
+        'evt_busy',
+      ),
+      deps({ claimEvent: async () => 'en_cours', finishEvent, confirmPayment }),
+    );
+    expect(result.status).toBe(503);
+    expect(confirmPayment).not.toHaveBeenCalled();
+    expect(finishEvent).not.toHaveBeenCalled();
   });
 });

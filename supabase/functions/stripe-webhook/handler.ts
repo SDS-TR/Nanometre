@@ -66,7 +66,10 @@ export async function handleWebhookRequest(req: Request, runtime: WebhookRuntime
       if (error) {
         throw new Error(error.message);
       }
-      return data === true;
+      if (data === 'acquis' || data === 'traite' || data === 'en_cours') {
+        return data;
+      }
+      return data === true ? 'acquis' : 'en_cours';
     },
     finishEvent: async (id, ok) => {
       const { error } = await admin.rpc('finish_stripe_event', { p_id: id, p_ok: ok });

@@ -10,8 +10,11 @@ export type WebhookEvent = {
 
 export type WebhookResult = { status: number; body: Record<string, unknown> };
 
+/** acquis : ce passage traite. traite : déjà fini. en_cours : un autre passage tient le bail. */
+export type StripeClaim = 'acquis' | 'traite' | 'en_cours';
+
 export type WebhookDeps = {
-  claimEvent: (id: string) => Promise<boolean>;
+  claimEvent: (id: string) => Promise<StripeClaim>;
   finishEvent: (id: string, ok: boolean) => Promise<void>;
   getBooking: (id: string) => Promise<{ id: string; status: string } | null>;
   getPayment: (bookingId: string) => Promise<{ feeCents: number; stripeRefundCents: number } | null>;
@@ -153,8 +156,11 @@ async function dispatchEvent(event: WebhookEvent, deps: WebhookDeps): Promise<We
 
 export async function handleStripeEvent(event: WebhookEvent, deps: WebhookDeps): Promise<WebhookResult> {
   const claimed = await deps.claimEvent(event.id);
-  if (!claimed) {
+  if (claimed === 'traite') {
     return { status: 200, body: { received: true, duplicate: true } };
+  }
+  if (claimed !== 'acquis') {
+    return { status: 503, body: { error: 'Traitement en cours' } };
   }
   let result: WebhookResult;
   try {

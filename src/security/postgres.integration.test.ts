@@ -371,6 +371,22 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
     const salon = await pool.query(`select public.salon_public() as data`);
     expect(salon.rows[0].data[0].taxNumbersPlaceholder).toBe(true);
   });
+
+  it('répond en_cours pendant le bail et traite seulement après succès', async () => {
+    const first = await withRole(pool, 'service_role', {}, (client) =>
+      client.query(`select public.claim_stripe_event('evt_busy') as claim`),
+    );
+    const second = await withRole(pool, 'service_role', {}, (client) =>
+      client.query(`select public.claim_stripe_event('evt_busy') as claim`),
+    );
+    expect(first.rows[0].claim).toBe('acquis');
+    expect(second.rows[0].claim).toBe('en_cours');
+    await withRole(pool, 'service_role', {}, (client) => client.query(`select public.finish_stripe_event('evt_busy', true)`));
+    const third = await withRole(pool, 'service_role', {}, (client) =>
+      client.query(`select public.claim_stripe_event('evt_busy') as claim`),
+    );
+    expect(third.rows[0].claim).toBe('traite');
+  });
 });
 
 async function insertUser(pool: pg.Pool, id: string, email: string, name: string, role: string, barber: string | null) {

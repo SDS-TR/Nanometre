@@ -1,16 +1,26 @@
 import pg from 'npm:pg@8.16.3';
 import Stripe from 'npm:stripe@18.5.0';
+import { assertDisposableDatabase } from '../../../src/security/databaseGuard.ts';
 import { STRIPE_API_VERSION } from '../_shared/payments.ts';
 import { handleWebhookRequest, type WebhookAdmin, type WebhookRuntime } from './handler.ts';
 
 const url = Deno.env.get('TEST_DATABASE_URL') || Deno.env.get('DATABASE_URL') || '';
-const localHost = (value: string) => {
-  const host = new URL(value.replace(/^postgres(?:ql)?:\/\//i, 'http://')).hostname.replace(/^\[|\]$/g, '');
-  return host === 'localhost' || host === '127.0.0.1' || host === '::1';
-};
-if (url && !localHost(url) && Deno.env.get('ALLOW_DISPOSABLE_TEST_DB') !== '1') {
-  throw new Error(`Refus de toucher ${url}. Le test Deno n’accepte qu’une base locale.`);
+if (url) {
+  assertDisposableDatabase(url, Deno.env.get('ALLOW_DISPOSABLE_TEST_DB') === '1');
 }
+
+Deno.test('le refus Deno ne contient pas le mot de passe', () => {
+  const secret = 'mot-de-passe-secret';
+  try {
+    assertDisposableDatabase(`postgres://postgres:${secret}@localhost/nanometre?host=db.x.supabase.co`, false);
+    throw new Error('aurait dû refuser');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message === 'aurait dû refuser' || message.includes(secret) || message.includes('postgres://')) {
+      throw new Error(`fuite ou absence de refus: ${message}`);
+    }
+  }
+});
 
 const secret = `whsec_${'b'.repeat(32)}`;
 const bookingId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1';
@@ -137,7 +147,7 @@ Deno.test({
       return { id: 're_deno' };
     }) as typeof stripe.refunds.create;
     try {
-      await admin.raw.query(`delete from public.stripe_events where id = 'evt_deno_retry'`);
+      await admin.raw.query(`delete from public.stripe_events where id in ('evt_deno_retry', 'evt_deno_busy')`);
       await admin.raw.query(`delete from public.bookings where id = $1`, [bookingId]);
       await admin.raw.query(
         `insert into public.bookings (
@@ -198,9 +208,32 @@ Deno.test({
       if (third.status !== 200 || body.duplicate !== true || refunds !== 2) {
         throw new Error(`doublon inattendu ${third.status} ${JSON.stringify(body)} remboursements=${refunds}`);
       }
+      await admin.raw.query(
+        `insert into public.stripe_events (id, status, updated_at) values ('evt_deno_busy', 'en_cours', now())`,
+      );
+      const busyPayload = payload.replace('evt_deno_retry', 'evt_deno_busy');
+      const busySignature = await stripe.webhooks.generateTestHeaderStringAsync({ payload: busyPayload, secret });
+      const busy = await handleWebhookRequest(
+        new Request('http://127.0.0.1/stripe-webhook', {
+          method: 'POST',
+          headers: { 'stripe-signature': busySignature },
+          body: busyPayload,
+        }),
+        runtime,
+      );
+      if (busy.status !== 503) {
+        throw new Error(`bail ${busy.status}: ${await busy.text()}`);
+      }
+      if (refunds !== 2) {
+        throw new Error('le bail a relancé un remboursement');
+      }
+      const still = await admin.raw.query(`select status from public.stripe_events where id = 'evt_deno_busy'`);
+      if (still.rows[0]?.status !== 'en_cours') {
+        throw new Error(`le bail a été clos: ${still.rows[0]?.status}`);
+      }
     } finally {
       await admin.raw.query(`delete from public.bookings where id = $1`, [bookingId]);
-      await admin.raw.query(`delete from public.stripe_events where id = 'evt_deno_retry'`);
+      await admin.raw.query(`delete from public.stripe_events where id in ('evt_deno_retry', 'evt_deno_busy')`);
       await admin.close();
     }
   },
