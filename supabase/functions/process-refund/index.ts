@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 import Stripe from 'npm:stripe@18.5.0';
-
-const STRIPE_API_VERSION = '2025-08-27.basil';
+import { accessLevel } from '../invite-team-member/logic.ts';
+import { STRIPE_API_VERSION, stripeAlreadyRefunded } from '../../../src/lib/payments.ts';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -37,8 +37,12 @@ Deno.serve(async (req) => {
   const { data: booking } = await admin.from('bookings').select('id, client_id').eq('id', bookingId).maybeSingle();
   const { data: actor } = await admin.from('profiles').select('role, active').eq('id', userData.user.id).maybeSingle();
   const isOwner = actor?.role === 'proprietaire' && actor.active !== false;
-  if (!booking || (booking.client_id !== userData.user.id && !isOwner)) {
+  const owns = booking?.client_id === userData.user.id;
+  if (!booking || (!owns && !isOwner)) {
     return json({ error: 'Accès refusé' }, 403);
+  }
+  if (!owns && accessLevel(authorization) !== 'aal2') {
+    return json({ error: 'Vérification renforcée requise' }, 403);
   }
   if (kind === 'fee' && !isOwner) {
     return json({ error: 'Accès refusé' }, 403);
@@ -56,15 +60,23 @@ Deno.serve(async (req) => {
   if (amount <= 0) {
     return json({ issued: false });
   }
-
+  const idempotencyKey = kind === 'fee' ? `refund-${bookingId}-fee` : `refund-${bookingId}-cancel`;
   const stripe = new Stripe(stripeSecret, { apiVersion: STRIPE_API_VERSION, httpClient: Stripe.createFetchHttpClient() });
-  await stripe.refunds.create(
-    { payment_intent: payment.stripe_payment_intent_id, amount, metadata: { bookingId, kind } },
-    { idempotencyKey: kind === 'fee' ? `refund-${bookingId}-fee` : `refund-${bookingId}-cancel` },
-  );
+  try {
+    await stripe.refunds.create(
+      { payment_intent: payment.stripe_payment_intent_id, amount, metadata: { bookingId, kind } },
+      { idempotencyKey },
+    );
+  } catch (error) {
+    if (!stripeAlreadyRefunded(error)) {
+      await admin.rpc('mark_refund_job', { p_key: idempotencyKey, p_ok: false, p_error: error instanceof Error ? error.message : 'Stripe' });
+      return json({ error: 'Remboursement Stripe impossible.' }, 502);
+    }
+  }
   await admin
     .from('payments')
     .update({ stripe_refund_cents: payment.stripe_refund_cents + amount })
     .eq('booking_id', bookingId);
+  await admin.rpc('mark_refund_job', { p_key: idempotencyKey, p_ok: true, p_error: null });
   return json({ issued: true });
 });

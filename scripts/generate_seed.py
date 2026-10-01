@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Construit le jeu de seed à partir de data/admin_data.json.
 
-Écrit src/data/seed.normalized.json (lu par l'app en mode local)
-et supabase/seed.sql (supabase db reset).
+Écrit src/data/seed.normalized.json (lu par l'app en mode local),
+supabase/seed.catalogue.sql (salon, sans comptes) et supabase/seed.demo.sql
+(comptes, profils et rendez-vous fictifs, local seulement).
 """
 
 from __future__ import annotations
@@ -517,6 +518,33 @@ lines.append("cross join (values (2), (3), (4), (5), (6)) as d(weekday)")
 lines.append("on conflict do nothing;")
 lines.append("")
 
+lines.append("insert into public.promo_codes (code, discount_type, value, starts_on, ends_on, usage_limit, usage_count) values")
+promo_rows = []
+for promo in promos:
+    promo_rows.append(
+        "("
+        + ", ".join(
+            [
+                q(promo["code"]),
+                q(promo["discountType"]),
+                str(promo["value"]),
+                q(promo["startsOn"]),
+                q(promo["endsOn"]),
+                str(promo["usageLimit"]),
+                str(promo["usageCount"]),
+            ]
+        )
+        + ")"
+    )
+lines.append(",\n".join(promo_rows) + " on conflict (code) do nothing;")
+lines.append("")
+
+catalogue = [
+    "-- Catalogue du salon. Aucun profil, aucun rendez-vous, aucun mot de passe.",
+    "-- C'est le seul seed applicable à un projet hébergé, et encore : de préférence à la main.",
+    "",
+] + lines
+
 # Auth users for local Supabase only. Written to seed.demo.sql, never to the hosted seed.
 demo_lines = [
     "-- Comptes de démonstration. Uniquement `supabase db reset` en local.",
@@ -550,23 +578,21 @@ demo_lines.append("exception when undefined_table then")
 demo_lines.append("  raise notice 'auth.users absent — le seed local continue sans comptes Auth';")
 demo_lines.append("end $$;")
 demo_lines.append("")
-lines.append("-- Les comptes de démonstration sont dans seed.demo.sql, réservé au `supabase db reset` local.")
-lines.append("")
 
-lines.append("insert into public.profiles (id, role, full_name, phone, barber_id, active) values")
+demo_lines.append("insert into public.profiles (id, role, full_name, phone, barber_id, active) values")
 profile_rows = []
 for user in USERS:
     profile_rows.append(
         f"({sql_uuid(user['id'])}, {q(user['role'])}::public.user_role, {q(user['fullName'])}, {q(user['phone'])}, {sql_uuid(user['barberId'])}, true)"
     )
-lines.append(",\n".join(profile_rows))
-lines.append("on conflict (id) do update set role = excluded.role, full_name = excluded.full_name, barber_id = excluded.barber_id;")
-lines.append("")
-lines.append(
+demo_lines.append(",\n".join(profile_rows))
+demo_lines.append("on conflict (id) do update set role = excluded.role, full_name = excluded.full_name, barber_id = excluded.barber_id;")
+demo_lines.append("")
+demo_lines.append(
     f"insert into public.loyalty_accounts (client_id, points, stamps, rewards_available) values ({sql_uuid(ALEX_ID)}, {ADMIN['alex']['points']}, {ADMIN['alex']['stamps']}, 0)"
 )
-lines.append("on conflict (client_id) do update set points = excluded.points, stamps = excluded.stamps;")
-lines.append("")
+demo_lines.append("on conflict (client_id) do update set points = excluded.points, stamps = excluded.stamps;")
+demo_lines.append("")
 
 
 def timestamptz(date: str, minute: int, plus_minutes: int = 0) -> str:
@@ -575,7 +601,7 @@ def timestamptz(date: str, minute: int, plus_minutes: int = 0) -> str:
     return f"('{date} {hour:02d}:{mins:02d}:00 America/Toronto')::timestamptz"
 
 
-lines.append("insert into public.bookings (id, client_id, client_name, barber_id, service_id, starts_at, ends_at, duration_minutes, price_cents, gst_cents, qst_cents, total_cents, payment_method, status, loyalty_redeemed) values")
+demo_lines.append("insert into public.bookings (id, client_id, client_name, barber_id, service_id, starts_at, ends_at, duration_minutes, price_cents, gst_cents, qst_cents, total_cents, payment_method, status, loyalty_redeemed) values")
 booking_rows = []
 for booking in bookings:
     booking_rows.append(
@@ -601,10 +627,10 @@ for booking in bookings:
         )
         + ")"
     )
-lines.append(",\n".join(booking_rows) + " on conflict (id) do nothing;")
-lines.append("")
+demo_lines.append(",\n".join(booking_rows) + " on conflict (id) do nothing;")
+demo_lines.append("")
 
-lines.append("insert into public.payments (booking_id, method, status, amount_cents, refunded_cents, fee_cents, fee_gst_cents, fee_qst_cents, fee_ht_cents) values")
+demo_lines.append("insert into public.payments (booking_id, method, status, amount_cents, refunded_cents, fee_cents, fee_gst_cents, fee_qst_cents, fee_ht_cents) values")
 payment_rows = []
 for booking in bookings:
     payment_rows.append(
@@ -624,10 +650,10 @@ for booking in bookings:
         )
         + ")"
     )
-lines.append(",\n".join(payment_rows) + ";")
-lines.append("")
+demo_lines.append(",\n".join(payment_rows) + ";")
+demo_lines.append("")
 
-lines.append("insert into public.reviews (id, barber_id, service_id, client_name, stars, body, status, created_at) values")
+demo_lines.append("insert into public.reviews (id, barber_id, service_id, client_name, stars, body, status, created_at) values")
 review_rows = []
 for review in reviews:
     review_rows.append(
@@ -646,31 +672,20 @@ for review in reviews:
         )
         + ")"
     )
-lines.append(",\n".join(review_rows) + " on conflict (id) do nothing;")
-lines.append("")
+demo_lines.append(",\n".join(review_rows) + " on conflict (id) do nothing;")
+demo_lines.append("")
 
-lines.append("insert into public.promo_codes (code, discount_type, value, starts_on, ends_on, usage_limit, usage_count) values")
-promo_rows = []
-for promo in promos:
-    promo_rows.append(
-        "("
-        + ", ".join(
-            [
-                q(promo["code"]),
-                q(promo["discountType"]),
-                str(promo["value"]),
-                q(promo["startsOn"]),
-                q(promo["endsOn"]),
-                str(promo["usageLimit"]),
-                str(promo["usageCount"]),
-            ]
-        )
-        + ")"
-    )
-lines.append(",\n".join(promo_rows) + " on conflict (code) do nothing;")
-lines.append("")
-
-(ROOT / "supabase" / "seed.sql").write_text("\n".join(lines) + "\n")
+stub = [
+    "-- Ne pas exécuter ce fichier.",
+    "-- Projet hébergé : seed.catalogue.sql seulement, et jamais seed.demo.sql.",
+    "-- Local : supabase db reset applique le catalogue puis la démo.",
+    "do $$ begin",
+    "  raise exception 'seed.sql est retiré. Catalogue : seed.catalogue.sql. Démo locale : seed.demo.sql.';",
+    "end $$;",
+    "",
+]
+(ROOT / "supabase" / "seed.catalogue.sql").write_text("\n".join(catalogue) + "\n")
 (ROOT / "supabase" / "seed.demo.sql").write_text("\n".join(demo_lines) + "\n")
-print(f"supabase/seed.sql ({len(lines)} lignes)")
+(ROOT / "supabase" / "seed.sql").write_text("\n".join(stub) + "\n")
+print(f"supabase/seed.catalogue.sql ({len(catalogue)} lignes)")
 print(f"supabase/seed.demo.sql ({len(demo_lines)} lignes)")

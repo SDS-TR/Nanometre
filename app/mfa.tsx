@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { Button } from '../src/components/Button';
 import { Header } from '../src/components/Header';
@@ -11,15 +11,53 @@ import { getSupabase } from '../src/data';
 import { useAppState } from '../src/providers/AppState';
 import { useTheme } from '../src/theme';
 
+type Step = 'loading' | 'enroll' | 'challenge' | 'done';
+
 export default function MfaScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { user, repo } = useAppState();
+  const [step, setStep] = useState<Step>('loading');
   const [secret, setSecret] = useState<string | null>(null);
+  const [qr, setQr] = useState<string | null>(null);
   const [factorId, setFactorId] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (!user || user.role !== 'proprietaire' || repo.mode !== 'supabase') {
+      return;
+    }
+    const supabase = getSupabase();
+    if (!supabase) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const level = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (cancelled) {
+        return;
+      }
+      if (level.data?.currentLevel === 'aal2') {
+        setStep('done');
+        return;
+      }
+      const factors = await supabase.auth.mfa.listFactors();
+      if (cancelled) {
+        return;
+      }
+      const existing = factors.data?.totp?.[0];
+      if (level.data?.nextLevel === 'aal2' && existing) {
+        setFactorId(existing.id);
+        setStep('challenge');
+        return;
+      }
+      setStep('enroll');
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [repo.mode, user]);
 
   if (!user || user.role !== 'proprietaire') {
     return (
@@ -36,7 +74,7 @@ export default function MfaScreen() {
         <Header back title="Vérification" />
         <StateMessage
           title="Projet hébergé"
-          body="Le mode démo n’a pas d’application d’authentification. Sur Supabase, le propriétaire enrôle un TOTP avant les remboursements, l’équipe et les réglages."
+          body="Le mode démo n’a pas d’application d’authentification. Sur Supabase, le propriétaire enrôle un TOTP, puis chaque session suivante redemande le code."
           actionLabel="Retour"
           onAction={() => router.back()}
         />
@@ -57,6 +95,7 @@ export default function MfaScreen() {
     }
     setFactorId(data.id);
     setSecret(data.totp.secret);
+    setQr(data.totp.qr_code);
   }
 
   async function verify() {
@@ -76,7 +115,8 @@ export default function MfaScreen() {
       setError('Code refusé.');
       return;
     }
-    setDone(true);
+    await supabase.auth.refreshSession();
+    setStep('done');
   }
 
   return (
@@ -84,14 +124,33 @@ export default function MfaScreen() {
       <Header back title="Vérification" />
       <View style={{ padding: theme.space[4], gap: theme.space[4] }}>
         <Text variant="heading-lg">Deux étapes</Text>
-        <Text variant="body-md" color={theme.color.text.secondary}>
-          Ajoute Le Nanomètre dans ton application d’authentification. Les actions sensibles exigent ensuite ce code.
-        </Text>
-        {done ? (
-          <Text variant="body-md">C’est en place. Tes prochaines actions d’argent et d’équipe demanderont le code.</Text>
-        ) : (
+        {step === 'loading' ? <Text variant="body-md">On vérifie ta session.</Text> : null}
+        {step === 'done' ? (
           <>
-            <Button label="Afficher la clé" onPress={() => void enroll()} />
+            <Text variant="body-md">La session est au niveau renforcé. L’espace propriétaire est ouvert.</Text>
+            <Button label="Continuer" onPress={() => router.replace('/admin')} />
+          </>
+        ) : null}
+        {step === 'challenge' ? (
+          <>
+            <Text variant="body-md" color={theme.color.text.secondary}>
+              Entre le code de ton application d’authentification pour cette session.
+            </Text>
+            <Input label="Code à 6 chiffres" value={code} onChangeText={setCode} keyboardType="number-pad" error={error ?? undefined} />
+            <Button label="Confirmer" onPress={() => void verify()} />
+          </>
+        ) : null}
+        {step === 'enroll' ? (
+          <>
+            <Text variant="body-md" color={theme.color.text.secondary}>
+              Ajoute Le Nanomètre dans ton application d’authentification. Les actions sensibles et l’espace propriétaire exigent ensuite ce code.
+            </Text>
+            <Button label="Afficher le code" onPress={() => void enroll()} />
+            {qr ? (
+              <Text variant="body-sm" color={theme.color.text.secondary}>
+                Scanne le code dans ton application, ou saisis la clé.
+              </Text>
+            ) : null}
             {secret ? (
               <Text variant="body-sm" color={theme.color.text.secondary}>
                 {`Clé : ${secret}`}
@@ -100,7 +159,7 @@ export default function MfaScreen() {
             <Input label="Code à 6 chiffres" value={code} onChangeText={setCode} keyboardType="number-pad" error={error ?? undefined} />
             <Button label="Confirmer" onPress={() => void verify()} />
           </>
-        )}
+        ) : null}
       </View>
     </Screen>
   );

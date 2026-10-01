@@ -484,6 +484,12 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       state.sessionUserId = null;
       emit();
     },
+    async requestAccountDeletion(email: string) {
+      const trimmed = email.trim();
+      if (!trimmed.includes('@')) {
+        throw new Error('Courriel invalide.');
+      }
+    },
     async deleteAccount(confirmation) {
       await ready;
       if (confirmation !== 'SUPPRIMER') {

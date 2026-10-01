@@ -88,7 +88,7 @@ supabase start
 supabase db reset
 ```
 
-`db reset` applique les migrations, puis `supabase/seed.demo.sql` (comptes locaux) et `supabase/seed.sql`. Le script `scripts/seed-hosted.mjs` refuse toute base qui n’est pas locale et n’insère jamais ces comptes.
+`db reset` applique les migrations, puis `supabase/seed.catalogue.sql` et `supabase/seed.demo.sql` (comptes, profils et rendez-vous fictifs, local seulement). `scripts/seed-hosted.mjs` refuse toute base qui n’est pas locale et n’applique que le catalogue. `seed.sql` refuse de s’exécuter.
 
 Pour régénérer le SQL et `src/data/seed.normalized.json` :
 
@@ -183,6 +183,26 @@ Dans Expo Go (SDK 53 et suivants), les notifications distantes ne sont plus four
 curl -X POST "$SUPABASE_URL/functions/v1/dispatch-notifications" \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
+
+## Étapes manuelles (Supabase, Stripe, boutiques)
+
+Le dépôt ne déploie pas le projet hébergé. Avant la première mise en production :
+
+- Sauvegarde PITR ou `pg_dump` avant d’appliquer les migrations.
+- Contrôles avant migration : `select id, role, barber_id from profiles where role = 'coiffeur' and barber_id is null;` et `select barber_id, count(*) from profiles where active and barber_id is not null group by 1 having count(*) > 1;` doivent être vides.
+- Supprimer les comptes de démo dans Auth (cela révoque les sessions), puis vérifier `select count(*) from profiles where id in ('11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222', '33333333-3333-4333-8333-333333333333');` vaut 0. Ne jamais lancer `seed.sql` ni `seed.demo.sql` sur le projet hébergé : le premier refuse, le second réinsère Karim comme propriétaire. Le catalogue seul est `seed.catalogue.sql`.
+- Appliquer les migrations dans l’ordre, y compris `20261001160000_refund_status`, `20261001160100_security_hardening`, puis `20261001170000_security_followup`.
+- Après migration, anon ne doit pouvoir exécuter que `salon_public`, `visible_barbers`, `visible_services`, `visible_reviews`, `list_slots` et `request_account_deletion`.
+- Auth : confirmation de courriel, mot de passe d’au moins 12 caractères, HIBP si le plan le permet, limites de débit, CAPTCHA sur inscription, connexion et OTP, expiration OTP d’au plus une heure, invitations de 24 h. Site URL `https://lenanometre.ca`. Liste de redirection : uniquement `https://lenanometre.ca/auth/callback` (retirer localhost, `lenanometre://` et les jokers). Le fichier `config.toml` garde localhost pour `supabase start` local. Activer le TOTP (Auth, Multi-Factor). Changement de courriel sécurisé.
+- Modèle d’invitation : `https://lenanometre.ca/auth/callback?token_hash={{ .TokenHash }}&type=invite`. Le lien magique reste `{{ .ConfirmationURL }}`.
+- Déployer les fonctions. `verify_jwt = false` pour `stripe-webhook`, `dispatch-notifications`, `expire-checkouts`, `process-refunds`, `purge-notes`. `verify_jwt = true` pour `create-payment-intent`, `process-refund`, `delete-account`, `abandon-checkout`, `invite-team-member`. Les crons envoient `Authorization: Bearer $CRON_SECRET`.
+- Secrets : `STRIPE_SECRET_KEY` de préférence une clé restreinte `rk_live_` (PaymentIntents et remboursements), `STRIPE_WEBHOOK_SECRET` de l’endpoint live, `CRON_SECRET` d’au moins 32 caractères distinct de la clé service, `EXPO_ACCESS_TOKEN`, `INVITE_REDIRECT_URL=https://lenanometre.ca/auth/callback`. Ne pas activer la suppression de compte tant que la clé Stripe est absente.
+- Événements Stripe : `payment_intent.succeeded`, `payment_intent.payment_failed`, `charge.refunded`, `refund.updated`, `charge.dispute.created`. Version d’API de l’endpoint : `2025-08-27.basil`. Endpoints et secrets de test et de live séparés. Merchant ID Apple `merchant.ca.lenanometre`. Google Pay de production, sans `EXPO_PUBLIC_GOOGLE_PAY_TEST`.
+- Cron : déposer `CRON_SECRET` dans Vault, le lire dans le job, ne pas le coller en clair dans `cron.job`. `dispatch-notifications` chaque minute, `expire-checkouts` toutes les 5 minutes, `process-refunds` chaque minute, `purge-notes` chaque nuit. Rapprochement : `select booking_id, refunded_cents, stripe_refund_cents from payments where status = 'remboursement_en_cours' and refunded_cents > stripe_refund_cents;`
+- Le propriétaire enrôle le TOTP sur `/mfa`. Les sessions suivantes redemandent le code avant l’espace propriétaire. Activer la sécurité renforcée des push Expo. Publier `https://lenanometre.ca/.well-known/apple-app-site-association` (JSON, sans extension, `application/json`, sans redirection) et `assetlinks.json` avec le certificat de signature Play. La région du projet Supabase (`ca-central-1` de préférence) ne se change pas après création. Vérifier aussi les régions des journaux Stripe et Expo (Loi 25).
+- EAS production : `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` (`pk_live_…`).
+- L’URL Play de suppression est `/suppression` : elle enregistre une demande et ouvre un courriel, sans réinstaller l’app. Les reçus restent six ans, anonymisés. Les notes partent après 24 mois. La politique de confidentialité nomme Supabase, Stripe et Expo, les durées, et le responsable Loi 25.
+- Si un vrai `.env` a déjà quitté le poste, régénérer la clé service Supabase, la clé Stripe et le secret du webhook.
 
 ## Avant la soumission en boutique
 

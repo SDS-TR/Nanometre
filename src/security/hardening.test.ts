@@ -35,17 +35,20 @@ describe('durcissement', () => {
     expect(repo).not.toContain('confirm_online_payment');
     expect(webhook).toContain('constructEventAsync');
     expect(webhook).toContain('createSubtleCryptoProvider');
-    expect(webhook).toContain('p_amount: pi.amount_received');
-    expect(webhook).toContain('p_currency: pi.currency');
-    expect(webhook).toContain('payment_intent.payment_failed');
-    expect(webhook).toContain('charge.refunded');
-    expect(webhook).toContain('charge.dispute.created');
+    expect(webhook).toContain('p_amount: amount');
+    expect(webhook).toContain('p_currency: currency');
+    const handler = read('../lib/stripeWebhook.ts');
+    expect(handler).toContain("event.type === 'payment_intent.payment_failed'");
+    expect(handler).toContain("event.type === 'charge.refunded'");
+    expect(handler).toContain("event.type === 'charge.dispute.created'");
   });
 
   it('retire enqueue et validate_promo du rôle anon', () => {
     expect(hardening).toContain('revoke all on function public.enqueue_booking_notifications(uuid, text, text, text) from public, anon, authenticated');
     expect(hardening).toContain('revoke all on function public.trg_booking_notifications() from public, anon, authenticated');
-    expect(hardening).toContain('alter default privileges in schema public revoke execute on functions from public, anon, authenticated');
+    expect(read('../../supabase/migrations/20261001170000_security_followup.sql')).toContain(
+      'alter default privileges for role postgres revoke execute on functions from public',
+    );
     expect(hardening).toContain('revoke all on function public.validate_promo(text, date, int) from public, anon');
     expect(hardening).toContain('grant execute on function public.validate_promo(text, date, int) to authenticated');
     expect(hardening).toContain('revoke all on function public.anonymize_client(uuid) from public, anon, authenticated');
@@ -95,6 +98,8 @@ describe('durcissement', () => {
   it('garde les comptes de démo hors de la base hébergée', () => {
     expect(seed).not.toContain('nanometre');
     expect(seed).not.toContain('auth.users');
+    expect(seed).not.toContain('11111111-1111-4111-8111-111111111111');
+    expect(hosted).toContain('seed.catalogue.sql');
     expect(hosted).toContain('process.exit(1)');
     expect(hosted).not.toContain('seed.demo.sql');
     expect(demoLoginPrefill('local', true).password).toBe('nanometre');
@@ -120,11 +125,12 @@ describe('durcissement', () => {
     expect(accessLevel('Bearer e30.eyJhbGciOiJub25lIn0.sig')).toBe('aal1');
   });
 
-  it('chiffre la session et refuse une prod incomplète', () => {
+  it('chiffre la session et refuse une prod incomplète', async () => {
     const key = new Uint8Array(32).fill(7);
-    const cipher = encryptSession(key, '{"access_token":"secret"}');
+    const cipher = await encryptSession(key, '{"access_token":"secret"}');
     expect(cipher).not.toContain('secret');
-    expect(decryptSession(key, cipher)).toBe('{"access_token":"secret"}');
+    expect(await decryptSession(key, cipher)).toBe('{"access_token":"secret"}');
+    await expect(decryptSession(key, `${cipher.slice(0, 20)}ff${cipher.slice(22)}`)).rejects.toThrow();
     expect(() => assertRuntimeConfig({ dev: false, source: undefined, url: '', key: '' })).toThrow('Configuration de production incomplète.');
     expect(() => assertRuntimeConfig({ dev: false, source: 'supabase', url: '', key: '' })).toThrow('Configuration de production incomplète.');
     expect(() => assertRuntimeConfig({ dev: false, source: 'local', url: '', key: '' })).not.toThrow();

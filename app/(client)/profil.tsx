@@ -24,6 +24,7 @@ export default function ProfilScreen() {
   const [note, setNote] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmation, setConfirmation] = useState('');
+  const [password, setPassword] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
   return (
     <Screen>
@@ -113,12 +114,21 @@ export default function ProfilScreen() {
               <Text variant="body-sm" color={theme.color.text.secondary}>
                 Tes rendez-vous à venir sont annulés. Les reçus restent, sans ton nom. Écris SUPPRIMER pour confirmer.
               </Text>
-              <Input label="Confirmation" value={confirmation} onChangeText={setConfirmation} autoCapitalize="characters" error={deleteError ?? undefined} />
+              <Input
+                label="Confirmation"
+                value={confirmation}
+                onChangeText={setConfirmation}
+                autoCapitalize="characters"
+                error={deleteError ?? undefined}
+              />
+              {repo.mode === 'supabase' ? (
+                <Input label="Mot de passe" value={password} onChangeText={setPassword} secureTextEntry />
+              ) : null}
               <Button
                 label="Supprimer définitivement"
                 onPress={() => {
                   setDeleteError(null);
-                  void repo.deleteAccount(confirmation).then(
+                  void repo.deleteAccount(confirmation, password || undefined).then(
                     () => {
                       setDeleteOpen(false);
                       router.replace('/');

@@ -150,10 +150,17 @@ export function createSupabaseRepository(supabase: SupabaseClient): Repository {
       fail(error);
       return { demo: false };
     },
-    async completeMagicLink(code: string) {
-      if (code && !code.includes('@')) {
-        const exchanged = await supabase.auth.exchangeCodeForSession(code);
-        fail(exchanged.error);
+    async completeMagicLink(code: string, extra?: { tokenHash?: string; type?: string }) {
+      if (extra?.tokenHash) {
+        const type = extra.type === 'invite' || extra.type === 'email' || extra.type === 'magiclink' || extra.type === 'recovery' ? extra.type : 'email';
+        const verified = await supabase.auth.verifyOtp({ token_hash: extra.tokenHash, type });
+        fail(verified.error);
+      } else {
+        const existing = await supabase.auth.getSession();
+        if (!existing.data.session && code && !code.includes('@')) {
+          const exchanged = await supabase.auth.exchangeCodeForSession(code);
+          fail(exchanged.error);
+        }
       }
       const { data, error } = await supabase.auth.getSession();
       fail(error);
@@ -174,16 +181,20 @@ export function createSupabaseRepository(supabase: SupabaseClient): Repository {
       session = null;
       emit();
     },
-    async deleteAccount(confirmation) {
+    async deleteAccount(confirmation, password) {
       if (confirmation !== 'SUPPRIMER') {
         throw new Error('Écris SUPPRIMER pour confirmer.');
       }
-      const { data, error } = await supabase.functions.invoke('delete-account', { body: { confirmation } });
+      const { data, error } = await supabase.functions.invoke('delete-account', { body: { confirmation, password } });
       if (error || (data && typeof data === 'object' && 'error' in data && data.error)) {
         throw new Error(await inviteFailure(error, data));
       }
       session = null;
       emit();
+    },
+    async requestAccountDeletion(email) {
+      const { error } = await supabase.rpc('request_account_deletion', { p_email: email.trim() });
+      fail(error);
     },
     async updateProfile({ fullName, phone }) {
       if (!session) {
@@ -232,7 +243,7 @@ export function createSupabaseRepository(supabase: SupabaseClient): Repository {
       return booking;
     },
     async createBooking(input: CreateBookingInput) {
-      const id = await rows<string>(
+      const created = await rows<{ ok?: boolean; id?: string; error?: string }>(
         supabase.rpc('create_booking', {
           p_service_id: input.serviceId,
           p_barber_id: input.barberId,
@@ -242,6 +253,10 @@ export function createSupabaseRepository(supabase: SupabaseClient): Repository {
           p_redeem: input.redeemReward,
         }),
       );
+      if (!created.ok || !created.id) {
+        throw new Error(created.error ?? 'Réservation impossible.');
+      }
+      const id = created.id;
       if (input.promoCode && !input.redeemReward) {
         const { error } = await supabase.rpc('apply_promo', { p_booking: id, p_code: input.promoCode });
         fail(error);
@@ -295,10 +310,13 @@ export function createSupabaseRepository(supabase: SupabaseClient): Repository {
       return { mode: 'stripe' as const, clientSecret };
     },
     async validatePromo(input) {
-      const data = await rows<{ code: string; discountCents: number }>(
+      const data = await rows<{ ok?: boolean; code?: string; discountCents?: number; error?: string }>(
         supabase.rpc('validate_promo', { p_code: input.code, p_date: input.date, p_subtotal: input.subtotalCents }),
       );
-      return data;
+      if (data.ok === false || !data.code || data.discountCents == null) {
+        throw new Error(data.error ?? 'Ce code n’est pas reconnu.');
+      }
+      return { code: data.code, discountCents: data.discountCents };
     },
     async setNotificationOptIn(enabled) {
       const { error } = await supabase.rpc('set_notification_opt_in', { p_enabled: enabled });
@@ -336,6 +354,10 @@ export function createSupabaseRepository(supabase: SupabaseClient): Repository {
     async cancelClientBooking(bookingId) {
       const { error } = await supabase.rpc('admin_cancel', { p_booking: bookingId });
       fail(error);
+      const refunded = await supabase.functions.invoke('process-refund', { body: { bookingId, kind: 'cancel' } });
+      if (refunded.error || (refunded.data && typeof refunded.data === 'object' && 'error' in refunded.data && refunded.data.error)) {
+        throw new Error(await inviteFailure(refunded.error, refunded.data));
+      }
     },
     listPayments: (input) => rows(supabase.rpc('admin_payments', { p_from: input.from, p_to: input.to })),
     async refundFee(bookingId) {

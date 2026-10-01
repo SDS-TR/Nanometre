@@ -61,6 +61,9 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Le modèle Auth « Invite user » doit être
+  // https://lenanometre.ca/auth/callback?token_hash={{ .TokenHash }}&type=invite
+  // Le client est en PKCE et refuse le fragment #access_token= de l'invitation par défaut.
   const redirectTo = Deno.env.get('INVITE_REDIRECT_URL') ?? 'https://lenanometre.ca/auth/callback';
   const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(plan.email, {
     data: plan.metadata,

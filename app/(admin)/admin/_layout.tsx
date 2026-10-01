@@ -1,19 +1,48 @@
 import { Redirect, Tabs, useSegments } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { LoadingBlock } from '../../../src/components/StateView';
 import { TabBarAdmin } from '../../../src/components/TabBarAdmin';
+import { getSupabase } from '../../../src/data';
 import { useAppState } from '../../../src/providers/AppState';
 import { useTheme } from '../../../src/theme';
 
 export default function AdminLayout() {
   const theme = useTheme();
-  const { user, ready } = useAppState();
+  const { user, ready, repo } = useAppState();
   const segments = useSegments();
   const denied = segments.includes('acces-refuse');
-  if (!ready) {
+  const needsAal = Boolean(user && user.role === 'proprietaire' && repo.mode === 'supabase');
+  const [aal, setAal] = useState<'aal1' | 'aal2' | null>(null);
+  useEffect(() => {
+    if (!needsAal) {
+      return;
+    }
+    const supabase = getSupabase();
+    if (!supabase) {
+      return;
+    }
+    let cancelled = false;
+    void supabase.auth.mfa.getAuthenticatorAssuranceLevel().then(({ data }) => {
+      if (!cancelled) {
+        setAal(data?.currentLevel === 'aal2' ? 'aal2' : 'aal1');
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [needsAal]);
+  const level = needsAal ? aal : 'aal2';
+  if (needsAal && !getSupabase()) {
+    return <Redirect href="/mfa" />;
+  }
+  if (!ready || (needsAal && level == null)) {
     return <LoadingBlock />;
   }
   if (!user) {
     return <Redirect href="/connexion?next=/admin" />;
+  }
+  if (needsAal && level !== 'aal2') {
+    return <Redirect href="/mfa" />;
   }
   if (user.role === 'client' && !denied) {
     return <Redirect href="/admin/acces-refuse" />;

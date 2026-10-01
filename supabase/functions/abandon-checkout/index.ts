@@ -1,7 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 import Stripe from 'npm:stripe@18.5.0';
-
-const STRIPE_API_VERSION = '2025-08-27.basil';
+import { STRIPE_API_VERSION } from '../../../src/lib/payments.ts';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -31,34 +30,28 @@ Deno.serve(async (req) => {
     return json({ error: 'Rendez-vous manquant.' }, 400);
   }
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
-  const { data: payment } = await admin
-    .from('payments')
-    .select('stripe_payment_intent_id')
-    .eq('booking_id', body.bookingId)
-    .maybeSingle();
-
-  let refund = false;
-  if (payment?.stripe_payment_intent_id) {
+  const begun = await admin.rpc('service_begin_abandon', { p_booking: body.bookingId, p_user: userData.user.id });
+  if (begun.error) {
+    return json({ error: 'Rendez-vous introuvable.' }, 404);
+  }
+  const intentId = typeof begun.data === 'string' ? begun.data : null;
+  if (intentId) {
     if (!stripeSecret) {
       return json({ error: 'Stripe n’est pas configuré.' }, 500);
     }
     const stripe = new Stripe(stripeSecret, { apiVersion: STRIPE_API_VERSION, httpClient: Stripe.createFetchHttpClient() });
-    const intent = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent_id);
+    const intent = await stripe.paymentIntents.retrieve(intentId);
     if (intent.status === 'succeeded') {
-      await stripe.refunds.create(
-        { payment_intent: intent.id, metadata: { bookingId: body.bookingId } },
-        { idempotencyKey: `refund-${body.bookingId}-abandon` },
-      );
-      refund = true;
-    } else if (intent.status !== 'canceled') {
+      return json({ error: 'Le paiement est déjà confirmé. Annule le rendez-vous depuis tes rendez-vous.' }, 409);
+    }
+    if (intent.status !== 'canceled') {
       await stripe.paymentIntents.cancel(intent.id);
     }
   }
-
   const { error } = await admin.rpc('service_finish_abandon', {
     p_booking: body.bookingId,
     p_user: userData.user.id,
-    p_refund: refund,
+    p_refund: false,
   });
   if (error) {
     return json({ error: error.message }, 409);

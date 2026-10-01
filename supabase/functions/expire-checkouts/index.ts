@@ -1,12 +1,9 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 import Stripe from 'npm:stripe@18.5.0';
-
-const STRIPE_API_VERSION = '2025-08-27.basil';
+import { STRIPE_API_VERSION, cronAuthorized, stripeAlreadyRefunded } from '../../../src/lib/payments.ts';
 
 Deno.serve(async (req) => {
-  const secret = Deno.env.get('CRON_SECRET');
-  const authorization = req.headers.get('Authorization') ?? '';
-  if (!secret || secret.length < 16 || authorization !== `Bearer ${secret}`) {
+  if (!cronAuthorized(req.headers.get('Authorization'), Deno.env.get('CRON_SECRET'))) {
     return new Response('Accès refusé', { status: 403 });
   }
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -28,10 +25,22 @@ Deno.serve(async (req) => {
         continue;
       }
       const intent = await stripe.paymentIntents.retrieve(job.intentId);
-      if (intent.status === 'succeeded') {
-        await stripe.refunds.create({ payment_intent: intent.id }, { idempotencyKey: `refund-${job.bookingId}-expire` });
-      } else if (intent.status !== 'canceled') {
-        await stripe.paymentIntents.cancel(intent.id);
+      try {
+        if (intent.status === 'succeeded') {
+          const amount = intent.amount_received;
+          if (amount > 0) {
+            await stripe.refunds.create(
+              { payment_intent: intent.id, amount, metadata: { bookingId: job.bookingId ?? '' } },
+              { idempotencyKey: `refund-${job.bookingId}-expire` },
+            );
+          }
+        } else if (intent.status !== 'canceled') {
+          await stripe.paymentIntents.cancel(intent.id);
+        }
+      } catch (error) {
+        if (!stripeAlreadyRefunded(error)) {
+          return new Response(error instanceof Error ? error.message : 'Stripe', { status: 500 });
+        }
       }
     }
   }

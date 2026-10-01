@@ -31,7 +31,7 @@ if (process.env.ALLOW_DEMO_ACCOUNTS === '1') {
   process.exit(1);
 }
 
-const result = spawnSync('psql', [url, '-v', 'ON_ERROR_STOP=1', '-f', 'supabase/seed.sql'], {
+const result = spawnSync('psql', [url, '-v', 'ON_ERROR_STOP=1', '-f', 'supabase/seed.catalogue.sql'], {
   stdio: 'inherit',
 });
 process.exit(result.status ?? 1);

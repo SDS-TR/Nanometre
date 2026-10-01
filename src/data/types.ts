@@ -127,9 +127,10 @@ export interface Repository {
   signIn(email: string, password: string): Promise<SessionUser>;
   signUp(input: { fullName: string; email: string; password: string }): Promise<SessionUser>;
   sendMagicLink(email: string): Promise<{ demo: boolean }>;
-  completeMagicLink(email: string): Promise<SessionUser>;
+  completeMagicLink(email: string, extra?: { tokenHash?: string; type?: string }): Promise<SessionUser>;
   signOut(): Promise<void>;
-  deleteAccount(confirmation: string): Promise<void>;
+  deleteAccount(confirmation: string, password?: string): Promise<void>;
+  requestAccountDeletion(email: string): Promise<void>;
   updateProfile(input: { fullName: string; phone: string | null }): Promise<SessionUser>;
   getSalon(): Promise<Salon>;
   getBarbers(): Promise<Barber[]>;

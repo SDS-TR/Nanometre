@@ -9,7 +9,6 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@stripe/stripe-react-native": "0.64.0",
     "@supabase/supabase-js": "^2.117.2",
-    "aes-js": "^3.1.2",
     "babel-preset-expo": "~57.0.0",
     "expo": "~57.0.26",
     "expo-constants": "~57.0.20",
@@ -38,8 +37,11 @@
     "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
+    "@types/pg": "^8.15.5",
     "@types/react": "~19.2.2",
     "eslint": "^9.39.5",
+    "pg": "^8.16.3",
+    "stripe": "18.5.0",
     "eslint-config-expo": "^57.0.2",
     "typescript": "~6.0.3",
     "vite": "^8.3.1",

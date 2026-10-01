@@ -1,11 +1,10 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
+import { cronAuthorized } from '../../../src/lib/payments.ts';
 
 type Ticket = { status?: string; details?: { error?: string } };
 
 Deno.serve(async (req) => {
-  const secret = Deno.env.get('CRON_SECRET');
-  const authorization = req.headers.get('Authorization') ?? '';
-  if (!secret || secret.length < 16 || authorization !== `Bearer ${secret}`) {
+  if (!cronAuthorized(req.headers.get('Authorization'), Deno.env.get('CRON_SECRET'))) {
     return new Response('Accès refusé', { status: 403 });
   }
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -20,6 +19,7 @@ Deno.serve(async (req) => {
     .eq('status', 'planifie')
     .lte('send_at', new Date().toISOString())
     .select('id, user_id, title, body, path')
+    .order('send_at', { ascending: true })
     .limit(50);
   if (error) {
     return new Response(error.message, { status: 500 });

@@ -25,3 +25,14 @@ export function paymentIsConsistent(input: {
 export function cronAuthorized(authorization: string | null, secret: string | undefined): boolean {
   return typeof secret === 'string' && secret.length >= 16 && authorization === `Bearer ${secret}`;
 }
+
+/** Rembourse le reçu moins les frais déjà décidés et moins ce que Stripe a déjà rendu. */
+export function orphanRefundCents(input: { amountReceived: number; feeCents: number; stripeRefundCents: number }): number {
+  return Math.max(0, input.amountReceived - input.feeCents - input.stripeRefundCents);
+}
+
+export function stripeAlreadyRefunded(error: unknown): boolean {
+  const code = error && typeof error === 'object' && 'code' in error ? String((error as { code?: unknown }).code) : '';
+  const message = error instanceof Error ? error.message : '';
+  return code === 'charge_already_refunded' || message.toLowerCase().includes('already been refunded');
+}
