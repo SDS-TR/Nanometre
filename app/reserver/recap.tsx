@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { Button } from '../../src/components/Button';
 import { Header } from '../../src/components/Header';
@@ -30,6 +30,30 @@ export default function RecapScreen() {
   const salon = query.data?.[2];
   const ready = Boolean(service && barber && draft.date && draft.startMinute != null && draft.endMinute != null);
   const discount = draft.redeem ? 0 : (draft.discountCents ?? 0);
+  const servicePrice = service?.priceCents;
+  useEffect(() => {
+    if (servicePrice == null || !draft.date || !draft.promoCode || draft.redeem) {
+      return;
+    }
+    let cancelled = false;
+    void repo
+      .validatePromo({ code: draft.promoCode, date: draft.date, subtotalCents: servicePrice })
+      .then(
+        (quote) => {
+          if (!cancelled) {
+            update({ promoCode: quote.code, discountCents: quote.discountCents });
+          }
+        },
+        () => {
+          if (!cancelled) {
+            update({ promoCode: null, discountCents: 0 });
+          }
+        },
+      );
+    return () => {
+      cancelled = true;
+    };
+  }, [servicePrice, draft.date, draft.promoCode, draft.redeem, repo, update]);
   const taxes = computeLineTaxes(draft.redeem ? 0 : Math.max(0, (service?.priceCents ?? 0) - discount));
   const policyNote =
     salon?.onsiteLatePolicy === 'a_la_prochaine'

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import type { PaymentMethod } from '../domain';
+import { applyDraftPatch, type PaymentMethod } from '../domain';
 
 export type Draft = {
   serviceId?: string;
@@ -29,8 +29,8 @@ export function BookingDraftProvider({ children }: { children: ReactNode }) {
   const [draft, setDraft] = useState<Draft>(initial);
   const update = useCallback((patch: Partial<Draft>) => {
     setDraft((current) => {
-      const next = { ...current, ...patch };
-      const same = (Object.keys(patch) as (keyof Draft)[]).every((key) => current[key] === next[key]);
+      const next = applyDraftPatch(current, patch);
+      const same = (Object.keys(patch) as (keyof Draft)[]).every((key) => current[key] === next[key]) && current.promoCode === next.promoCode && current.discountCents === next.discountCents;
       return same ? current : next;
     });
   }, []);

@@ -387,6 +387,43 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
     );
     expect(third.rows[0].claim).toBe('traite');
   });
+
+  it('admin_move refuse un jour fermé et une heure hors grille sans rien écrire', async () => {
+    const id = '55555555-5555-4555-8555-555555555555';
+    await pool.query(`insert into public.barber_services (barber_id, service_id) values ($1, $2) on conflict do nothing`, [barberId, serviceId]);
+    for (const weekday of [2, 3, 4, 5, 6]) {
+      await pool.query(
+        `insert into public.schedules (barber_id, weekday, start_minute, end_minute)
+         values ($1, $2, 540, 1140)
+         on conflict (barber_id, weekday) do nothing`,
+        [barberId, weekday],
+      );
+    }
+    await insertBooking(pool, {
+      id,
+      clientId,
+      method: 'sur_place',
+      status: 'confirme',
+      pay: 'a_encaisser',
+      intent: null,
+      total: 4024,
+      price: 3500,
+      offsetHours: 72,
+    });
+    const before = await pool.query<{ starts_at: Date }>(`select starts_at from public.bookings where id = $1`, [id]);
+    await expect(
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) =>
+        client.query(`select public.admin_move($1::uuid, '2026-10-12'::date, 540)`, [id]),
+      ),
+    ).rejects.toThrow(/fermé/);
+    await expect(
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) =>
+        client.query(`select public.admin_move($1::uuid, '2027-10-06'::date, 7)`, [id]),
+      ),
+    ).rejects.toThrow(/invalide|heures/);
+    const after = await pool.query<{ starts_at: Date }>(`select starts_at from public.bookings where id = $1`, [id]);
+    expect(after.rows[0].starts_at.toISOString()).toBe(before.rows[0].starts_at.toISOString());
+  });
 });
 
 async function insertUser(pool: pg.Pool, id: string, email: string, name: string, role: string, barber: string | null) {

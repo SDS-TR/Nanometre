@@ -40,14 +40,22 @@ export default function PaiementScreen() {
     const services = await repository.getServices();
     return services.find((service) => service.id === draft.serviceId) ?? null;
   }, [draft.serviceId, booking?.id]);
+  const quoted = useAsync(async (repository) => {
+    if (booking || draft.redeem || !draft.promoCode || !draft.date || !preview.data) {
+      return null;
+    }
+    return repository.validatePromo({ code: draft.promoCode, date: draft.date, subtotalCents: preview.data.priceCents });
+  }, [booking?.id, draft.redeem, draft.promoCode, draft.date, preview.data?.id, preview.data?.priceCents]);
+  const waitingQuote = Boolean(!booking && draft.promoCode && !draft.redeem && quoted.status === 'loading' && quoted.data == null);
+  const discount = booking || draft.redeem || waitingQuote ? 0 : (quoted.data?.discountCents ?? 0);
   const preTax = booking
     ? booking.priceCents
     : draft.redeem
       ? 0
       : preview.data
-        ? Math.max(0, preview.data.priceCents - (draft.discountCents ?? 0))
+        ? Math.max(0, preview.data.priceCents - discount)
         : undefined;
-  const shown = preTax == null ? null : booking ? booking.totalCents : computeLineTaxes(preTax).totalCents;
+  const shown = waitingQuote || preTax == null ? null : booking ? booking.totalCents : computeLineTaxes(preTax).totalCents;
   const label = shown == null ? 'Payer' : shown === 0 ? 'Confirmer · coupe offerte' : `Payer ${formatCad(shown)}`;
 
   async function ensureBooking() {

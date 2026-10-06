@@ -58,7 +58,7 @@ describe('droits équipe', () => {
     let moved = false;
     for (const start of [540, 600, 660, 720, 780]) {
       try {
-        await data.moveBooking({ bookingId: booking!.id, date: '2026-09-15', startMinute: start });
+        await data.moveBooking({ bookingId: booking!.id, date: '2026-09-15', startMinute: start, now: new Date('2026-09-01T15:00:00Z') });
         moved = true;
         break;
       } catch {

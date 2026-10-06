@@ -9,6 +9,8 @@ import {
   formatTime,
   planBookingNotifications,
   planChangeNotification,
+  assertMovableSlot,
+  occupancyMinutes,
   quotePromo,
   scopeBarber,
   zonedDateTime,
@@ -262,6 +264,8 @@ export function createAdmin(input: {
           id: booking.id,
           barberId: booking.barberId,
           barberName: barberName(booking.barberId),
+          serviceId: booking.serviceId,
+          durationMinutes: booking.durationMinutes,
           startMinute: booking.startMinute,
           endMinute: booking.startMinute + booking.durationMinutes,
           title: booking.clientName,
@@ -279,6 +283,8 @@ export function createAdmin(input: {
           id: block.id,
           barberId: block.barberId,
           barberName: barberName(block.barberId),
+          serviceId: null,
+          durationMinutes: null,
           startMinute: block.startMinute,
           endMinute: block.endMinute,
           title: 'Bloqué',
@@ -332,26 +338,39 @@ export function createAdmin(input: {
       state.blocks = state.blocks.filter((item) => item.id !== blockId);
       emit();
     },
-    async moveBooking(payload: { bookingId: string; date: string; startMinute: number }) {
+    async moveBooking(payload: { bookingId: string; date: string; startMinute: number; now?: Date }) {
       const user = actor();
       assertCan(user.role, 'move');
       const booking = state.bookings.find((item) => item.id === payload.bookingId);
       if (!booking || booking.status !== 'confirme') {
         throw new Error('Ce rendez-vous ne peut pas être déplacé.');
       }
-      const end = payload.startMinute + booking.durationMinutes;
-      const clash = state.bookings.some(
-        (other) =>
-          other.id !== booking.id &&
-          other.barberId === booking.barberId &&
-          other.date === payload.date &&
-          (other.status === 'confirme' || other.status === 'honore' || other.status === 'en_attente_paiement') &&
-          other.startMinute < end &&
-          other.startMinute + other.durationMinutes > payload.startMinute,
-      );
-      if (clash || payload.startMinute < state.openMinute || end > state.closeMinute) {
-        throw new Error('Ce créneau n’est pas libre.');
-      }
+      const active = new Set(['confirme', 'honore', 'en_attente_paiement']);
+      const busy = state.bookings
+        .filter(
+          (other) =>
+            other.id !== booking.id &&
+            other.barberId === booking.barberId &&
+            other.date === payload.date &&
+            active.has(other.status),
+        )
+        .map((other) => ({ start: other.startMinute, end: other.startMinute + occupancyMinutes(other.durationMinutes) }));
+      const blocked = state.blocks
+        .filter((block) => block.barberId === booking.barberId && block.date === payload.date)
+        .map((block) => ({ start: block.startMinute, end: block.endMinute }));
+      const allowed = state.eligibility.get(booking.barberId);
+      assertMovableSlot({
+        date: payload.date,
+        startMinute: payload.startMinute,
+        durationMinutes: booking.durationMinutes,
+        openMinute: state.openMinute,
+        closeMinute: state.closeMinute,
+        openWeekdays: state.schedules.get(booking.barberId) ?? [2, 3, 4, 5, 6],
+        eligible: !allowed || allowed.includes(booking.serviceId),
+        busy,
+        blocked,
+        now: payload.now,
+      });
       booking.date = payload.date;
       booking.startMinute = payload.startMinute;
       audit('deplacement', `${booking.clientName} → ${formatLongDate(payload.date)} ${formatTime(payload.startMinute)}`);

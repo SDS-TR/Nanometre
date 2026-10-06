@@ -157,7 +157,7 @@ export interface Repository {
   getAgenda(input: { date: string; barberId?: string | null }): Promise<AgendaEntry[]>;
   blockSlot(input: { barberId: string; date: string; startMinute: number; endMinute: number; reason: string }): Promise<void>;
   unblockSlot(blockId: string): Promise<void>;
-  moveBooking(input: { bookingId: string; date: string; startMinute: number }): Promise<void>;
+  moveBooking(input: { bookingId: string; date: string; startMinute: number; now?: Date }): Promise<void>;
   honorBooking(bookingId: string): Promise<void>;
   cancelClientBooking(bookingId: string): Promise<void>;
   listPayments(input: { from: string; to: string }): Promise<PaymentLine[]>;
@@ -205,6 +205,8 @@ export type AgendaEntry = {
   id: string;
   barberId: string;
   barberName: string;
+  serviceId: string | null;
+  durationMinutes: number | null;
   startMinute: number;
   endMinute: number;
   title: string;

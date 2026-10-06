@@ -9,3 +9,6 @@ export * from './permissions';
 export * from './promo';
 export * from './notifications';
 export * from './dashboard';
+export * from './draftPatch';
+export * from './moveSlot';
+export * from './adminShell';

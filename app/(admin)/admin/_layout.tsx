@@ -3,8 +3,10 @@ import { useEffect, useState } from 'react';
 import { LoadingBlock } from '../../../src/components/StateView';
 import { TabBarAdmin } from '../../../src/components/TabBarAdmin';
 import { getSupabase } from '../../../src/data';
+import { adminShell, staffTabRole } from '../../../src/domain';
 import { useAppState } from '../../../src/providers/AppState';
 import { useTheme } from '../../../src/theme';
+import AccesRefuseScreen from './acces-refuse';
 
 export default function AdminLayout() {
   const theme = useTheme();
@@ -44,13 +46,13 @@ export default function AdminLayout() {
   if (needsAal && level !== 'aal2') {
     return <Redirect href="/mfa" />;
   }
-  if (user.role === 'client' && !denied) {
-    return <Redirect href="/admin/acces-refuse" />;
+  if (adminShell(user.role) === 'refuse') {
+    return <AccesRefuseScreen />;
   }
-  if (user.role !== 'client' && denied) {
+  if (denied) {
     return <Redirect href="/admin" />;
   }
-  const role = user.role === 'coiffeur' ? 'coiffeur' : 'proprietaire';
+  const role = staffTabRole(user.role) ?? 'proprietaire';
   const owner = role === 'proprietaire';
   return (
     <Tabs

@@ -6,7 +6,6 @@ import { Button } from '../../../src/components/Button';
 import { Chip } from '../../../src/components/Chip';
 import { FeuilleBlocage } from '../../../src/components/FeuilleBlocage';
 import { Header } from '../../../src/components/Header';
-import { Input } from '../../../src/components/Input';
 import { Screen } from '../../../src/components/Screen';
 import { SelecteurDate } from '../../../src/components/SelecteurDate';
 import { LoadingBlock, StateMessage } from '../../../src/components/StateView';
@@ -33,10 +32,18 @@ export default function AgendaScreen() {
   const [blockError, setBlockError] = useState<string | null>(null);
   const [moving, setMoving] = useState<AgendaEntry | null>(null);
   const [moveDate, setMoveDate] = useState(DEMO);
-  const [moveStart, setMoveStart] = useState('14:30');
+  const [moveStart, setMoveStart] = useState<number | null>(null);
+  const [moveError, setMoveError] = useState<string | null>(null);
   const barbers = useAsync((repository) => repository.getBarbers(), []);
   const salon = useAsync((repository) => repository.getSalon(), []);
   const agenda = useAsync((repository) => repository.getAgenda({ date, barberId }), [date, barberId, user?.id]);
+  const moveSlots = useAsync(
+    (repository) =>
+      moving?.serviceId
+        ? repository.getSlots({ barberId: moving.barberId, serviceId: moving.serviceId, date: moveDate })
+        : Promise.resolve([]),
+    [moving?.id, moving?.barberId, moving?.serviceId, moveDate],
+  );
 
   async function run(task: () => Promise<void>) {
     setBusy(true);
@@ -97,9 +104,10 @@ export default function AgendaScreen() {
                         size="sm"
                         variant="secondary"
                         onPress={() => {
+                          setMoveError(null);
                           setMoving(entry);
                           setMoveDate(date);
-                          setMoveStart(`${String(Math.floor(entry.startMinute / 60)).padStart(2, '0')}:${String(entry.startMinute % 60).padStart(2, '0')}`);
+                          setMoveStart(null);
                         }}
                       />
                     ) : null}
@@ -141,23 +149,60 @@ export default function AgendaScreen() {
         }}
       />
       <BottomSheet visible={moving != null} onClose={() => setMoving(null)} title="Déplacer le rendez-vous">
-        <Input label="Date" value={moveDate} onChangeText={setMoveDate} placeholder="2026-10-06" autoCapitalize="none" />
-        <Input label="Heure" value={moveStart} onChangeText={setMoveStart} placeholder="14:30" autoCapitalize="none" />
+        <SelecteurDate
+          date={moveDate}
+          onChange={(next) => {
+            setMoveDate(next);
+            setMoveStart(null);
+            setMoveError(null);
+          }}
+          onToday={() => {
+            setMoveDate(zonedParts(new Date()).isoDate);
+            setMoveStart(null);
+          }}
+        />
         <Text variant="caption" color={theme.color.text.muted}>
-          {moving ? `Actuellement ${formatTime(moving.startMinute)}.` : ''} Le client et le coiffeur reçoivent un avis s’ils l’ont demandé.
+          {moving ? `Actuellement ${formatTime(moving.startMinute)}. ` : ''}
+          Choisis un créneau libre. Le client reçoit un avis s’il l’a demandé.
         </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space[2] }}>
+          {(moveSlots.data ?? [])
+            .filter((slot) => slot.available)
+            .map((slot) => (
+              <Chip
+                key={slot.startMinute}
+                label={formatTime(slot.startMinute)}
+                selected={moveStart === slot.startMinute}
+                onPress={() => setMoveStart(slot.startMinute)}
+              />
+            ))}
+        </View>
+        {moveSlots.data && moveSlots.data.every((slot) => !slot.available) ? (
+          <Text variant="body-sm" color={theme.color.text.secondary}>
+            Aucun créneau libre ce jour-là.
+          </Text>
+        ) : null}
+        {moveError ? (
+          <Text variant="body-sm" color={theme.color.error.default} accessibilityLiveRegion="polite">
+            {moveError}
+          </Text>
+        ) : null}
         <Button
           label="Enregistrer"
           loading={busy}
           fullWidth
+          disabled={moveStart == null}
           onPress={() => {
-            if (!moving) {
+            if (!moving || moveStart == null) {
               return;
             }
-            const [hour, minute] = moveStart.split(':').map(Number);
             void run(async () => {
-              await repo.moveBooking({ bookingId: moving.id, date: moveDate, startMinute: hour * 60 + minute });
-              setMoving(null);
+              try {
+                await repo.moveBooking({ bookingId: moving.id, date: moveDate, startMinute: moveStart });
+                setMoving(null);
+              } catch (reason) {
+                setMoveError(reason instanceof Error ? reason.message : 'Déplacement impossible.');
+              }
             });
           }}
         />
