@@ -548,7 +548,10 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
     },
     async getBarbers() {
       await ready;
-      return [...seed.barbers].sort((a, b) => a.sortOrder - b.sortOrder) as Barber[];
+      const all = state.services.map((service) => service.id);
+      return [...seed.barbers]
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((barber) => ({ ...barber, serviceIds: state.eligibility.get(barber.id) ?? all }));
     },
     async getServices() {
       await ready;

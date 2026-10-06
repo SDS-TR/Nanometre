@@ -7,6 +7,7 @@ import {
   formatCad,
   formatLongDate,
   formatTime,
+  mergePromo,
   planBookingNotifications,
   planChangeNotification,
   assertMovableSlot,
@@ -521,8 +522,9 @@ export function createAdmin(input: {
     async savePromo(promo: PromoView) {
       const user = actor();
       assertCan(user.role, 'promos');
-      const index = state.promos.findIndex((item) => item.code === promo.code);
-      const next: PromoCode = { ...promo };
+      const code = promo.code.trim().toUpperCase();
+      const index = state.promos.findIndex((item) => item.code === code);
+      const next = mergePromo(index >= 0 ? state.promos[index] : undefined, { ...promo, code });
       if (index >= 0) {
         state.promos[index] = next;
       } else {
@@ -621,7 +623,7 @@ export function createAdmin(input: {
       const user = actor();
       assertCan(user.role, 'services');
       const service = state.services.find((item) => item.id === serviceId);
-      if (!service || priceCents < 0) {
+      if (!service || !Number.isInteger(priceCents) || priceCents <= 0) {
         throw new Error('Tarif invalide.');
       }
       service.priceCents = priceCents;

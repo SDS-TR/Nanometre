@@ -10,7 +10,7 @@ import { StatCard } from '../../../src/components/StatCard';
 import { LoadingBlock, StateMessage } from '../../../src/components/StateView';
 import { Text } from '../../../src/components/Text';
 import type { PaymentLine } from '../../../src/data/types';
-import { extractIncludedTaxes, formatCad, periodBounds, zonedParts } from '../../../src/domain';
+import { extractIncludedTaxes, formatCad, periodBounds, teamDate, zonedParts } from '../../../src/domain';
 import { useAsync } from '../../../src/hooks/useAsync';
 import { useAppState } from '../../../src/providers/AppState';
 import { useTheme } from '../../../src/theme';
@@ -18,7 +18,7 @@ import { useTheme } from '../../../src/theme';
 export default function PaiementsScreen() {
   const theme = useTheme();
   const { user, repo } = useAppState();
-  const [anchor, setAnchor] = useState('2026-10-03');
+  const [anchor, setAnchor] = useState(() => teamDate(new Date()));
   const [selected, setSelected] = useState<PaymentLine | null>(null);
   const [confirmRefund, setConfirmRefund] = useState(false);
   const [error, setError] = useState<string | null>(null);

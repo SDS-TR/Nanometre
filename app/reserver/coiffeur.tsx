@@ -7,6 +7,7 @@ import { ProgressSteps } from '../../src/components/ProgressSteps';
 import { Screen } from '../../src/components/Screen';
 import { LoadingBlock, StateMessage } from '../../src/components/StateView';
 import { Text } from '../../src/components/Text';
+import { barbersForService } from '../../src/domain';
 import { useAsync } from '../../src/hooks/useAsync';
 import { useDraft } from '../../src/providers/BookingDraft';
 import { useTheme } from '../../src/theme';
@@ -34,7 +35,7 @@ export default function CoiffeurScreen() {
         {!serviceId ? (
           <StateMessage title="Choisis d’abord une prestation" body="Le créneau dépend de la durée." actionLabel="Prestations" onAction={() => router.replace('/reserver/prestation')} />
         ) : null}
-        {serviceId ? (
+        {serviceId && barbersForService(query.data ?? [], serviceId).length > 0 ? (
           <Pressable
             accessibilityRole="button"
             onPress={() => {
@@ -61,8 +62,13 @@ export default function CoiffeurScreen() {
         {query.status === 'error' ? (
           <StateMessage title="Équipe indisponible" body={query.error ?? ''} actionLabel="Réessayer" onAction={query.reload} />
         ) : null}
+        {serviceId && query.data && barbersForService(query.data, serviceId).length === 0 ? (
+          <Text variant="body-md" color={theme.color.text.secondary}>
+            Aucun coiffeur ne fait cette prestation.
+          </Text>
+        ) : null}
         {serviceId
-          ? query.data?.map((barber) => (
+          ? barbersForService(query.data ?? [], serviceId).map((barber) => (
               <CarteCoiffeur
                 key={barber.id}
                 barber={barber}

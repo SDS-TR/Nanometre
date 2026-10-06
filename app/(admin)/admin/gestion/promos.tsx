@@ -7,7 +7,8 @@ import { Screen } from '../../../../src/components/Screen';
 import { SegmentedControl } from '../../../../src/components/SegmentedControl';
 import { LoadingBlock, StateMessage } from '../../../../src/components/StateView';
 import { Text } from '../../../../src/components/Text';
-import { formatCad } from '../../../../src/domain';
+import { assertPromoDraft, formatCad } from '../../../../src/domain';
+import { useToast } from '../../../../src/components/Toast';
 import { useAsync } from '../../../../src/hooks/useAsync';
 import { useAppState } from '../../../../src/providers/AppState';
 import { useTheme } from '../../../../src/theme';
@@ -21,7 +22,10 @@ export default function PromosScreen() {
   const [value, setValue] = useState('10');
   const [startsOn, setStartsOn] = useState('2026-10-01');
   const [endsOn, setEndsOn] = useState('2026-12-31');
+  const [limit, setLimit] = useState('');
+  const [active, setActive] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
   if (user?.role !== 'proprietaire') {
     return (
       <Screen>
@@ -40,7 +44,7 @@ export default function PromosScreen() {
             <Text variant="label-md">{promo.code}</Text>
             <Text variant="body-sm" color={theme.color.text.secondary}>
               {promo.discountType === 'percent' ? `${promo.value} %` : formatCad(promo.value)}
-              {` · ${promo.startsOn} → ${promo.endsOn} · ${promo.usageCount}${promo.usageLimit != null ? ` / ${promo.usageLimit}` : ''}`}
+              {` · ${promo.startsOn} → ${promo.endsOn} · ${promo.usageCount}${promo.usageLimit != null ? ` / ${promo.usageLimit}` : ''}${promo.active ? '' : ' · inactif'}`}
             </Text>
           </View>
         ))}
@@ -56,29 +60,40 @@ export default function PromosScreen() {
         />
         <Input label={kind === 'percent' ? 'Pourcentage' : 'Montant en dollars'} value={value} onChangeText={setValue} />
         <Input label="Début" value={startsOn} onChangeText={setStartsOn} autoCapitalize="none" />
-        <Input label="Fin" value={endsOn} onChangeText={setEndsOn} autoCapitalize="none" />
+        <Input label="Fin" value={endsOn} onChangeText={setEndsOn} autoCapitalize="none" placeholder="2026-12-31" />
+        <Input label="Limite d’utilisations" value={limit} onChangeText={setLimit} keyboardType="number-pad" placeholder="100" />
+        <Button label={active ? 'Code actif' : 'Code inactif'} variant="secondary" onPress={() => setActive((current) => !current)} />
         {error ? <Text variant="body-sm" color={theme.color.error.default}>{error}</Text> : null}
         <Button
           label="Enregistrer le code"
           onPress={() => {
             const numeric = Number(value.replace(',', '.'));
-            if (!code.trim() || !Number.isFinite(numeric) || numeric <= 0) {
-              setError('Code incomplet.');
+            const usageLimit = limit.trim() === '' ? null : Number(limit);
+            const draft = {
+              code: code.trim().toUpperCase(),
+              discountType: kind,
+              value: kind === 'amount' ? Math.round(numeric * 100) : Math.round(numeric),
+              startsOn,
+              endsOn,
+              usageLimit,
+              usageCount: 0,
+              active,
+            };
+            try {
+              assertPromoDraft(draft);
+            } catch (reason) {
+              setError(reason instanceof Error ? reason.message : 'Code refusé.');
               return;
             }
+            const exists = promos.data?.some((promo) => promo.code === draft.code) ?? false;
             setError(null);
-            void repo
-              .savePromo({
-                code: code.trim().toUpperCase(),
-                discountType: kind,
-                value: kind === 'amount' ? Math.round(numeric * 100) : Math.round(numeric),
-                startsOn,
-                endsOn,
-                usageLimit: null,
-                usageCount: 0,
-                active: true,
-              })
-              .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Code refusé.'));
+            void repo.savePromo(draft).then(
+              () => {
+                toast({ message: exists ? 'Code mis à jour. Le compteur est inchangé.' : 'Code enregistré.', tone: 'success' });
+                setCode('');
+              },
+              (reason: unknown) => setError(reason instanceof Error ? reason.message : 'Code refusé.'),
+            );
           }}
         />
       </View>

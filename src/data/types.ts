@@ -29,6 +29,7 @@ export type Barber = {
   rating: number;
   reviewCount: number;
   sortOrder: number;
+  serviceIds: string[];
 };
 
 export type Service = {

@@ -11,7 +11,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ca.lenanometre.app",
-      "associatedDomains": ["applinks:lenanometre.ca", "webcredentials:lenanometre.ca"]
+      "associatedDomains": [
+        "applinks:lenanometre.ca",
+        "webcredentials:lenanometre.ca"
+      ]
     },
     "android": {
       "allowBackup": false,
@@ -20,8 +23,17 @@
         {
           "action": "VIEW",
           "autoVerify": true,
-          "data": [{ "scheme": "https", "host": "lenanometre.ca", "pathPrefix": "/auth/callback" }],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "data": [
+            {
+              "scheme": "https",
+              "host": "lenanometre.ca",
+              "pathPrefix": "/auth/callback"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "adaptiveIcon": {
@@ -57,7 +69,8 @@
           "merchantIdentifier": "merchant.ca.lenanometre",
           "enableGooglePay": true
         }
-      ]
+      ],
+      "@sentry/react-native"
     ],
     "experiments": {
       "typedRoutes": false

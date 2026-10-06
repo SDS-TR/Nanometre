@@ -69,7 +69,14 @@ export default function ProfilCoiffeurScreen() {
         </View>
         <View style={{ gap: theme.space[3] }}>
           <Text variant="heading-sm">Prestations</Text>
-          {services.map((service) => (
+          {services.filter((service) => barber.serviceIds.includes(service.id)).length === 0 ? (
+            <Text variant="body-md" color={theme.color.text.secondary}>
+              {barber.shortName} ne fait pas les prestations affichées ailleurs.
+            </Text>
+          ) : null}
+          {services
+            .filter((service) => barber.serviceIds.includes(service.id))
+            .map((service) => (
             <CarteCoupe
               key={service.id}
               service={service}

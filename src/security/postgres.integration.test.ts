@@ -424,6 +424,40 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
     const after = await pool.query<{ starts_at: Date }>(`select starts_at from public.bookings where id = $1`, [id]);
     expect(after.rows[0].starts_at.toISOString()).toBe(before.rows[0].starts_at.toISOString());
   });
+
+  it('refuse un prix nul et un pourcentage hors limites, et garde le compteur promo', async () => {
+    await expect(
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) =>
+        client.query(`select public.admin_update_service($1::uuid, 0)`, [serviceId]),
+      ),
+    ).rejects.toThrow(/Tarif invalide/);
+    const price = await pool.query<{ price_cents: number }>(`select price_cents from public.services where id = $1`, [serviceId]);
+    expect(price.rows[0].price_cents).toBe(3500);
+    await pool.query(
+      `insert into public.promo_codes (code, discount_type, value, starts_on, ends_on, usage_limit, usage_count)
+       values ('ETE20', 'percent', 20, '2026-07-01', '2026-08-31', 30, 30)
+       on conflict (code) do update set usage_count = 30, usage_limit = 30`,
+    );
+    await expect(
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) =>
+        client.query(`select public.admin_save_promo($1::jsonb)`, [
+          JSON.stringify({
+            code: 'ETE20',
+            discountType: 'percent',
+            value: 150,
+            startsOn: '2026-07-01',
+            endsOn: '2026-12-31',
+            usageLimit: null,
+            usageCount: 0,
+            active: true,
+          }),
+        ]),
+      ),
+    ).rejects.toThrow(/100/);
+    const kept = await pool.query<{ usage_count: number; value: string }>(`select usage_count, value from public.promo_codes where code = 'ETE20'`);
+    expect(kept.rows[0].usage_count).toBe(30);
+    expect(Number(kept.rows[0].value)).toBe(20);
+  });
 });
 
 async function insertUser(pool: pg.Pool, id: string, email: string, name: string, role: string, barber: string | null) {

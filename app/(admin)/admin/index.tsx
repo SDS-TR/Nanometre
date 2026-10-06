@@ -9,12 +9,10 @@ import { SelecteurDate } from '../../../src/components/SelecteurDate';
 import { StatCard } from '../../../src/components/StatCard';
 import { StateMessage, LoadingBlock } from '../../../src/components/StateView';
 import { Text } from '../../../src/components/Text';
-import { formatCad, formatTime, zonedParts } from '../../../src/domain';
+import { formatCad, formatTime, teamDate, zonedParts } from '../../../src/domain';
 import { useAsync } from '../../../src/hooks/useAsync';
 import { useAppState } from '../../../src/providers/AppState';
 import { useTheme } from '../../../src/theme';
-
-const DEMO = '2026-10-03';
 
 export default function TableauScreen() {
   const theme = useTheme();
@@ -22,7 +20,7 @@ export default function TableauScreen() {
   const wide = width >= 834;
   const { user } = useAppState();
   const owner = user?.role === 'proprietaire';
-  const [date, setDate] = useState(DEMO);
+  const [date, setDate] = useState(() => teamDate(new Date()));
   const [period, setPeriod] = useState<'jour' | 'semaine' | 'mois'>('jour');
   const board = useAsync(
     (repo) => (owner ? repo.getDashboard({ anchor: date, period }) : repo.getDay(date)),

@@ -1,6 +1,10 @@
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { View } from 'react-native';
+import { Stack, type ErrorBoundaryProps } from 'expo-router';
+import { Button } from '../src/components/Button';
+import { Text } from '../src/components/Text';
+import { reportError } from '../src/lib/sentry';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -19,6 +23,17 @@ import { BookingDraftProvider } from '../src/providers/BookingDraft';
 import { useTheme } from '../src/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  reportError(error);
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 16 }}>
+      <Text variant="heading-md">Quelque chose s’est détraqué.</Text>
+      <Text variant="body-md">Réessaie. Si ça recommence, le salon en est informé.</Text>
+      <Button label="Réessayer" onPress={retry} />
+    </View>
+  );
+}
 
 export default function RootLayout() {
   const [loaded] = useFonts({

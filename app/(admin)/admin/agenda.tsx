@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { BlocRendezVous } from '../../../src/components/BlocRendezVous';
+import { useToast } from '../../../src/components/Toast';
 import { BottomSheet } from '../../../src/components/BottomSheet';
 import { Button } from '../../../src/components/Button';
 import { Chip } from '../../../src/components/Chip';
@@ -10,30 +11,30 @@ import { Screen } from '../../../src/components/Screen';
 import { SelecteurDate } from '../../../src/components/SelecteurDate';
 import { LoadingBlock, StateMessage } from '../../../src/components/StateView';
 import { Text } from '../../../src/components/Text';
-import { formatTime, zonedParts } from '../../../src/domain';
+import { formatTime, teamDate, zonedParts } from '../../../src/domain';
 import { useAsync } from '../../../src/hooks/useAsync';
 import { useAppState } from '../../../src/providers/AppState';
 import { useTheme } from '../../../src/theme';
 import type { AgendaEntry } from '../../../src/data/types';
-
-const DEMO = '2026-10-03';
 
 export default function AgendaScreen() {
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const wide = width >= 834;
   const { user, repo } = useAppState();
+  const toast = useToast();
   const owner = user?.role === 'proprietaire';
-  const [date, setDate] = useState(DEMO);
+  const [date, setDate] = useState(() => teamDate(new Date()));
   const [barberId, setBarberId] = useState<string | null>(owner ? null : user?.barberId ?? null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [blockOpen, setBlockOpen] = useState(false);
   const [blockError, setBlockError] = useState<string | null>(null);
   const [moving, setMoving] = useState<AgendaEntry | null>(null);
-  const [moveDate, setMoveDate] = useState(DEMO);
+  const [moveDate, setMoveDate] = useState(() => teamDate(new Date()));
   const [moveStart, setMoveStart] = useState<number | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState<AgendaEntry | null>(null);
   const barbers = useAsync((repository) => repository.getBarbers(), []);
   const salon = useAsync((repository) => repository.getSalon(), []);
   const agenda = useAsync((repository) => repository.getAgenda({ date, barberId }), [date, barberId, user?.id]);
@@ -112,7 +113,7 @@ export default function AgendaScreen() {
                       />
                     ) : null}
                     {entry.canCancel ? (
-                      <Button label="Annuler" size="sm" variant="destructive" loading={busy} onPress={() => void run(() => repo.cancelClientBooking(entry.id))} />
+                      <Button label="Annuler" size="sm" variant="destructive" onPress={() => setCancelling(entry)} />
                     ) : null}
                     {entry.kind === 'block' ? (
                       <Button label="Débloquer" size="sm" variant="secondary" loading={busy} onPress={() => void run(() => repo.unblockSlot(entry.id))} />
@@ -148,6 +149,30 @@ export default function AgendaScreen() {
           });
         }}
       />
+      <BottomSheet visible={cancelling != null} onClose={() => setCancelling(null)} title="Annuler le rendez-vous">
+        <Text variant="body-md">
+          {cancelling ? `${cancelling.title} · ${formatTime(cancelling.startMinute)}` : ''}
+        </Text>
+        <Text variant="body-sm" color={theme.color.text.secondary}>
+          Un avis part au client. S’il reste moins de 24 h et que le rendez-vous est payé en ligne, des frais peuvent être retenus. Sur place, le même montant peut être dû à la prochaine visite.
+        </Text>
+        <Button
+          label="Confirmer l’annulation"
+          variant="destructive"
+          loading={busy}
+          onPress={() => {
+            if (!cancelling) {
+              return;
+            }
+            const entry = cancelling;
+            void run(async () => {
+              await repo.cancelClientBooking(entry.id);
+              setCancelling(null);
+              toast({ message: 'Rendez-vous annulé.', tone: 'success' });
+            });
+          }}
+        />
+      </BottomSheet>
       <BottomSheet visible={moving != null} onClose={() => setMoving(null)} title="Déplacer le rendez-vous">
         <SelecteurDate
           date={moveDate}
