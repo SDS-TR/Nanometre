@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
+import { BoutonDeconnexion } from '../../../src/components/BoutonDeconnexion';
 import { Header } from '../../../src/components/Header';
 import { LigneHoraire } from '../../../src/components/LigneHoraire';
 import { Screen } from '../../../src/components/Screen';
@@ -113,6 +114,7 @@ export default function TableauScreen() {
               subtitle={`${entry.subtitle}${entry.priceLabel ? ` · ${entry.priceLabel}` : ''}`}
             />
           ))}
+        <BoutonDeconnexion />
       </View>
     </Screen>
   );

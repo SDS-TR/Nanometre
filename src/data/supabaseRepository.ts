@@ -44,7 +44,10 @@ function fail(error: { message: string } | null): void {
   }
 }
 
-export function createSupabaseRepository(supabase: SupabaseClient): Repository {
+export function createSupabaseRepository(
+  supabase: SupabaseClient,
+  secureSession?: { removeItem(key: string): Promise<void>; key: string },
+): Repository {
   let session: SessionUser | null = null;
   const listeners = new Set<() => void>();
 
@@ -175,9 +178,19 @@ export function createSupabaseRepository(supabase: SupabaseClient): Repository {
       return session;
     },
     async signOut() {
-      await supabase.rpc('clear_my_push_tokens');
-      const { error } = await supabase.auth.signOut();
-      fail(error);
+      try {
+        await supabase.rpc('clear_my_push_tokens');
+      } catch {
+        // Le jeton peut rester. La session locale, elle, se ferme.
+      }
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // Hors ligne, la session chiffrée est quand même retirée ensuite.
+      }
+      if (secureSession) {
+        await secureSession.removeItem(secureSession.key);
+      }
       session = null;
       emit();
     },

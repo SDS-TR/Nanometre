@@ -16,6 +16,7 @@ type Props = {
   disabled?: boolean;
   loading?: boolean;
   fullWidth?: boolean;
+  accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -27,6 +28,7 @@ export function Button({
   disabled = false,
   loading = false,
   fullWidth = false,
+  accessibilityLabel,
   style,
 }: Props) {
   const theme = useTheme();
@@ -63,6 +65,7 @@ export function Button({
     <Animated.View style={[animated, fullWidth ? { alignSelf: 'stretch' } : null, style]}>
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel ?? label}
         accessibilityState={{ disabled: blocked }}
         disabled={blocked}
         onPress={onPress}

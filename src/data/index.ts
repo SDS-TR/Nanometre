@@ -34,16 +34,19 @@ export function getRepository(): Repository {
     if (!url || !key) {
       throw new Error('EXPO_PUBLIC_SUPABASE_URL et EXPO_PUBLIC_SUPABASE_ANON_KEY sont requis.');
     }
+    const secureStore = Platform.OS === 'web' ? null : new LargeSecureStore();
+    const storageKey = `sb-${new URL(url).hostname.split('.')[0]}-auth-token`;
     supabase = createClient(url, key, {
       auth: {
-        storage: Platform.OS === 'web' ? undefined : new LargeSecureStore(),
+        storage: secureStore ?? undefined,
+        storageKey,
         flowType: 'pkce',
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: typeof window !== 'undefined',
       },
     });
-    repository = createSupabaseRepository(supabase);
+    repository = createSupabaseRepository(supabase, secureStore ? { removeItem: (key) => secureStore.removeItem(key), key: storageKey } : undefined);
     return repository;
   }
   repository = createLocalRepository(storage);

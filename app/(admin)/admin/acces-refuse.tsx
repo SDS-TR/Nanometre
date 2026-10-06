@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
+import { BoutonDeconnexion } from '../../../src/components/BoutonDeconnexion';
 import { Button } from '../../../src/components/Button';
 import { Header } from '../../../src/components/Header';
 import { Screen } from '../../../src/components/Screen';
@@ -18,6 +19,7 @@ export default function AccesRefuseScreen() {
           Ton compte n’ouvre pas l’espace équipe. Si tu fais partie du salon, connecte-toi avec le compte qui t’a été remis.
         </Text>
         <Button label="Retour à l’accueil" onPress={() => router.replace('/')} />
+        <BoutonDeconnexion />
       </View>
     </Screen>
   );
