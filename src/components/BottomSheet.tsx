@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, View } from 'react-native';
-import Animated, { SlideInDown, useReducedMotion } from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { SlideInDown, runOnJS, useReducedMotion } from 'react-native-reanimated';
 import { SPRING } from '../motion';
 import { useTheme } from '../theme';
 import { Text } from './Text';
@@ -15,6 +16,11 @@ type Props = {
 export function BottomSheet({ visible, onClose, title, children }: Props) {
   const theme = useTheme();
   const reduced = useReducedMotion();
+  const dismiss = Gesture.Pan().onEnd((event) => {
+    if (event.translationY > 72) {
+      runOnJS(onClose)();
+    }
+  });
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} accessibilityViewIsModal>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
@@ -23,6 +29,7 @@ export function BottomSheet({ visible, onClose, title, children }: Props) {
           onPress={onClose}
           style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: theme.color.bg.overlay }}
         />
+        <GestureDetector gesture={dismiss}>
         <Animated.View
           entering={reduced ? undefined : SlideInDown.springify().mass(SPRING.mass).stiffness(SPRING.stiffness).damping(SPRING.damping)}
           style={{
@@ -39,6 +46,7 @@ export function BottomSheet({ visible, onClose, title, children }: Props) {
           {title ? <Text variant="heading-md">{title}</Text> : null}
           {children}
         </Animated.View>
+        </GestureDetector>
       </KeyboardAvoidingView>
     </Modal>
   );

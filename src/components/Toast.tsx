@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { hapticError, hapticSuccess } from '../lib/haptics';
 import { useTheme } from '../theme';
 import { Text } from './Text';
 
@@ -13,8 +14,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
   const [toast, setToast] = useState<Toast | null>(null);
   const show = useCallback((next: { message: string; tone?: Toast['tone'] }) => {
-    setToast({ message: next.message, tone: next.tone ?? 'info' });
+    const tone = next.tone ?? 'info';
+    setToast({ message: next.message, tone });
     AccessibilityInfo.announceForAccessibility(next.message);
+    if (tone === 'error') {
+      hapticError();
+    }
+    if (tone === 'success') {
+      hapticSuccess();
+    }
   }, []);
   useEffect(() => {
     if (!toast) {
@@ -33,6 +41,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       {toast ? (
         <View
+          accessibilityLiveRegion="polite"
+          accessibilityRole="alert"
           style={{
             position: 'absolute',
             left: theme.space[4],

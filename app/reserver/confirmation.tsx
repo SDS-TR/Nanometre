@@ -7,6 +7,7 @@ import { Screen } from '../../src/components/Screen';
 import { LoadingBlock, StateMessage } from '../../src/components/StateView';
 import { Text } from '../../src/components/Text';
 import { formatCad, formatLongDate, formatTimeRange } from '../../src/domain';
+import { hapticSuccess } from '../../src/lib/haptics';
 import { useAsync } from '../../src/hooks/useAsync';
 import { useTheme } from '../../src/theme';
 
@@ -27,6 +28,11 @@ export default function ConfirmationScreen() {
   }, [navigation, router]);
   const query = useAsync((repo) => repo.getBooking(bookingId), [bookingId]);
   const booking = query.data;
+  useEffect(() => {
+    if (booking) {
+      hapticSuccess();
+    }
+  }, [booking]);
   return (
     <Screen
       footer={

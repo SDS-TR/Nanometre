@@ -15,6 +15,8 @@ import {
   Inter_600SemiBold,
 } from '@expo-google-fonts/inter';
 import { PlayfairDisplay_600SemiBold } from '@expo-google-fonts/playfair-display';
+import { BandeauHorsLigne } from '../src/components/BandeauHorsLigne';
+import { GardeVersion } from '../src/components/GardeVersion';
 import { ToastProvider } from '../src/components/Toast';
 import { SCREEN_MS } from '../src/motion';
 import { AppStateProvider } from '../src/providers/AppState';
@@ -57,6 +59,8 @@ export default function RootLayout() {
           <AppStateProvider>
             <BookingDraftProvider>
               <ToastProvider>
+                <BandeauHorsLigne />
+                <GardeVersion />
                 <RootStack />
               </ToastProvider>
             </BookingDraftProvider>

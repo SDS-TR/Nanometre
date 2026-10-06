@@ -33,6 +33,8 @@ Si `npm install` s’arrête sur un conflit de dépendances, relancer avec `npm 
 
 Sans variable d’environnement, ou avec `EXPO_PUBLIC_DATA_SOURCE=local` dans `.env`, les données restent dans l’application : catalogue, rendez-vous de démonstration et comptes ci-dessous. Ne pas y coller de clé secrète Stripe ni de clé `service_role`.
 
+`EXPO_PUBLIC_SENTRY_DSN` vide : aucun envoi Sentry. S’il est défini, les plantages partent vers Sentry sans courriel ni téléphone. `EXPO_PUBLIC_DEMO_DATE=1` n’agit qu’en développement (`__DEV__`) : l’espace équipe s’ouvre alors sur le 3 octobre 2026. Sinon, la date est celle du jour à Québec (`America/Toronto`).
+
 | Compte | Courriel | Mot de passe | Rôle |
 | --- | --- | --- | --- |
 | Alex Gagnon | alex.gagnon@exemple.ca | nanometre | client |
@@ -149,13 +151,13 @@ Profils dans `eas.json` : `development` et `preview` restent en source locale. `
 eas build --profile development --platform ios
 ```
 
-L’intégration continue (`.github/workflows/ci.yml`) lance le contrôle de types, le lint et les tests sur Node 22.
+L’intégration continue (`.github/workflows/ci.yml`) lance `expo-doctor`, le contrôle de types, le lint et les tests sur Node 22, y compris Postgres.
 
 ## Données et identité
 
 Adresse de démonstration : 425, rue Saint-Vallier Ouest, Québec (Québec) G1K 1K8. Téléphone 418 555-0199. Fuseau `America/Toronto`. Numéros de TPS `123456789 RT0001` et de TVQ `1234567890 TQ0001` : ce sont des espaces réservés.
 
-Les photos dans `assets/photos` sont des images provisoires. L’accueil le dit.
+Les photos dans `assets/photos` restent provisoires. L’accueil ne le dit plus : les remplacer par les photos du salon avant la soumission.
 
 Le jeu `admin_data.json` décrit la journée du 3 octobre 2026, le 6 octobre (Julien), l’historique d’Alex et des clients fréquents, et les annulations tardives du 29 septembre. Le fichier source annonce 4 943 rendez-vous au total ; le seed ne reprend que les lignes concrètes, pour que les montants restent ceux du fichier.
 
@@ -165,7 +167,7 @@ Le jeu `admin_data.json` décrit la journée du 3 octobre 2026, le 6 octobre (Ju
 
 Dans Gestion, une invitation hébergée appelle la fonction Edge `invite-team-member`. Elle vérifie que l’appelant est propriétaire, exige une vérification en deux étapes pour inviter un autre propriétaire, puis, avec la clé `service_role`, envoie `auth.admin.inviteUserByEmail`. Le profil est inactif jusqu’à la première connexion. Un coiffeur doit avoir une chaise, et une seule compte actif par chaise. La réponse est `{ invited: true }` : aucun mot de passe n’est renvoyé ni affiché. Le lien dure au plus 24 h, selon le réglage Auth. En mode local, le compte est créé dans l’application et se connecte avec le mot de passe de démonstration déjà documenté.
 
-Le tableau calcule les revenus hors taxes et TTC, l’occupation et les coupes à partir des rendez-vous chargés. La vue de démonstration s’ouvre sur le samedi 3 octobre 2026. Ce ne sont pas les agrégats publiés du grand livre (4 943 rendez-vous).
+Le tableau calcule les revenus hors taxes et TTC, l’occupation et les coupes à partir des rendez-vous chargés. Tableau, agenda et paiements s’ouvrent sur aujourd’hui (fuseau `America/Toronto`). La date du 3 octobre 2026 n’apparaît que si `EXPO_PUBLIC_DEMO_DATE=1` et que l’app tourne en développement. Ce ne sont pas les agrégats publiés du grand livre (4 943 rendez-vous). Un client qui ouvre `/admin` voit « Accès refusé » sans la barre d’onglets.
 
 Honorer une visite confirmée dont l’heure est passée ajoute les points et le tampon. Une coupe offerte déjà consommée à la réservation n’en ajoute pas.
 
@@ -191,7 +193,7 @@ Le dépôt ne déploie pas le projet hébergé. Avant la première mise en produ
 - Sauvegarde PITR ou `pg_dump` avant d’appliquer les migrations.
 - Contrôles avant migration : `select id, role, barber_id from profiles where role = 'coiffeur' and barber_id is null;` et `select barber_id, count(*) from profiles where active and barber_id is not null group by 1 having count(*) > 1;` doivent être vides.
 - Supprimer les comptes de démo dans Auth (cela révoque les sessions), puis vérifier `select count(*) from profiles where id in ('11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222', '33333333-3333-4333-8333-333333333333');` vaut 0. Ne jamais lancer `seed.sql` ni `seed.demo.sql` sur le projet hébergé : le premier refuse, le second réinsère Karim comme propriétaire. Le catalogue seul est `seed.catalogue.sql`.
-- Appliquer les migrations dans l’ordre, y compris `20261001160000_refund_status`, `20261001160100_security_hardening`, `20261001170000_security_followup`, puis `20261001180000_security_staging`.
+- Appliquer les migrations dans l’ordre, y compris `20261001160000_refund_status`, `20261001160100_security_hardening`, `20261001170000_security_followup`, `20261001180000_security_staging`, puis les trois migrations de la revue du 6 octobre : `20261006170000_review_critical` (`admin_move` et `admin_agenda`), `20261006180000_review_high` (prix, promos, admissibilité) et `20261006190000_review_medium` (notes publiées, heures du salon, `create_booking` avec promo dans la même transaction). Ne pas réécrire les migrations déjà appliquées en mise en scène.
 - Après migration, anon ne doit pouvoir exécuter que `salon_public`, `visible_barbers`, `visible_services`, `visible_reviews`, `list_slots` et `request_account_deletion`. Une table créée ensuite n’est pas accordée à anon : les privilèges par défaut des tables sont retirés.
 - Les numéros de TPS et de TVQ du catalogue sont des espaces réservés (`tax_numbers_placeholder`). Les reçus le disent. Quand le comptable fournit les vrais numéros : `update salon_settings set gst_number = '…', qst_number = '…', tax_numbers_placeholder = false where id = 1;`.
 - `request_account_deletion` accepte 3 demandes par courriel et par jour, et 20 par heure pour tout le monde. Chaque demande acceptée écrit l’audit et prévient le propriétaire actif. Répondre dans les 30 jours.
@@ -204,13 +206,19 @@ Le dépôt ne déploie pas le projet hébergé. Avant la première mise en produ
 - Événements Stripe : `payment_intent.succeeded`, `payment_intent.payment_failed`, `charge.refunded`, `refund.updated`, `charge.dispute.created`. Version d’API de l’endpoint : `2025-08-27.basil`. Une relivraison pendant le bail de cinq minutes reçoit 503, pour que Stripe réessaie ; un événement déjà traité reçoit 200. Endpoints et secrets de test et de live séparés. Merchant ID Apple `merchant.ca.lenanometre`. Google Pay de production, sans `EXPO_PUBLIC_GOOGLE_PAY_TEST`.
 - Cron : déposer `CRON_SECRET` dans Vault, le lire dans le job, ne pas le coller en clair dans `cron.job`. `dispatch-notifications` chaque minute, `expire-checkouts` toutes les 5 minutes, `process-refunds` chaque minute, `purge-notes` chaque nuit. Rapprochement : `select booking_id, refunded_cents, stripe_refund_cents from payments where status = 'remboursement_en_cours' and refunded_cents > stripe_refund_cents;`
 - Le propriétaire enrôle le TOTP sur `/mfa`. Les sessions suivantes redemandent le code avant l’espace propriétaire. Le serveur exige aal2 pour le tableau de bord, les clients, les déplacements, les chaises, les blocages et la modération, en plus de l’argent, de l’équipe et des réglages. Un coiffeur garde son horaire, son agenda et la lecture des avis sans cette étape. Activer la sécurité renforcée des push Expo. Publier `https://lenanometre.ca/.well-known/apple-app-site-association` (JSON, sans extension, `application/json`, sans redirection) et `assetlinks.json` avec le certificat de signature Play. La région du projet Supabase (`ca-central-1` de préférence) ne se change pas après création. Vérifier aussi les régions des journaux Stripe et Expo (Loi 25). Le projet de mise en scène est distinct de la production, en mode test Stripe. Valider le chiffrement de session sur un iPhone et un Android réels (Expo Go ou build EAS) : il n’utilise plus WebCrypto.
-- EAS production : `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` (`pk_live_…`).
+- EAS production : `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` (`pk_live_…`). Optionnel : `EXPO_PUBLIC_SENTRY_DSN`. Ne pas définir `EXPO_PUBLIC_DEMO_DATE` en production.
+- Sentry (compte à créer par le salon, pas dans ce dépôt) : `npx @sentry/wizard@latest -i reactNative` ou, à la main, les secrets EAS `SENTRY_ORG`, `SENTRY_PROJECT` et `SENTRY_AUTH_TOKEN` pour envoyer les dSYM iOS et le mapping Android au build. Le plugin `@sentry/react-native` est déjà dans `app.json`. Sans DSN, `Sentry.init` n’est pas appelé. Le filtre retire les courriels et les numéros de téléphone avant l’envoi (`sendDefaultPii: false`).
+- Mises à jour OTA : `runtimeVersion.policy` est `appVersion` et `extra.minimumVersion` vaut `1.0.0`. `updates.enabled` est `false` tant qu’il n’y a pas de projet EAS (aucun identifiant inventé dans le dépôt). Pour les activer : `npx eas init` (crée le compte et le projet), puis `npx eas update:configure`, coller l’URL `https://u.expo.dev/<uuid>` dans `app.json` → `updates.url`, passer `updates.enabled` à `true`, et publier avec `npx eas update --branch production`. Un binaire dont `expo.version` est inférieur à `extra.minimumVersion` charge cette mise à jour s’il y en a une, sinon il bloque l’ouverture et demande l’App Store ou le Play Store. Pour forcer un plancher, monter `extra.minimumVersion` (et publier un binaire au moins aussi récent : une OTA ne peut pas remplacer un binaire trop ancien si le `runtimeVersion` a changé avec `appVersion`).
+- Manifeste de confidentialité iOS : `ios.privacyManifests` déclare l’absence de suivi, UserDefaults (`CA92.1`) et l’horodatage de fichiers (`C617.1`). `ITSAppUsesNonExemptEncryption` est `false`. La chaîne de permission des notifications est dans `NSUserNotificationsUsageDescription`.
+- Hors ligne : un bandeau s’affiche quand le réseau tombe. Un rafraîchissement qui échoue garde les données déjà à l’écran.
 - L’URL Play de suppression est `/suppression` : elle enregistre une demande et ouvre un courriel, sans réinstaller l’app. Les reçus restent six ans, anonymisés. Les notes partent après 24 mois. La politique de confidentialité nomme Supabase, Stripe et Expo, les durées, et le responsable Loi 25.
 - Si un vrai `.env` a déjà quitté le poste, régénérer la clé service Supabase, la clé Stripe et le secret du webhook.
 
 ## Avant la soumission en boutique
 
-- Photos, adresse et numéros de TPS/TVQ réels, et confirmation comptable des frais taxes incluses.
+- Photos réelles du salon (les fichiers dans `assets/photos` sont provisoires), adresse et numéros de TPS/TVQ réels, et confirmation comptable des frais taxes incluses.
+- Compte EAS, URL `updates.url`, puis `updates.enabled: true`. Compte Sentry et `EXPO_PUBLIC_SENTRY_DSN` si les plantages doivent être suivis.
+- Vérifier sur un appareil la taille de texte à 200 %, VoiceOver et TalkBack : le plafond du texte est 200 % (la barre d’onglets reste plus basse pour tenir dans la barre).
 - Identifiant marchand Apple, clés Stripe live, URL du webhook.
 - Identifiants Expo pour les notifications push, et le cron ci-dessus en production.
 - Politique de confidentialité, fiches App Store et Play Store, `eas submit`.

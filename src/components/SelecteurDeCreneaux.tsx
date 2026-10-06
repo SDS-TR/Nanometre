@@ -2,6 +2,7 @@ import { ScrollView, View, useWindowDimensions } from 'react-native';
 import { formatChipDate, formatTime, formatTimeRange, slotLegend } from '../domain';
 import { useTheme } from '../theme';
 import type { SlotView } from '../data/types';
+import { hapticSelect } from '../lib/haptics';
 import { Chip } from './Chip';
 import { Text } from './Text';
 
@@ -60,7 +61,10 @@ export function SelecteurDeCreneaux({ dates, date, onDate, period, onPeriod, slo
                 key={slot.startMinute}
                 label={formatTime(slot.startMinute)}
                 selected={selected}
-                onPress={() => onSelect(slot)}
+                onPress={() => {
+                  hapticSelect();
+                  onSelect(slot);
+                }}
               />
             );
           })}

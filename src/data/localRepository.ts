@@ -23,7 +23,6 @@ import seed from './seed.normalized.json';
 import type { KeyValueStore } from './storage';
 import type {
   Account,
-  Barber,
   BookingRecord,
   BookingView,
   LoyaltyView,

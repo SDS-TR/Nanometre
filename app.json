@@ -7,14 +7,41 @@
     "icon": "./assets/icon.png",
     "scheme": "lenanometre",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "enabled": false,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "extra": {
+      "minimumVersion": "1.0.0"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ca.lenanometre.app",
       "associatedDomains": [
         "applinks:lenanometre.ca",
         "webcredentials:lenanometre.ca"
-      ]
+      ],
+      "infoPlist": {
+        "NSUserNotificationsUsageDescription": "Le Nanomètre envoie un rappel avant ton rendez-vous, si tu l’as demandé.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "privacyManifests": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+            "NSPrivacyAccessedAPITypeReasons": ["C617.1"]
+          }
+        ]
+      }
     },
     "android": {
       "allowBackup": false,
@@ -70,7 +97,8 @@
           "enableGooglePay": true
         }
       ],
-      "@sentry/react-native"
+      "@sentry/react-native",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": false

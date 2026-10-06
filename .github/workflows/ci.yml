@@ -30,6 +30,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npx expo-doctor
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test

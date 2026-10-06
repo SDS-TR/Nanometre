@@ -12,6 +12,7 @@ import { SelecteurDate } from '../../../src/components/SelecteurDate';
 import { LoadingBlock, StateMessage } from '../../../src/components/StateView';
 import { Text } from '../../../src/components/Text';
 import { formatTime, teamDate, zonedParts } from '../../../src/domain';
+import { hapticSelect } from '../../../src/lib/haptics';
 import { useAsync } from '../../../src/hooks/useAsync';
 import { useAppState } from '../../../src/providers/AppState';
 import { useTheme } from '../../../src/theme';
@@ -53,7 +54,9 @@ export default function AgendaScreen() {
     try {
       await task();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Action impossible.');
+      const message = reason instanceof Error ? reason.message : 'Action impossible.';
+      setError(message);
+      toast({ message, tone: 'error' });
     } finally {
       setBusyId(null);
     }
@@ -206,7 +209,10 @@ export default function AgendaScreen() {
                 key={slot.startMinute}
                 label={formatTime(slot.startMinute)}
                 selected={moveStart === slot.startMinute}
-                onPress={() => setMoveStart(slot.startMinute)}
+                onPress={() => {
+                  hapticSelect();
+                  setMoveStart(slot.startMinute);
+                }}
               />
             ))}
         </View>
