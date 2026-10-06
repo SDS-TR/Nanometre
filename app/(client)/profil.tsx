@@ -26,6 +26,7 @@ export default function ProfilScreen() {
   const [confirmation, setConfirmation] = useState('');
   const [password, setPassword] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   return (
     <Screen>
       <Header title="Profil" />
@@ -109,7 +110,9 @@ export default function ProfilScreen() {
                 void repo.signOut();
               }}
             />
-            <Button label="Supprimer mon compte" variant="ghost" onPress={() => setDeleteOpen(true)} />
+            <View style={{ marginTop: theme.space[6] }}>
+              <Button label="Supprimer mon compte" variant="destructive" onPress={() => setDeleteOpen(true)} />
+            </View>
             <BottomSheet visible={deleteOpen} onClose={() => setDeleteOpen(false)} title="Supprimer le compte">
               <Text variant="body-sm" color={theme.color.text.secondary}>
                 Tes rendez-vous à venir sont annulés. Les reçus restent, sans ton nom. Écris SUPPRIMER pour confirmer.
@@ -126,14 +129,20 @@ export default function ProfilScreen() {
               ) : null}
               <Button
                 label="Supprimer définitivement"
+                variant="destructive"
+                loading={deleting}
                 onPress={() => {
                   setDeleteError(null);
+                  setDeleting(true);
                   void repo.deleteAccount(confirmation, password || undefined).then(
                     () => {
                       setDeleteOpen(false);
                       router.replace('/');
                     },
-                    (reason: unknown) => setDeleteError(reason instanceof Error ? reason.message : 'Suppression impossible.'),
+                    (reason: unknown) => {
+                      setDeleting(false);
+                      setDeleteError(reason instanceof Error ? reason.message : 'Suppression impossible.');
+                    },
                   );
                 }}
               />

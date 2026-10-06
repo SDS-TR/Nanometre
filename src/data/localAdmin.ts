@@ -123,6 +123,7 @@ export function createAdmin(input: {
       anchor,
       period,
       includeMoney,
+      openSpanMinutes: state.closeMinute - state.openMinute,
       barbers: barbers.filter((barber) => names.has(barber.fullName)).map((barber) => ({ fullName: barber.fullName })),
       bookings: state.bookings
         .filter((booking) => names.has(barberName(booking.barberId)))
@@ -471,6 +472,7 @@ export function createAdmin(input: {
             .slice()
             .sort((a, b) => b.date.localeCompare(a.date))
             .map((booking) => ({
+              id: booking.id,
               date: booking.date,
               serviceName: serviceName(booking.serviceId),
               barberName: barberName(booking.barberId),
@@ -585,6 +587,9 @@ export function createAdmin(input: {
     async inviteMember(payload: { fullName: string; email: string; role: Account['role']; barberId: string | null }) {
       const user = actor();
       assertCan(user.role, 'team');
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(payload.email.trim())) {
+        throw new Error('Courriel invalide.');
+      }
       if (state.users.some((item) => item.email.toLowerCase() === payload.email.trim().toLowerCase())) {
         throw new Error('Ce courriel a déjà un compte.');
       }
@@ -608,11 +613,20 @@ export function createAdmin(input: {
       emit();
       return { invited: true as const };
     },
-    async updateSalonSettings(payload: { openMinute: number; closeMinute: number; onsiteLatePolicy: Salon['onsiteLatePolicy'] }) {
+    async updateSalonSettings(payload: { openMinute: number; closeMinute: number; onsiteLatePolicy: Salon['onsiteLatePolicy']; force?: boolean }) {
       const user = actor();
       assertCan(user.role, 'settings');
       if (payload.closeMinute <= payload.openMinute) {
         throw new Error('L’heure de fermeture doit suivre l’ouverture.');
+      }
+      const outside = state.bookings.filter(
+        (booking) =>
+          (booking.status === 'confirme' || booking.status === 'en_attente_paiement' || booking.status === 'honore') &&
+          (booking.startMinute < payload.openMinute || booking.startMinute + booking.durationMinutes > payload.closeMinute),
+      );
+      if (outside.length > 0 && !payload.force) {
+        const names = outside.slice(0, 5).map((booking) => `${booking.clientName} (${booking.date})`).join(', ');
+        throw new Error(`Ces rendez-vous sortent des nouvelles heures : ${names}.`);
       }
       state.openMinute = payload.openMinute;
       state.closeMinute = payload.closeMinute;

@@ -49,13 +49,16 @@ export function computeDashboard(input: {
   bookings: DashboardBooking[];
   barbers: DashboardBarber[];
   includeMoney: boolean;
+  /** Minutes d’ouverture d’une chaise. 10 h si le salon n’a pas encore été chargé. */
+  openSpanMinutes?: number;
 }) {
   const { from, to } = periodBounds(input.anchor, input.period);
   const rows = input.bookings.filter((booking) => inRange(booking.date, from, to));
   const cuts = rows.filter((booking) => countsAsCut(booking.status));
   const cancelled = rows.filter((booking) => booking.status === 'annule' || booking.status === 'annule_tardif');
   const openDays = eachDate(from, to).filter((date) => isOpenWeekday(weekdayOfIso(date)));
-  const capacity = Math.max(1, input.barbers.length) * OPEN_SPAN * Math.max(1, openDays.length);
+  const span = input.openSpanMinutes ?? OPEN_SPAN;
+  const capacity = Math.max(1, input.barbers.length) * span * Math.max(1, openDays.length);
   const busy = cuts.reduce((sum, booking) => sum + booking.durationMinutes, 0);
   // priceCents est déjà le hors taxes après promo. Les frais tardifs ajoutent leur part HT.
   const revenueHt = cuts.reduce((sum, booking) => sum + booking.priceCents, 0) +
@@ -66,7 +69,7 @@ export function computeDashboard(input: {
   const perBarber = input.barbers.map((barber) => {
     const own = cuts.filter((booking) => booking.barberName === barber.fullName);
     const ownBusy = own.reduce((sum, booking) => sum + booking.durationMinutes, 0);
-    const barberCapacity = OPEN_SPAN * Math.max(1, openDays.length);
+    const barberCapacity = span * Math.max(1, openDays.length);
     return {
       name: barber.fullName,
       cuts: own.length,

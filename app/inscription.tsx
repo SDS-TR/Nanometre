@@ -40,9 +40,9 @@ export default function InscriptionScreen() {
         <Text variant="body-md" color={theme.color.text.secondary}>
           Un compte client suffit pour réserver. L’espace équipe se reçoit par invitation.
         </Text>
-        <Input label="Nom" value={fullName} onChangeText={setFullName} autoCapitalize="words" />
-        <Input label="Courriel" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-        <Input label="Mot de passe" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" error={error ?? undefined} />
+        <Input label="Nom" value={fullName} onChangeText={setFullName} autoCapitalize="words" autoComplete="name" textContentType="name" returnKeyType="next" />
+        <Input label="Courriel" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" returnKeyType="next" />
+        <Input label="Mot de passe" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" autoComplete="new-password" textContentType="newPassword" returnKeyType="go" onSubmitEditing={() => void submit()} error={error ?? undefined} />
         <Text variant="caption" color={theme.color.text.muted}>
           {repo.mode === 'supabase' ? 'Au moins 12 caractères.' : 'Au moins 8 caractères en mode démo.'}
         </Text>

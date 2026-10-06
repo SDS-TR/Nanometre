@@ -37,7 +37,7 @@ export function CarteRendezVous({
     paymentStatus: booking.paymentStatus,
     status: booking.status,
   });
-  const withinBanner = quote.allowed && quote.within24h && booking.paymentMethod === 'en_ligne';
+  const withinBanner = quote.allowed && quote.within24h && booking.paymentMethod === 'en_ligne' && booking.paymentStatus === 'paye';
   return (
     <View
       style={{

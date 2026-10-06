@@ -1,4 +1,5 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useEffect } from 'react';
 import { View } from 'react-native';
 import { Button } from '../../src/components/Button';
 import { Header } from '../../src/components/Header';
@@ -13,6 +14,17 @@ export default function ConfirmationScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
+  const navigation = useNavigation();
+  useEffect(() => {
+    navigation.setOptions({ gestureEnabled: false });
+    return navigation.addListener('beforeRemove', (event: { preventDefault: () => void; data: { action: { type: string } } }) => {
+      const type = event.data.action.type;
+      if (type === 'GO_BACK' || type === 'POP') {
+        event.preventDefault();
+        router.replace('/rendez-vous');
+      }
+    });
+  }, [navigation, router]);
   const query = useAsync((repo) => repo.getBooking(bookingId), [bookingId]);
   const booking = query.data;
   return (

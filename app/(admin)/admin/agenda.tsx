@@ -29,6 +29,7 @@ export default function AgendaScreen() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [blockOpen, setBlockOpen] = useState(false);
+  const [blockBarber, setBlockBarber] = useState<string | null>(null);
   const [blockError, setBlockError] = useState<string | null>(null);
   const [moving, setMoving] = useState<AgendaEntry | null>(null);
   const [moveDate, setMoveDate] = useState(() => teamDate(new Date()));
@@ -58,7 +59,7 @@ export default function AgendaScreen() {
     }
   }
 
-  const targetBarber = barberId ?? user?.barberId ?? barbers.data?.[0]?.id ?? '';
+  const targetBarber = blockBarber ?? (owner ? null : user?.barberId ?? null);
   const columns = wide ? splitColumns(agenda.data ?? []) : [agenda.data ?? []];
 
   return (
@@ -79,7 +80,7 @@ export default function AgendaScreen() {
             ))}
           </View>
         ) : null}
-        <Button label="Bloquer un créneau" variant="secondary" onPress={() => { setBlockError(null); setBlockOpen(true); }} />
+        <Button label="Bloquer un créneau" variant="secondary" onPress={() => { setBlockError(null); setBlockBarber(barberId); setBlockOpen(true); }} />
         {error ? <Text variant="body-sm" color={theme.color.error.default}>{error}</Text> : null}
         {agenda.status === 'loading' && !agenda.data ? <LoadingBlock /> : null}
         {agenda.status === 'error' ? (
@@ -136,9 +137,16 @@ export default function AgendaScreen() {
         closeMinute={salon.data?.closeMinute ?? 19 * 60}
         error={blockError}
         loading={busy}
+        barbers={owner && barberId == null ? (barbers.data ?? undefined) : undefined}
+        barberId={blockBarber}
+        onBarber={owner && barberId == null ? setBlockBarber : undefined}
         onClose={() => setBlockOpen(false)}
         onConfirm={(input) => {
           void run(async () => {
+            if (!targetBarber) {
+              setBlockError('Choisis un coiffeur.');
+              return;
+            }
             try {
               await repo.blockSlot({ barberId: targetBarber, date, ...input });
               setBlockOpen(false);

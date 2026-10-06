@@ -51,3 +51,41 @@ export function formatChipDate(isoDate: string): string {
 export function formatDuration(minutes: number): string {
   return `${minutes}${NBSP}min`;
 }
+
+const WEEKDAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+
+/** « Du mardi au samedi » quand les jours se suivent. */
+export function openDaysPhrase(weekdays: number[]): string {
+  const days = [...new Set(weekdays)].filter((day) => day >= 0 && day <= 6).sort((a, b) => a - b);
+  if (days.length === 0) {
+    return 'Fermé';
+  }
+  const contiguous = days.every((day, index) => index === 0 || day === days[index - 1] + 1);
+  if (contiguous && days.length > 1) {
+    return `Du ${WEEKDAYS[days[0]]} au ${WEEKDAYS[days[days.length - 1]]}`;
+  }
+  return days.map((day) => WEEKDAYS[day]).join(', ');
+}
+
+export function slotLegend(closeMinute: number): string {
+  return `Créneaux libres uniquement · pas de 15 min · fin au plus tard à ${formatTime(closeMinute)}`;
+}
+
+export function payButtonLabel(method: 'en_ligne' | 'sur_place', totalCents: number | null): string {
+  if (totalCents == null) {
+    return 'Payer';
+  }
+  if (totalCents === 0) {
+    return 'Confirmer · coupe offerte';
+  }
+  if (method === 'sur_place') {
+    return 'Confirmer la réservation';
+  }
+  return `Payer ${formatCad(totalCents)}`;
+}
+
+export function chairSpanLabel(openMinute: number, closeMinute: number): string {
+  const hours = Math.round(((closeMinute - openMinute) / 60) * 10) / 10;
+  const label = String(hours).replace('.', ',');
+  return `Sur ${label} h par chaise`;
+}

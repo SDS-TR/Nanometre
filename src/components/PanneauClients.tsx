@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { FlatList, View } from 'react-native';
 import { formatCad, formatLongDate } from '../domain';
 import type { ClientFile } from '../data/types';
 import { useAsync } from '../hooks/useAsync';
 import { useAppState } from '../providers/AppState';
 import { useTheme } from '../theme';
+import { useToast } from './Toast';
 import { Button } from './Button';
 import { Input } from './Input';
 import { LoadingBlock, StateMessage } from './StateView';
@@ -17,12 +18,15 @@ export function PanneauClients() {
   const [open, setOpen] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const toast = useToast();
   const owner = user?.role === 'proprietaire';
 
   async function save(client: ClientFile) {
     setError(null);
     try {
       await repo.saveClientNote(client.id, note);
+      toast({ message: 'Note enregistrée.', tone: 'success' });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Note impossible.');
     }
@@ -35,13 +39,21 @@ export function PanneauClients() {
     return <StateMessage title={clients.error === 'Accès refusé' ? 'Accès refusé' : 'Clients indisponibles'} body={clients.error ?? ''} />;
   }
   return (
-    <View style={{ gap: theme.space[3] }}>
+    <View style={{ flex: 1, gap: theme.space[3] }}>
       {!owner ? (
         <Text variant="body-sm" color={theme.color.text.secondary}>
           Les clients qui ont un rendez-vous avec toi. Pas de montants, pas de points.
         </Text>
       ) : null}
-      {clients.data?.map((client) => {
+      <Input label="Rechercher un client" value={query} onChangeText={setQuery} autoCapitalize="none" placeholder="Nom" />
+      <FlatList
+        data={(clients.data ?? []).filter((client) => client.name.toLowerCase().includes(query.trim().toLowerCase()))}
+        keyExtractor={(client) => client.id}
+        keyboardShouldPersistTaps="handled"
+        style={{ flex: 1 }}
+        contentContainerStyle={{ gap: theme.space[3] }}
+        ListEmptyComponent={<Text variant="body-sm" color={theme.color.text.muted}>Aucun client pour l’instant.</Text>}
+        renderItem={({ item: client }) => {
         const expanded = open === client.id;
         return (
           <View key={client.id} style={{ backgroundColor: theme.color.bg.elevated, borderRadius: theme.radius.lg, padding: theme.space[4], gap: theme.space[2], borderWidth: 1, borderColor: theme.color.border.default }}>
@@ -66,7 +78,7 @@ export function PanneauClients() {
                 {error ? <Text variant="body-sm" color={theme.color.error.default}>{error}</Text> : null}
                 <Button label="Enregistrer la note" size="sm" onPress={() => void save(client)} />
                 {client.history.slice(0, 6).map((row) => (
-                  <Text key={`${row.date}-${row.serviceName}`} variant="body-sm" color={theme.color.text.secondary}>
+                  <Text key={row.id ?? `${row.date}-${row.serviceName}-${row.barberName}`} variant="body-sm" color={theme.color.text.secondary}>
                     {`${formatLongDate(row.date)} · ${row.serviceName} · ${row.barberName}${row.priceLabel ? ` · ${row.priceLabel}` : ''}`}
                   </Text>
                 ))}
@@ -74,8 +86,8 @@ export function PanneauClients() {
             ) : null}
           </View>
         );
-      })}
-      {clients.data?.length === 0 ? <Text variant="body-sm" color={theme.color.text.muted}>Aucun client pour l’instant.</Text> : null}
+      }}
+      />
     </View>
   );
 }

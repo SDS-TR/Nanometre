@@ -91,6 +91,7 @@ export type BookingRecord = {
   promoCode?: string | null;
   discountCents?: number;
   feeOwingCents?: number;
+  createdAt?: string;
 };
 
 export type BookingView = BookingRecord & {
@@ -173,7 +174,7 @@ export interface Repository {
   setMemberRole(userId: string, role: Role): Promise<void>;
   setMemberActive(userId: string, active: boolean): Promise<void>;
   inviteMember(input: { fullName: string; email: string; role: Role; barberId: string | null }): Promise<{ invited: true }>;
-  updateSalonSettings(input: { openMinute: number; closeMinute: number; onsiteLatePolicy: Salon['onsiteLatePolicy'] }): Promise<Salon>;
+  updateSalonSettings(input: { openMinute: number; closeMinute: number; onsiteLatePolicy: Salon['onsiteLatePolicy']; force?: boolean }): Promise<Salon>;
   updateService(input: { serviceId: string; priceCents: number }): Promise<void>;
   setBarberWeekday(input: { barberId: string; weekday: number; open: boolean }): Promise<void>;
   listAudit(): Promise<AuditEntry[]>;
@@ -240,7 +241,7 @@ export type ClientFile = {
   points: number | null;
   stamps: number | null;
   spentHtCents: number | null;
-  history: { date: string; serviceName: string; barberName: string; priceLabel: string | null; status: string }[];
+  history: { id?: string; date: string; serviceName: string; barberName: string; priceLabel: string | null; status: string }[];
 };
 
 export type PromoView = {

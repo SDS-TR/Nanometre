@@ -12,6 +12,10 @@ type Props = {
   secureTextEntry?: boolean;
   keyboardType?: 'default' | 'email-address' | 'phone-pad' | 'number-pad';
   autoCapitalize?: 'none' | 'words' | 'sentences' | 'characters';
+  autoComplete?: 'email' | 'current-password' | 'new-password' | 'name' | 'off';
+  textContentType?: 'emailAddress' | 'password' | 'newPassword' | 'name' | 'none';
+  returnKeyType?: 'done' | 'next' | 'go';
+  onSubmitEditing?: () => void;
   disabled?: boolean;
 };
 
@@ -24,6 +28,10 @@ export function Input({
   secureTextEntry,
   keyboardType = 'default',
   autoCapitalize = 'sentences',
+  autoComplete,
+  textContentType,
+  returnKeyType,
+  onSubmitEditing,
   disabled = false,
 }: Props) {
   const theme = useTheme();
@@ -43,6 +51,10 @@ export function Input({
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
         autoCorrect={false}
+        autoComplete={autoComplete}
+        textContentType={textContentType}
+        returnKeyType={returnKeyType}
+        onSubmitEditing={onSubmitEditing}
         editable={!disabled}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}

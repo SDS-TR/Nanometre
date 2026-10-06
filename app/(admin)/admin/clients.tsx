@@ -18,9 +18,9 @@ export default function ClientsScreen() {
     );
   }
   return (
-    <Screen>
+    <Screen scroll={false}>
       <Header title="Clients" />
-      <View style={{ padding: theme.space[4] }}>
+      <View style={{ flex: 1, padding: theme.space[4] }}>
         <PanneauClients />
       </View>
     </Screen>

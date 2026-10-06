@@ -18,9 +18,9 @@ export default function GestionClientsScreen() {
     );
   }
   return (
-    <Screen>
+    <Screen scroll={false}>
       <Header back title="Clients" />
-      <View style={{ padding: theme.space[4] }}>
+      <View style={{ flex: 1, padding: theme.space[4] }}>
         <PanneauClients />
       </View>
     </Screen>

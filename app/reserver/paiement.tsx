@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { BottomSheet } from '../../src/components/BottomSheet';
 import { Button } from '../../src/components/Button';
@@ -9,7 +9,7 @@ import { ProgressSteps } from '../../src/components/ProgressSteps';
 import { Screen } from '../../src/components/Screen';
 import { StateMessage } from '../../src/components/StateView';
 import { Text } from '../../src/components/Text';
-import { computeLineTaxes, formatCad } from '../../src/domain';
+import { computeLineTaxes, payButtonLabel } from '../../src/domain';
 import { useAsync } from '../../src/hooks/useAsync';
 import { nativePayAvailable, presentNativePaymentSheet } from '../../src/lib/stripePayment';
 import { useAppState } from '../../src/providers/AppState';
@@ -27,6 +27,14 @@ export default function PaiementScreen() {
   const [phase, setPhase] = useState<'form' | 'processing'>('form');
   const [demoOpen, setDemoOpen] = useState(false);
   const [pendingId, setPendingId] = useState<string | null>(params.bookingId ?? draft.bookingId ?? null);
+  const settled = useRef(false);
+  useEffect(() => {
+    return () => {
+      if (pendingId && !settled.current && draft.paymentMethod === 'en_ligne') {
+        void repo.abandonCheckout(pendingId).catch(() => undefined);
+      }
+    };
+  }, [pendingId, repo, draft.paymentMethod]);
   const loyalty = useAsync((repository) => (user ? repository.getLoyalty() : Promise.resolve(null)), [user?.id]);
   const existing = useAsync(
     (repository) => (params.bookingId ? repository.getBooking(params.bookingId) : Promise.resolve(null)),
@@ -56,7 +64,7 @@ export default function PaiementScreen() {
         ? Math.max(0, preview.data.priceCents - discount)
         : undefined;
   const shown = waitingQuote || preTax == null ? null : booking ? booking.totalCents : computeLineTaxes(preTax).totalCents;
-  const label = shown == null ? 'Payer' : shown === 0 ? 'Confirmer · coupe offerte' : `Payer ${formatCad(shown)}`;
+  const label = payButtonLabel(draft.paymentMethod, shown);
 
   async function ensureBooking() {
     if (pendingId) {
@@ -88,6 +96,7 @@ export default function PaiementScreen() {
   }
 
   async function finish(id: string) {
+    settled.current = true;
     setPhase('processing');
     await new Promise((resolve) => setTimeout(resolve, 700));
     reset();
@@ -112,6 +121,9 @@ export default function PaiementScreen() {
       if (prepared.mode === 'stripe' && nativePayAvailable && prepared.clientSecret) {
         const result = await presentNativePaymentSheet(prepared.clientSecret);
         if (result === 'canceled') {
+          await repo.abandonCheckout(created.id);
+          setPendingId(null);
+          update({ bookingId: undefined });
           return;
         }
         if (result === 'failed') {

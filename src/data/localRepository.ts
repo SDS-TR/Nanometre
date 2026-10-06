@@ -3,6 +3,7 @@ import {
   CUTS_PER_REWARD,
   emptyLoyalty,
   generateSlots,
+  holdExpired,
   isOpenWeekday,
   assertLastOwnerSurvives,
   quoteCancellation,
@@ -58,6 +59,7 @@ type Delta = {
   servicePrices: { id: string; priceCents: number }[];
   eligibility?: [string, string[]][];
   pushTokens?: [string, string][];
+  deletedUserIds?: string[];
 };
 
 type State = {
@@ -144,6 +146,23 @@ function publicUser(user: Account): SessionUser {
     barberId: user.barberId,
     phone: user.phone,
   };
+}
+
+function releaseExpiredHolds(state: State, now = new Date()) {
+  for (const booking of state.bookings) {
+    if (booking.status !== 'en_attente_paiement' || !holdExpired(booking.createdAt, now)) {
+      continue;
+    }
+    booking.status = 'annule';
+    booking.paymentStatus = 'echoue';
+    if (booking.promoCode) {
+      const promo = state.promos.find((item) => item.code === booking.promoCode);
+      if (promo && promo.usageCount > 0) {
+        promo.usageCount -= 1;
+      }
+      booking.promoCode = null;
+    }
+  }
 }
 
 function busyFor(state: State, barberId: string, date: string) {
@@ -293,6 +312,10 @@ function applyDelta(state: State, delta: Delta) {
       state.reviews.push(review);
     }
   }
+  for (const id of delta.deletedUserIds ?? []) {
+    state.users = state.users.filter((user) => user.id !== id);
+    state.loyalty.delete(id);
+  }
   if (delta.sessionUserId && state.users.some((user) => user.id === delta.sessionUserId)) {
     state.sessionUserId = delta.sessionUserId;
   }
@@ -382,6 +405,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       servicePrices: state.services.map((service) => ({ id: service.id, priceCents: service.priceCents })),
       eligibility: [...state.eligibility.entries()],
       pushTokens: [...state.pushTokens.entries()],
+      deletedUserIds: seed.users.filter((user) => !state.users.some((item) => item.id === user.id)).map((user) => user.id),
     };
     await storage.setItem(STORAGE_KEY, JSON.stringify(delta));
   }
@@ -435,6 +459,9 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
     },
     async signUp({ fullName, email, password }) {
       await ready;
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
+        throw new Error('Courriel invalide.');
+      }
       if (password.length < 8) {
         throw new Error('Le mot de passe doit contenir au moins 8 caractères.');
       }
@@ -551,7 +578,11 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       const all = state.services.map((service) => service.id);
       return [...seed.barbers]
         .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((barber) => ({ ...barber, serviceIds: state.eligibility.get(barber.id) ?? all }));
+        .map((barber) => {
+          const published = state.reviews.filter((review) => review.barberId === barber.id && review.status === 'publie');
+          const rating = published.length === 0 ? 0 : Math.round((published.reduce((sum, review) => sum + review.stars, 0) / published.length) * 10) / 10;
+          return { ...barber, serviceIds: state.eligibility.get(barber.id) ?? all, rating, reviewCount: published.length };
+        });
     },
     async getServices() {
       await ready;
@@ -565,6 +596,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
     },
     async getSlots({ barberId, serviceId, date, now = new Date() }) {
       await ready;
+      releaseExpiredHolds(state, now);
       const service = state.services.find((item) => item.id === serviceId);
       if (!service) {
         throw new Error('Prestation introuvable.');
@@ -696,6 +728,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
         loyaltyRedeemed: input.redeemReward,
         promoCode,
         discountCents,
+        createdAt: new Date().toISOString(),
         feeOwingCents: 0,
       };
       state.bookings.push(booking);

@@ -49,8 +49,8 @@ export default function ConnexionScreen() {
         <Text variant="body-md" color={theme.color.text.secondary}>
           Entre ton courriel et ton mot de passe. Tu peux aussi recevoir un lien magique.
         </Text>
-        <Input label="Courriel" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" error={error ?? undefined} />
-        <Input label="Mot de passe" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" />
+        <Input label="Courriel" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" returnKeyType="next" error={error ?? undefined} />
+        <Input label="Mot de passe" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" autoComplete="current-password" textContentType="password" returnKeyType="go" onSubmitEditing={() => void submit()} />
         <Button label="Se connecter" size="lg" fullWidth loading={loading} onPress={submit} />
         <Button label="Recevoir un lien magique" variant="secondary" onPress={() => router.push({ pathname: '/lien-magique', params: { email } })} />
         <Button label="Créer un compte" variant="ghost" onPress={() => router.push('/inscription')} />

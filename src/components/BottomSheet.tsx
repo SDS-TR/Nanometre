@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Modal, Pressable, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, View } from 'react-native';
 import Animated, { SlideInDown, useReducedMotion } from 'react-native-reanimated';
 import { SPRING } from '../motion';
 import { useTheme } from '../theme';
@@ -16,8 +16,8 @@ export function BottomSheet({ visible, onClose, title, children }: Props) {
   const theme = useTheme();
   const reduced = useReducedMotion();
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} accessibilityViewIsModal>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable
           accessibilityLabel="Fermer"
           onPress={onClose}
@@ -39,7 +39,7 @@ export function BottomSheet({ visible, onClose, title, children }: Props) {
           {title ? <Text variant="heading-md">{title}</Text> : null}
           {children}
         </Animated.View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

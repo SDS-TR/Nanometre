@@ -25,6 +25,7 @@ export default function EquipeScreen() {
   const [barberId, setBarberId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState<string | null>(null);
   if (user?.role !== 'proprietaire') {
     return (
       <Screen>
@@ -51,6 +52,13 @@ export default function EquipeScreen() {
             <SegmentedControl<Role>
               value={member.role}
               onChange={(next) => {
+                const key = `role:${member.id}:${next}`;
+                if (pending !== key) {
+                  setPending(key);
+                  setError('Appuie encore pour confirmer le changement de rôle.');
+                  return;
+                }
+                setPending(null);
                 setError(null);
                 void repo.setMemberRole(member.id, next).catch((reason: unknown) => {
                   setError(reason instanceof Error ? reason.message : 'Rôle refusé.');
@@ -66,6 +74,13 @@ export default function EquipeScreen() {
               variant="secondary"
               size="sm"
               onPress={() => {
+                const key = `active:${member.id}`;
+                if (pending !== key) {
+                  setPending(key);
+                  setError(member.active ? 'Appuie encore pour désactiver ce compte.' : 'Appuie encore pour réactiver ce compte.');
+                  return;
+                }
+                setPending(null);
                 setError(null);
                 void repo.setMemberActive(member.id, !member.active).catch((reason: unknown) => {
                   setError(reason instanceof Error ? reason.message : 'Action refusée.');
@@ -76,7 +91,7 @@ export default function EquipeScreen() {
         ))}
         <Text variant="heading-sm">Inviter</Text>
         <Input label="Nom" value={name} onChangeText={setName} />
-        <Input label="Courriel" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
+        <Input label="Courriel" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" textContentType="emailAddress" error={error ?? undefined} />
         <SegmentedControl<Role>
           value={role}
           onChange={setRole}

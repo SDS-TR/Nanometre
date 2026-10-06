@@ -49,7 +49,7 @@ type Props = TextProps & {
   color?: string;
 };
 
-export function Text({ variant = 'body-md', color, style, maxFontSizeMultiplier = 1.3, ...props }: Props) {
+export function Text({ variant = 'body-md', color, style, maxFontSizeMultiplier = 2, ...props }: Props) {
   const theme = useTheme();
   const type = styleFor(theme, variant);
   return (

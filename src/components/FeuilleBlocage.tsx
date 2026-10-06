@@ -16,9 +16,12 @@ type Props = {
   onConfirm: (input: { startMinute: number; endMinute: number; reason: string }) => void;
   loading?: boolean;
   error?: string | null;
+  barbers?: { id: string; shortName: string }[];
+  barberId?: string | null;
+  onBarber?: (id: string) => void;
 };
 
-export function FeuilleBlocage({ visible, openMinute, closeMinute, onClose, onConfirm, loading, error }: Props) {
+export function FeuilleBlocage({ visible, openMinute, closeMinute, onClose, onConfirm, loading, error, barbers, barberId, onBarber }: Props) {
   const theme = useTheme();
   const [start, setStart] = useState(18 * 60 + 30);
   const [end, setEnd] = useState(19 * 60);
@@ -29,6 +32,13 @@ export function FeuilleBlocage({ visible, openMinute, closeMinute, onClose, onCo
   }
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Bloquer un créneau">
+      {barbers && onBarber ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space[2] }}>
+          {barbers.map((barber) => (
+            <Chip key={barber.id} label={barber.shortName} selected={barberId === barber.id} onPress={() => onBarber(barber.id)} />
+          ))}
+        </View>
+      ) : null}
       <Text variant="body-sm" color={theme.color.text.secondary}>
         Le créneau disparaît de la réservation en ligne. Un rendez-vous déjà pris ne peut pas être écrasé.
       </Text>

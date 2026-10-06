@@ -1,5 +1,5 @@
 import { ScrollView, View, useWindowDimensions } from 'react-native';
-import { formatChipDate, formatTime, formatTimeRange } from '../domain';
+import { formatChipDate, formatTime, formatTimeRange, slotLegend } from '../domain';
 import { useTheme } from '../theme';
 import type { SlotView } from '../data/types';
 import { Chip } from './Chip';
@@ -16,9 +16,10 @@ type Props = {
   slots: SlotView[];
   selectedStart: number | null;
   onSelect: (slot: SlotView) => void;
+  closeMinute?: number;
 };
 
-export function SelecteurDeCreneaux({ dates, date, onDate, period, onPeriod, slots, selectedStart, onSelect }: Props) {
+export function SelecteurDeCreneaux({ dates, date, onDate, period, onPeriod, slots, selectedStart, onSelect, closeMinute = 19 * 60 }: Props) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const free = slots.filter((slot) => {
@@ -71,7 +72,7 @@ export function SelecteurDeCreneaux({ dates, date, onDate, period, onPeriod, slo
         </Text>
       ) : null}
       <Text variant="caption" color={theme.color.text.muted} style={{ paddingHorizontal: theme.space[4] }}>
-        Créneaux libres uniquement · pas de 15 min · fin au plus tard à 19 h
+        {slotLegend(closeMinute)}
       </Text>
       <View style={{ height: 0, width: column }} />
     </View>

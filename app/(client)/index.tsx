@@ -13,7 +13,7 @@ import { LoadingBlock, StateMessage } from '../../src/components/StateView';
 import { Text } from '../../src/components/Text';
 import { photos } from '../../src/data/photos';
 import type { BookingView, Salon } from '../../src/data/types';
-import { formatTime, zonedDateTime } from '../../src/domain';
+import { formatTime, openDaysPhrase, zonedDateTime } from '../../src/domain';
 import { useAsync } from '../../src/hooks/useAsync';
 import { useAppState } from '../../src/providers/AppState';
 import { palette, useTheme } from '../../src/theme';
@@ -64,7 +64,7 @@ export default function AccueilScreen() {
             {salon.city}
           </Text>
           <Text variant="body-sm" color={theme.color.text.muted}>
-            Mardi au samedi · {formatTime(salon.openMinute)} à {formatTime(salon.closeMinute)}
+            {openDaysPhrase([2, 3, 4, 5, 6])} · {formatTime(salon.openMinute)} à {formatTime(salon.closeMinute)}
           </Text>
         </View>
         <View style={{ position: 'absolute', top: insets.top + theme.space[2], left: theme.space[4] }}>

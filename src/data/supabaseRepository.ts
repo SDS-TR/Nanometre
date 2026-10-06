@@ -264,17 +264,13 @@ export function createSupabaseRepository(
           p_start_minute: input.startMinute,
           p_method: input.paymentMethod,
           p_redeem: input.redeemReward,
+          p_promo: input.redeemReward ? null : input.promoCode,
         }),
       );
       if (!created.ok || !created.id) {
         throw new Error(created.error ?? 'Réservation impossible.');
       }
-      const id = created.id;
-      if (input.promoCode && !input.redeemReward) {
-        const { error } = await supabase.rpc('apply_promo', { p_booking: id, p_code: input.promoCode });
-        fail(error);
-      }
-      return this.getBooking(id);
+      return this.getBooking(created.id);
     },
     async markPaid(bookingId) {
       const current = await this.getBooking(bookingId);
@@ -424,6 +420,7 @@ export function createSupabaseRepository(
         p_open: input.openMinute,
         p_close: input.closeMinute,
         p_policy: input.onsiteLatePolicy,
+        p_force: input.force ?? false,
       });
       fail(error);
       const salon = await rows<Salon[]>(supabase.rpc('salon_public'));

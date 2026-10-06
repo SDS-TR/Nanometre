@@ -9,7 +9,7 @@ import { SelecteurDate } from '../../../src/components/SelecteurDate';
 import { StatCard } from '../../../src/components/StatCard';
 import { StateMessage, LoadingBlock } from '../../../src/components/StateView';
 import { Text } from '../../../src/components/Text';
-import { formatCad, formatTime, teamDate, zonedParts } from '../../../src/domain';
+import { chairSpanLabel, formatCad, formatTime, teamDate, zonedParts } from '../../../src/domain';
 import { useAsync } from '../../../src/hooks/useAsync';
 import { useAppState } from '../../../src/providers/AppState';
 import { useTheme } from '../../../src/theme';
@@ -22,6 +22,7 @@ export default function TableauScreen() {
   const owner = user?.role === 'proprietaire';
   const [date, setDate] = useState(() => teamDate(new Date()));
   const [period, setPeriod] = useState<'jour' | 'semaine' | 'mois'>('jour');
+  const salon = useAsync((repository) => repository.getSalon(), []);
   const board = useAsync(
     (repo) => (owner ? repo.getDashboard({ anchor: date, period }) : repo.getDay(date)),
     [owner, date, period],
@@ -71,7 +72,7 @@ export default function TableauScreen() {
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space[3] }}>
                 <StatCard label="Coupes" value={String(board.data.cuts)} hint={`${board.data.booked} rendez-vous`} />
                 <StatCard label="Annulations" value={String(board.data.cancelled)} />
-                <StatCard label="Occupation" value={percent(board.data.occupancy)} hint="Sur 10 h par chaise" />
+                <StatCard label="Occupation" value={percent(board.data.occupancy)} hint={chairSpanLabel(salon.data?.openMinute ?? 9 * 60, salon.data?.closeMinute ?? 19 * 60)} />
               </View>
             </View>
             <View style={{ flex: 1, gap: theme.space[3] }}>

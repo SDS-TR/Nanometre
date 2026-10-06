@@ -6,7 +6,7 @@ import { Screen } from '../../../../src/components/Screen';
 import { SegmentedControl } from '../../../../src/components/SegmentedControl';
 import { LoadingBlock, StateMessage } from '../../../../src/components/StateView';
 import { Text } from '../../../../src/components/Text';
-import { formatTime } from '../../../../src/domain';
+import { formatTime, openDaysPhrase } from '../../../../src/domain';
 import { useAsync } from '../../../../src/hooks/useAsync';
 import { useAppState } from '../../../../src/providers/AppState';
 import { useTheme } from '../../../../src/theme';
@@ -38,7 +38,7 @@ export default function SalonScreen() {
       <View style={{ padding: theme.space[4], gap: theme.space[4] }}>
         {salon.status === 'loading' && !salon.data ? <LoadingBlock /> : null}
         <Text variant="body-md">
-          {`Ouvert de ${formatTime(openMinute)} à ${formatTime(closeMinute)}, du mardi au samedi.`}
+          {`Ouvert de ${formatTime(openMinute)} à ${formatTime(closeMinute)}, ${openDaysPhrase([2, 3, 4, 5, 6]).toLowerCase()}.`}
         </Text>
         <Text variant="label-sm">Ouverture</Text>
         <View style={{ flexDirection: 'row', gap: theme.space[2] }}>
@@ -67,12 +67,13 @@ export default function SalonScreen() {
         {error ? <Text variant="body-sm" color={theme.color.error.default}>{error}</Text> : null}
         {saved ? <Text variant="body-sm" color={theme.color.success.default}>Réglages enregistrés.</Text> : null}
         <Button
-          label="Enregistrer"
+          label={error?.includes('sortent') ? 'Enregistrer quand même' : 'Enregistrer'}
           onPress={() => {
+            const force = Boolean(error?.includes('sortent'));
             setSaved(false);
             setError(null);
             void repo
-              .updateSalonSettings({ openMinute, closeMinute, onsiteLatePolicy: currentPolicy })
+              .updateSalonSettings({ openMinute, closeMinute, onsiteLatePolicy: currentPolicy, force })
               .then(() => setSaved(true))
               .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Réglage refusé.'));
           }}
