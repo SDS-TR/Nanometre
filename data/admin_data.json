@@ -43,7 +43,7 @@
      125.0
     ],
     [
-     "Rasage à l'ancienne",
+     "Rasage à l’ancienne",
      5,
      225.0
     ]
@@ -123,7 +123,7 @@
      340.0
     ],
     [
-     "Rasage à l'ancienne",
+     "Rasage à l’ancienne",
      8,
      355.0
     ],
@@ -223,7 +223,7 @@
      925.0
     ],
     [
-     "Rasage à l'ancienne",
+     "Rasage à l’ancienne",
      22,
      985.5
     ]
@@ -313,7 +313,7 @@
      742.5
     ],
     [
-     "Rasage à l'ancienne",
+     "Rasage à l’ancienne",
      27,
      1205.0
     ]
@@ -403,7 +403,7 @@
      3730.0
     ],
     [
-     "Rasage à l'ancienne",
+     "Rasage à l’ancienne",
      113,
      5041.5
     ]
@@ -493,7 +493,7 @@
      4262.5
     ],
     [
-     "Rasage à l'ancienne",
+     "Rasage à l’ancienne",
      101,
      4518.0
     ]
@@ -562,7 +562,7 @@
    "service": "Dégradé à blanc",
    "date": "2026-10-03",
    "stars": 4,
-   "text": "Très bien, un peu d'attente à l'arrivée.",
+   "text": "Très bien, un peu d’attente à l’arrivée.",
    "status": "en_attente"
   },
   {
@@ -571,7 +571,7 @@
    "service": "Taille de barbe",
    "date": "2026-10-02",
    "stars": 4,
-   "text": "Très bien, un peu d'attente à l'arrivée.",
+   "text": "Très bien, un peu d’attente à l’arrivée.",
    "status": "en_attente"
   },
   {
@@ -604,10 +604,10 @@
   {
    "client": "Jérémie Thibault",
    "barber": "Ousmane Diallo",
-   "service": "Rasage à l'ancienne",
+   "service": "Rasage à l’ancienne",
    "date": "2026-10-01",
    "stars": 4,
-   "text": "Très bien, un peu d'attente à l'arrivée.",
+   "text": "Très bien, un peu d’attente à l’arrivée.",
    "status": "publie"
   },
   {
@@ -622,10 +622,10 @@
   {
    "client": "Sébastien Gauthier",
    "barber": "Ousmane Diallo",
-   "service": "Rasage à l'ancienne",
+   "service": "Rasage à l’ancienne",
    "date": "2026-10-01",
    "stars": 5,
-   "text": "Rasage à l'ancienne parfait, serviette chaude comprise.",
+   "text": "Rasage à l’ancienne parfait, serviette chaude comprise.",
    "status": "publie"
   },
   {
@@ -706,7 +706,7 @@
    "service": "Coupe classique",
    "date": "2026-09-26",
    "stars": 4,
-   "text": "Très bien, un peu d'attente à l'arrivée.",
+   "text": "Très bien, un peu d’attente à l’arrivée.",
    "status": "publie"
   },
   {
@@ -841,7 +841,7 @@
    "service": "Taille de barbe",
    "date": "2026-09-22",
    "stars": 4,
-   "text": "Très bien, un peu d'attente à l'arrivée.",
+   "text": "Très bien, un peu d’attente à l’arrivée.",
    "status": "publie"
   },
   {
@@ -865,7 +865,7 @@
   {
    "client": "Nicolas Thibault",
    "barber": "Ousmane Diallo",
-   "service": "Rasage à l'ancienne",
+   "service": "Rasage à l’ancienne",
    "date": "2026-09-19",
    "stars": 5,
    "text": "Accueil au top et résultat parfait.",
@@ -895,7 +895,7 @@
    "service": "Taille de barbe",
    "date": "2026-09-17",
    "stars": 4,
-   "text": "Très bien, un peu d'attente à l'arrivée.",
+   "text": "Très bien, un peu d’attente à l’arrivée.",
    "status": "publie"
   },
   {
@@ -919,7 +919,7 @@
   {
    "client": "Sébastien Lefebvre",
    "barber": "Ousmane Diallo",
-   "service": "Rasage à l'ancienne",
+   "service": "Rasage à l’ancienne",
    "date": "2026-09-16",
    "stars": 5,
    "text": "Rapide, précis, super ambiance.",
@@ -931,7 +931,7 @@
    "service": "Coupe + barbe",
    "date": "2026-09-16",
    "stars": 4,
-   "text": "Très bien, un peu d'attente à l'arrivée.",
+   "text": "Très bien, un peu d’attente à l’arrivée.",
    "status": "publie"
   },
   {
@@ -1242,14 +1242,14 @@
     ],
     [
      "2026-08-26",
-     "Rasage à l'ancienne",
+     "Rasage à l’ancienne",
      "Ousmane Diallo",
      51.74,
      "honore"
     ],
     [
      "2026-09-03",
-     "Rasage à l'ancienne",
+     "Rasage à l’ancienne",
      "Ousmane Diallo",
      51.74,
      "honore"
@@ -1781,7 +1781,7 @@
    "Ousmane Diallo",
    "9 h 15",
    40,
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Charles Fortin",
    "honore",
    "surPlace"
@@ -1790,7 +1790,7 @@
    "Ousmane Diallo",
    "10 h 00",
    40,
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Antoine Roy",
    "honore",
    "enLigne"
@@ -1817,7 +1817,7 @@
    "Ousmane Diallo",
    "12 h 45",
    40,
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Alexis Lavoie",
    "honore",
    "enLigne"
@@ -1853,7 +1853,7 @@
    "Ousmane Diallo",
    "15 h 45",
    40,
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Alexis Pelletier",
    "honore",
    "enLigne"
@@ -1862,7 +1862,7 @@
    "Ousmane Diallo",
    "16 h 30",
    40,
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Samuel Haddad",
    "honore",
    "enLigne"
@@ -2257,7 +2257,7 @@
    "2026-10-03",
    "16 h 30",
    "Samuel Haddad",
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Ousmane Diallo",
    "Carte",
    "paye",
@@ -2293,7 +2293,7 @@
    "2026-10-03",
    "15 h 45",
    "Alexis Pelletier",
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Ousmane Diallo",
    "Carte",
    "paye",
@@ -2557,7 +2557,7 @@
    "2026-10-03",
    "12 h 45",
    "Alexis Lavoie",
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Ousmane Diallo",
    "Carte",
    "paye",
@@ -2749,7 +2749,7 @@
    "2026-10-03",
    "10 h 00",
    "Antoine Roy",
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Ousmane Diallo",
    "Carte",
    "paye",
@@ -2821,7 +2821,7 @@
    "2026-10-03",
    "9 h 15",
    "Charles Fortin",
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Ousmane Diallo",
    "Sur place",
    "paye",
@@ -2917,7 +2917,7 @@
    "2026-10-02",
    "18 h 15",
    "Mathieu Bergeron",
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Ousmane Diallo",
    "Carte",
    "paye",
@@ -3085,7 +3085,7 @@
    "2026-10-02",
    "16 h 15",
    "Youssef Cloutier",
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Ousmane Diallo",
    "Carte",
    "rembourse",
@@ -3409,7 +3409,7 @@
    "2026-10-02",
    "12 h 30",
    "Adam Leclerc",
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Ousmane Diallo",
    "Carte",
    "paye",
@@ -3649,7 +3649,7 @@
    "2026-10-02",
    "9 h 45",
    "Kevin Traoré",
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Ousmane Diallo",
    "Carte",
    "paye",
@@ -4093,7 +4093,7 @@
    "Ousmane Diallo",
    630,
    40,
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Vincent Paquette",
    "enLigne",
    "paye"
@@ -4102,7 +4102,7 @@
    "Ousmane Diallo",
    705,
    40,
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Nicolas Caron",
    "enLigne",
    "paye"
@@ -4120,7 +4120,7 @@
    "Ousmane Diallo",
    780,
    40,
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Ibrahim Caron",
    "surPlace",
    "a_encaisser"
@@ -4147,7 +4147,7 @@
    "Ousmane Diallo",
    960,
    40,
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Nicolas Gagnon",
    "enLigne",
    "paye"
@@ -4156,7 +4156,7 @@
    "Ousmane Diallo",
    1005,
    40,
-   "Rasage à l'ancienne",
+   "Rasage à l’ancienne",
    "Nicolas Lefebvre",
    "enLigne",
    "paye"
@@ -4386,7 +4386,7 @@
   "fees_tps": 0.6,
   "fees_tvq": 1.13
  },
- "fee_rule": "Frais d'annulation tardive taxes incluses (LTA art. 182, LTVQ art. 318) — à confirmer par le comptable du salon",
+ "fee_rule": "Frais d’annulation tardive taxes incluses (LTA art. 182, LTVQ art. 318) — à confirmer par le comptable du salon",
  "fee_split_examples": {
   "27.50": [
    1.31,
@@ -4459,7 +4459,7 @@
   "Dégradé à blanc": 256,
   "Coupe + barbe": 223,
   "Taille de barbe": 150,
-  "Rasage à l'ancienne": 113,
+  "Rasage à l’ancienne": 113,
   "Coupe enfant": 189
  },
  "rev_counts": {

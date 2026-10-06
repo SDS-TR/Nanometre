@@ -25,6 +25,7 @@ export function BottomSheet({ visible, onClose, title, children }: Props) {
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} accessibilityViewIsModal>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable
+          accessibilityRole="button"
           accessibilityLabel="Fermer"
           onPress={onClose}
           style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: theme.color.bg.overlay }}

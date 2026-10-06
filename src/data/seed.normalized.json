@@ -48,7 +48,7 @@
       "fullName": "Karim B.",
       "shortName": "Karim",
       "specialty": "Dégradés précis",
-      "bio": "Karim tient la chaise du fond depuis l'ouverture. Il prend son temps sur les fondus et laisse la nuque impeccable.",
+      "bio": "Karim tient la chaise du fond depuis l’ouverture. Il prend son temps sur les fondus et laisse la nuque impeccable.",
       "years": 8,
       "photo": "karim-b",
       "sortOrder": 1,
@@ -143,7 +143,7 @@
       "id": "30000000-0000-4000-8000-000000000004",
       "slug": "taille-barbe",
       "name": "Taille de barbe",
-      "description": "Lignes, joues et cou, finition à l'huile.",
+      "description": "Lignes, joues et cou, finition à l’huile.",
       "durationMinutes": 20,
       "priceCents": 2500,
       "photo": "taille-barbe",
@@ -4293,7 +4293,7 @@
       "clientName": "Mathieu Pelletier",
       "serviceName": "Dégradé à blanc",
       "stars": 4,
-      "body": "Très bien, un peu d'attente à l'arrivée.",
+      "body": "Très bien, un peu d’attente à l’arrivée.",
       "status": "en_attente",
       "date": "2026-10-03"
     },
@@ -4304,7 +4304,7 @@
       "clientName": "Maxime Bergeron",
       "serviceName": "Taille de barbe",
       "stars": 4,
-      "body": "Très bien, un peu d'attente à l'arrivée.",
+      "body": "Très bien, un peu d’attente à l’arrivée.",
       "status": "en_attente",
       "date": "2026-10-02"
     },
@@ -4348,7 +4348,7 @@
       "clientName": "Jérémie Thibault",
       "serviceName": "Rasage à l’ancienne",
       "stars": 4,
-      "body": "Très bien, un peu d'attente à l'arrivée.",
+      "body": "Très bien, un peu d’attente à l’arrivée.",
       "status": "publie",
       "date": "2026-10-01"
     },
@@ -4469,7 +4469,7 @@
       "clientName": "Ibrahim Thibault",
       "serviceName": "Coupe classique",
       "stars": 4,
-      "body": "Très bien, un peu d'attente à l'arrivée.",
+      "body": "Très bien, un peu d’attente à l’arrivée.",
       "status": "publie",
       "date": "2026-09-26"
     },
@@ -4634,7 +4634,7 @@
       "clientName": "Louis Morin",
       "serviceName": "Taille de barbe",
       "stars": 4,
-      "body": "Très bien, un peu d'attente à l'arrivée.",
+      "body": "Très bien, un peu d’attente à l’arrivée.",
       "status": "publie",
       "date": "2026-09-22"
     },
@@ -4700,7 +4700,7 @@
       "clientName": "Émile Nguyen",
       "serviceName": "Taille de barbe",
       "stars": 4,
-      "body": "Très bien, un peu d'attente à l'arrivée.",
+      "body": "Très bien, un peu d’attente à l’arrivée.",
       "status": "publie",
       "date": "2026-09-17"
     },
@@ -4744,7 +4744,7 @@
       "clientName": "Charles Leclerc",
       "serviceName": "Coupe + barbe",
       "stars": 4,
-      "body": "Très bien, un peu d'attente à l'arrivée.",
+      "body": "Très bien, un peu d’attente à l’arrivée.",
       "status": "publie",
       "date": "2026-09-16"
     },
