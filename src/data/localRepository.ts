@@ -900,8 +900,19 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       await ready;
       await admin.cancelClientBooking(bookingId, async (id) => {
         const booking = state.bookings.find((item) => item.id === id);
-        if (!booking?.clientId) {
-          throw new Error('Ce rendez-vous n’a pas de compte client.');
+        if (!booking) {
+          throw new Error('Rendez-vous introuvable.');
+        }
+        if (!booking.clientId) {
+          if (booking.status === 'honore' || booking.status === 'annule' || booking.status === 'annule_tardif') {
+            throw new Error('Ce rendez-vous ne peut plus être annulé.');
+          }
+          if (zonedDateTime(booking.date, booking.startMinute).getTime() <= Date.now()) {
+            throw new Error('Ce rendez-vous ne peut plus être annulé.');
+          }
+          booking.status = 'annule';
+          emit();
+          return present(state, booking);
         }
         const previous = state.sessionUserId;
         state.sessionUserId = booking.clientId;

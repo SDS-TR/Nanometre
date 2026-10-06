@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 import { Chip } from '../../../../src/components/Chip';
+import { useToast } from '../../../../src/components/Toast';
 import { Header } from '../../../../src/components/Header';
 import { Screen } from '../../../../src/components/Screen';
 import { LoadingBlock, StateMessage } from '../../../../src/components/StateView';
@@ -19,6 +20,7 @@ const DAYS = [
 export default function CoiffeursScreen() {
   const theme = useTheme();
   const { user, repo } = useAppState();
+  const toast = useToast();
   const barbers = useAsync((repository) => repository.getBarbers(), []);
   const services = useAsync((repository) => repository.getServices(), []);
   const setup = useAsync((repository) => repository.getBarberSetup(), [user?.id]);
@@ -66,7 +68,9 @@ export default function CoiffeursScreen() {
                     label={service.name}
                     selected={offered.has(service.id)}
                     onPress={() =>
-                      void repo.setBarberService({ barberId: barber.id, serviceId: service.id, eligible: !offered.has(service.id) })
+                      void repo
+                        .setBarberService({ barberId: barber.id, serviceId: service.id, eligible: !offered.has(service.id) })
+                        .then(() => toast({ message: offered.has(service.id) ? `${service.name} retiré.` : `${service.name} ajouté.`, tone: 'success' }))
                     }
                   />
                 ))}

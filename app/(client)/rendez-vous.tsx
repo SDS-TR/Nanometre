@@ -31,10 +31,16 @@ export default function RendezVousScreen() {
   const now = Date.now();
   const visible = useMemo(() => {
     const bookings = query.data?.bookings ?? [];
-    return bookings.filter((booking) => {
-      const upcoming = zonedDateTime(booking.date, booking.startMinute).getTime() > now && booking.status !== 'annule' && booking.status !== 'annule_tardif' && booking.status !== 'honore';
-      return tab === 'avenir' ? upcoming || booking.status === 'en_attente_paiement' : !upcoming;
-    });
+    return bookings
+      .filter((booking) => {
+        const upcoming = zonedDateTime(booking.date, booking.startMinute).getTime() > now && booking.status !== 'annule' && booking.status !== 'annule_tardif' && booking.status !== 'honore';
+        return tab === 'avenir' ? upcoming || booking.status === 'en_attente_paiement' : !upcoming;
+      })
+      .sort((a, b) => {
+        const left = zonedDateTime(a.date, a.startMinute).getTime();
+        const right = zonedDateTime(b.date, b.startMinute).getTime();
+        return tab === 'passes' ? right - left : left - right;
+      });
   }, [query.data, tab, now]);
   const quote = target
     ? quoteCancellation({

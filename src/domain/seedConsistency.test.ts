@@ -42,6 +42,10 @@ describe('seed admin_data', () => {
           booking.id !== alex?.id,
       )
       .map((booking) => ({ start: booking.startMinute, end: booking.startMinute + booking.durationMinutes }));
+    for (const booking of seed.bookings) {
+      expect(booking.startMinute).toBeGreaterThanOrEqual(9 * 60);
+      expect(booking.startMinute + booking.durationMinutes).toBeLessThanOrEqual(19 * 60);
+    }
     expect(freeSlots(generateSlots({ weekday: weekdayOfIso('2026-10-06'), durationMinutes: 60, busy })).map((slot) => slot.startMinute)).toEqual([
       14 * 60 + 15,
       14 * 60 + 30,

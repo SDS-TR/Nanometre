@@ -8,6 +8,7 @@ import { Screen } from '../../../../src/components/Screen';
 import { SegmentedControl } from '../../../../src/components/SegmentedControl';
 import { LoadingBlock, StateMessage } from '../../../../src/components/StateView';
 import { Text } from '../../../../src/components/Text';
+import { readableAudit } from '../../../../src/domain';
 import type { Role } from '../../../../src/data/types';
 import { useAsync } from '../../../../src/hooks/useAsync';
 import { useAppState } from '../../../../src/providers/AppState';
@@ -131,7 +132,7 @@ export default function EquipeScreen() {
         <Text variant="heading-sm">Journal</Text>
         {audit.data?.slice(0, 12).map((entry) => (
           <Text key={entry.id} variant="body-sm" color={theme.color.text.secondary}>
-            {`${entry.action} · ${entry.detail}`}
+            {readableAudit(entry.action, entry.detail)}
           </Text>
         ))}
         {audit.data?.length === 0 ? <Text variant="body-sm" color={theme.color.text.muted}>Aucune action pour l’instant.</Text> : null}

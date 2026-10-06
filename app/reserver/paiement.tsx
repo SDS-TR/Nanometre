@@ -98,7 +98,9 @@ export default function PaiementScreen() {
   async function finish(id: string) {
     settled.current = true;
     setPhase('processing');
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    if (repo.mode === 'local') {
+      await new Promise((resolve) => setTimeout(resolve, 700));
+    }
     reset();
     router.replace({ pathname: '/reserver/confirmation', params: { bookingId: id } });
   }
@@ -229,11 +231,13 @@ export default function PaiementScreen() {
             }}
           />
         ) : null}
-        <Text variant="caption" color={theme.color.text.muted}>
-          {nativePayAvailable && repo.mode === 'supabase'
-            ? 'La feuille Stripe affiche la carte, Apple Pay et Google Pay.'
-            : 'Sans clé Stripe native, une simulation de la PaymentSheet s’ouvre. Sur un dev build configuré, c’est la feuille du SDK.'}
-        </Text>
+        {__DEV__ ? (
+          <Text variant="caption" color={theme.color.text.muted}>
+            {nativePayAvailable && repo.mode === 'supabase'
+              ? 'La feuille Stripe affiche la carte, Apple Pay et Google Pay.'
+              : 'Sans clé Stripe native, une simulation de la PaymentSheet s’ouvre. Sur un dev build configuré, c’est la feuille du SDK.'}
+          </Text>
+        ) : null}
       </View>
       <BottomSheet visible={demoOpen} onClose={() => setDemoOpen(false)} title="Feuille Stripe">
         <Text variant="body-sm" color={theme.color.text.secondary}>

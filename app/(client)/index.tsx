@@ -3,7 +3,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/Button';
 import { CarteCoiffeur } from '../../src/components/CarteCoiffeur';
 import { CarteCoupe } from '../../src/components/CarteCoupe';
@@ -16,12 +15,11 @@ import type { BookingView, Salon } from '../../src/data/types';
 import { formatTime, openDaysPhrase, zonedDateTime } from '../../src/domain';
 import { useAsync } from '../../src/hooks/useAsync';
 import { useAppState } from '../../src/providers/AppState';
-import { palette, useTheme } from '../../src/theme';
+import { useTheme } from '../../src/theme';
 
 export default function AccueilScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { user } = useAppState();
   const catalog = useAsync(
     (repo) => Promise.all([repo.getSalon(), repo.getServices(), repo.getBarbers(), repo.getMyBookings()]),
@@ -65,11 +63,6 @@ export default function AccueilScreen() {
           </Text>
           <Text variant="body-sm" color={theme.color.text.muted}>
             {openDaysPhrase([2, 3, 4, 5, 6])} · {formatTime(salon.openMinute)} à {formatTime(salon.closeMinute)}
-          </Text>
-        </View>
-        <View style={{ position: 'absolute', top: insets.top + theme.space[2], left: theme.space[4] }}>
-          <Text variant="caption" color={palette.cream['100']}>
-            Photos provisoires, générées par IA
           </Text>
         </View>
       </View>

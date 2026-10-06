@@ -43,6 +43,7 @@ export function RecapReservation(props: Props) {
         ))}
       </View>
       <View style={{ gap: theme.space[2] }}>
+        {props.discountCents ? <TaxRow label="Prix" value={formatCad(props.subtotalCents + props.discountCents)} /> : null}
         {props.discountCents ? <TaxRow label={props.promoCode ? `Code ${props.promoCode}` : 'Réduction'} value={`-${formatCad(props.discountCents)}`} /> : null}
         <TaxRow label="Sous-total" value={formatCad(props.subtotalCents)} />
         <TaxRow label="TPS (5 %)" value={formatCad(props.gstCents)} />

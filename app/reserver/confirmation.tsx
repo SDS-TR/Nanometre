@@ -62,7 +62,7 @@ export default function ConfirmationScreen() {
           <Text variant="body-md" color={theme.color.text.secondary}>
             {booking.paymentMethod === 'sur_place'
               ? `À payer au fauteuil : ${formatCad(booking.totalCents)}.`
-              : `Payé en ligne : ${formatCad(booking.totalCents)}. Le reçu est dans tes rendez-vous.`}
+              : `Payé en ligne : ${formatCad(booking.totalCents)}. Le détail est dans tes rendez-vous.`}
           </Text>
         </View>
       )}

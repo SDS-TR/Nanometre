@@ -41,7 +41,7 @@ export function Header({ title, back = false, right }: Props) {
       )}
       <View style={{ flex: 1 }}>
         {title ? (
-          <Text variant="heading-sm" style={{ textAlign: 'center' }}>
+          <Text variant="heading-sm" accessibilityRole="header" style={{ textAlign: 'center' }}>
             {title}
           </Text>
         ) : null}

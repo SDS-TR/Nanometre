@@ -27,7 +27,7 @@ export default function AgendaScreen() {
   const [date, setDate] = useState(() => teamDate(new Date()));
   const [barberId, setBarberId] = useState<string | null>(owner ? null : user?.barberId ?? null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [blockOpen, setBlockOpen] = useState(false);
   const [blockBarber, setBlockBarber] = useState<string | null>(null);
   const [blockError, setBlockError] = useState<string | null>(null);
@@ -47,15 +47,15 @@ export default function AgendaScreen() {
     [moving?.id, moving?.barberId, moving?.serviceId, moveDate],
   );
 
-  async function run(task: () => Promise<void>) {
-    setBusy(true);
+  async function run(task: () => Promise<void>, id: string | null = null) {
+    setBusyId(id);
     setError(null);
     try {
       await task();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Action impossible.');
     } finally {
-      setBusy(false);
+      setBusyId(null);
     }
   }
 
@@ -93,7 +93,7 @@ export default function AgendaScreen() {
                 <BlocRendezVous key={entry.id} entry={entry}>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space[2] }}>
                     {entry.canHonor ? (
-                      <Button label="Honorer" size="sm" loading={busy} onPress={() => void run(() => repo.honorBooking(entry.id))} />
+                      <Button label="Honorer" size="sm" loading={busyId === entry.id} onPress={() => void run(() => repo.honorBooking(entry.id), entry.id)} />
                     ) : null}
                     {entry.status === 'confirme' && !entry.canHonor ? (
                       <Text variant="caption" color={theme.color.text.muted}>
@@ -117,7 +117,7 @@ export default function AgendaScreen() {
                       <Button label="Annuler" size="sm" variant="destructive" onPress={() => setCancelling(entry)} />
                     ) : null}
                     {entry.kind === 'block' ? (
-                      <Button label="Débloquer" size="sm" variant="secondary" loading={busy} onPress={() => void run(() => repo.unblockSlot(entry.id))} />
+                      <Button label="Débloquer" size="sm" variant="secondary" loading={busyId === entry.id} onPress={() => void run(() => repo.unblockSlot(entry.id), entry.id)} />
                     ) : null}
                   </View>
                 </BlocRendezVous>
@@ -136,7 +136,7 @@ export default function AgendaScreen() {
         openMinute={salon.data?.openMinute ?? 9 * 60}
         closeMinute={salon.data?.closeMinute ?? 19 * 60}
         error={blockError}
-        loading={busy}
+        loading={busyId != null}
         barbers={owner && barberId == null ? (barbers.data ?? undefined) : undefined}
         barberId={blockBarber}
         onBarber={owner && barberId == null ? setBlockBarber : undefined}
@@ -167,7 +167,7 @@ export default function AgendaScreen() {
         <Button
           label="Confirmer l’annulation"
           variant="destructive"
-          loading={busy}
+          loading={busyId != null}
           onPress={() => {
             if (!cancelling) {
               return;
@@ -222,7 +222,7 @@ export default function AgendaScreen() {
         ) : null}
         <Button
           label="Enregistrer"
-          loading={busy}
+          loading={busyId != null}
           fullWidth
           disabled={moveStart == null}
           onPress={() => {

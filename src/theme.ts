@@ -300,32 +300,14 @@ export const typography = {
 
 // Ombres légères. En mode sombre, l'élévation passe surtout par color.bg.elevated (les ombres restent quasi invisibles).
 export const shadow = {
-  sm: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 1.5,
-    shadowOpacity: 0.12,
-    elevation: 1,
-  },
-  md: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 6,
-    shadowOpacity: 0.12,
-    elevation: 3,
-  },
-  lg: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowRadius: 16,
-    shadowOpacity: 0.16,
-    elevation: 8,
-  },
+  sm: { boxShadow: '0 1px 1.5px rgba(0, 0, 0, 0.12)' },
+  md: { boxShadow: '0 4px 6px rgba(0, 0, 0, 0.12)' },
+  lg: { boxShadow: '0 12px 16px rgba(0, 0, 0, 0.16)' },
 } as const;
 
 /** Mise à l'échelle 130 % : garder le ratio line-height/size quand l'utilisateur agrandit le texte. */
 export const scaledLineHeight = (fontSize: number, lineHeight: number) =>
-  Math.round(lineHeight * Math.min(PixelRatio.getFontScale(), 1.3));
+  Math.round(lineHeight * Math.min(PixelRatio.getFontScale(), 2));
 
 const base = { space, touchTarget, controlHeight, radius, font, typography, shadow };
 export const darkTheme = { mode: 'sombre' as const, color: colorDark, ...base };

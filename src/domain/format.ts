@@ -71,6 +71,33 @@ export function slotLegend(closeMinute: number): string {
   return `Créneaux libres uniquement · pas de 15 min · fin au plus tard à ${formatTime(closeMinute)}`;
 }
 
+export function shiftMonth(isoDate: string, delta: number): string {
+  const [year, month] = isoDate.split('-').map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1 + delta, 1));
+  return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}-01`;
+}
+
+export function monthTitle(isoDate: string): string {
+  const [year, month] = isoDate.split('-').map(Number);
+  return new Intl.DateTimeFormat('fr-CA', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(year, month - 1, 1, 12)));
+}
+
+const AUDIT_LABELS: Record<string, string> = {
+  invitation: 'Invitation',
+  role: 'Rôle',
+  desactivation: 'Désactivation',
+  reactivation: 'Réactivation',
+  deplacement: 'Déplacement',
+  annulation: 'Annulation',
+  remboursement_frais: 'Remboursement de frais',
+};
+
+export function readableAudit(action: string, detail: string): string {
+  const label = AUDIT_LABELS[action] ?? action;
+  const cleaned = detail.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '').replace(/\s·\s·/g, ' · ').trim();
+  return cleaned ? `${label} · ${cleaned}` : label;
+}
+
 export function payButtonLabel(method: 'en_ligne' | 'sur_place', totalCents: number | null): string {
   if (totalCents == null) {
     return 'Payer';

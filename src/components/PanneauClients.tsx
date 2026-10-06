@@ -68,7 +68,7 @@ export function PanneauClients() {
               }}
             />
             <Text variant="body-sm" color={theme.color.text.secondary}>
-              {`${client.visits} visites honorées`}
+              {`${client.visits} ${client.visits > 1 ? 'visites honorées' : 'visite honorée'}`}
               {client.points != null ? ` · ${client.points} points · ${client.stamps ?? 0} tampons` : ''}
               {client.spentHtCents != null ? ` · ${formatCad(client.spentHtCents)} HT` : ''}
             </Text>
@@ -79,7 +79,7 @@ export function PanneauClients() {
                 <Button label="Enregistrer la note" size="sm" onPress={() => void save(client)} />
                 {client.history.slice(0, 6).map((row) => (
                   <Text key={row.id ?? `${row.date}-${row.serviceName}-${row.barberName}`} variant="body-sm" color={theme.color.text.secondary}>
-                    {`${formatLongDate(row.date)} · ${row.serviceName} · ${row.barberName}${row.priceLabel ? ` · ${row.priceLabel}` : ''}`}
+                    {`${formatLongDate(row.date)} · ${row.status === 'honore' ? 'Honoré' : row.status === 'confirme' ? 'À venir' : row.status} · ${row.serviceName} · ${row.barberName}${row.priceLabel ? ` · ${row.priceLabel}` : ''}`}
                   </Text>
                 ))}
               </>

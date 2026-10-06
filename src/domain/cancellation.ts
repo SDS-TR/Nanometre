@@ -75,7 +75,7 @@ export function cancellationReceipt(
   qstNumber: string,
   placeholder = false,
 ): string {
-  const base = `Frais d'annulation tardive ${formatCad(extraction.feeCents)} (TPS ${formatCad(extraction.gstCents)}, TVQ ${formatCad(extraction.qstCents)} incluses). TPS ${gstNumber}. TVQ ${qstNumber}.`;
+  const base = `Frais d’annulation tardive ${formatCad(extraction.feeCents)} (TPS ${formatCad(extraction.gstCents)}, TVQ ${formatCad(extraction.qstCents)} incluses). TPS ${gstNumber}. TVQ ${qstNumber}.`;
   return placeholder ? `${base} ${TAX_PLACEHOLDER_NOTICE}` : base;
 }
 

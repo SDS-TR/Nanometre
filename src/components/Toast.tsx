@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { View } from 'react-native';
+import { AccessibilityInfo, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme';
 import { Text } from './Text';
@@ -14,6 +14,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<Toast | null>(null);
   const show = useCallback((next: { message: string; tone?: Toast['tone'] }) => {
     setToast({ message: next.message, tone: next.tone ?? 'info' });
+    AccessibilityInfo.announceForAccessibility(next.message);
   }, []);
   useEffect(() => {
     if (!toast) {
@@ -32,12 +33,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       {toast ? (
         <View
-          pointerEvents="none"
           style={{
             position: 'absolute',
             left: theme.space[4],
             right: theme.space[4],
-            bottom: insets.bottom + theme.space[6],
+            bottom: insets.bottom + 64,
+            pointerEvents: 'none',
             backgroundColor: theme.color.bg.elevated,
             borderRadius: theme.radius.md,
             borderLeftWidth: 3,

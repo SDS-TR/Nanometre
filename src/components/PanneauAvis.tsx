@@ -41,8 +41,8 @@ export function PanneauAvis({ moderate }: { moderate: boolean }) {
         <CarteAvis key={review.id} review={review}>
           {moderate ? (
             <View style={{ flexDirection: 'row', gap: theme.space[2] }}>
-              <Button label="Publier" size="sm" onPress={() => void setStatus(review.id, 'publie')} />
-              <Button label="Masquer" size="sm" variant="secondary" onPress={() => void setStatus(review.id, 'masque')} />
+              {review.status !== 'publie' ? <Button label="Publier" size="sm" onPress={() => void setStatus(review.id, 'publie')} /> : null}
+              {review.status !== 'masque' ? <Button label="Masquer" size="sm" variant="secondary" onPress={() => void setStatus(review.id, 'masque')} /> : null}
             </View>
           ) : null}
         </CarteAvis>

@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Switch, View } from 'react-native';
 import { Avatar } from '../../src/components/Avatar';
 import { BottomSheet } from '../../src/components/BottomSheet';
 import { Button } from '../../src/components/Button';
@@ -68,22 +68,27 @@ export default function ProfilScreen() {
         {user ? (
           <View style={{ gap: theme.space[1] }}>
             <ListItem title="Carte de fidélité" subtitle="1 point par dollar, 10 coupes = 1 offerte" onPress={() => router.push('/fidelite')} />
-            <ListItem
-              title="Rappels"
-              subtitle={opted.data ? 'Activés — confirmation, 24 h et 2 h avant' : 'Désactivés'}
-              onPress={() => {
-                const next = !opted.data;
-                void repo.setNotificationOptIn(next).then(async () => {
-                  if (next) {
-                    const token = await registerForPush();
-                    if (token) {
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44, gap: theme.space[3] }}>
+              <Text variant="label-md">Rappels</Text>
+              <Switch
+                accessibilityRole="switch"
+                accessibilityLabel="Rappels"
+                value={Boolean(opted.data)}
+                onValueChange={(next) => {
+                  void repo.setNotificationOptIn(next).then(async () => {
+                    if (next) {
+                      const token = await registerForPush();
+                      if (!token) {
+                        setNote('Les notifications sont refusées dans les réglages du téléphone.');
+                        return;
+                      }
                       await repo.setPushToken(token);
                     }
-                  }
-                  setNote(next ? 'Tu recevras les avis de tes rendez-vous.' : 'Les avis sont coupés.');
-                });
-              }}
-            />
+                    setNote(next ? 'Tu recevras les avis de tes rendez-vous.' : 'Les avis sont coupés.');
+                  }).catch(() => setNote('Impossible d’enregistrer ce choix.'));
+                }}
+              />
+            </View>
             {note ? (
               <Text variant="body-sm" color={theme.color.text.secondary}>
                 {note}

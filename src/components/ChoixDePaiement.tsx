@@ -26,7 +26,7 @@ export function ChoixDePaiement({ value, onChange, error }: Props) {
           <Pressable
             key={option.value}
             accessibilityRole="radio"
-            accessibilityState={{ selected }}
+            accessibilityState={{ selected, checked: selected }}
             onPress={() => onChange(option.value)}
             style={{
               minHeight: theme.touchTarget.min,

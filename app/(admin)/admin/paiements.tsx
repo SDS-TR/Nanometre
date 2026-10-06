@@ -5,12 +5,11 @@ import { Button } from '../../../src/components/Button';
 import { Header } from '../../../src/components/Header';
 import { LignePaiement } from '../../../src/components/LignePaiement';
 import { Screen } from '../../../src/components/Screen';
-import { SelecteurDate } from '../../../src/components/SelecteurDate';
 import { StatCard } from '../../../src/components/StatCard';
 import { LoadingBlock, StateMessage } from '../../../src/components/StateView';
 import { Text } from '../../../src/components/Text';
 import type { PaymentLine } from '../../../src/data/types';
-import { extractIncludedTaxes, formatCad, periodBounds, teamDate, zonedParts } from '../../../src/domain';
+import { extractIncludedTaxes, formatCad, monthTitle, periodBounds, shiftMonth, teamDate } from '../../../src/domain';
 import { useAsync } from '../../../src/hooks/useAsync';
 import { useAppState } from '../../../src/providers/AppState';
 import { useTheme } from '../../../src/theme';
@@ -63,11 +62,12 @@ export default function PaiementsScreen() {
     <Screen>
       <Header title="Paiements" />
       <View style={{ padding: theme.space[4], gap: theme.space[4] }}>
-        <SelecteurDate date={anchor} onChange={setAnchor} onToday={() => setAnchor(zonedParts(new Date()).isoDate)} />
-        <Text variant="caption" color={theme.color.text.muted}>
-          {`Mois du ${range.from} au ${range.to}. Les totaux suivent les rendez-vous chargés.`}
-        </Text>
-        <View style={{ flexDirection: 'row', gap: theme.space[3] }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.space[2] }}>
+          <Button label="Mois précédent" size="sm" variant="secondary" onPress={() => setAnchor(shiftMonth(anchor, -1))} />
+          <Text variant="label-md" accessibilityRole="header">{monthTitle(anchor)}</Text>
+          <Button label="Mois suivant" size="sm" variant="secondary" onPress={() => setAnchor(shiftMonth(anchor, 1))} />
+        </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space[3] }}>
           <StatCard label="Encaissé" value={formatCad(total)} />
           <StatCard label="Frais retenus" value={formatCad(fees)} />
           <StatCard label="Remboursé" value={formatCad(refunded)} />

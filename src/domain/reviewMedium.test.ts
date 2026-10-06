@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createLocalRepository } from '../data/localRepository';
 import { memoryStore } from '../data/storage';
-import { chairSpanLabel, openDaysPhrase, payButtonLabel, slotLegend } from './format';
+import { chairSpanLabel, openDaysPhrase, payButtonLabel, readableAudit, slotLegend } from './format';
 import { holdExpired } from './holds';
 import { computeDashboard } from './dashboard';
 

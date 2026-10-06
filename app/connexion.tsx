@@ -32,8 +32,14 @@ export default function ConnexionScreen() {
     setLoading(true);
     setError(null);
     try {
-      await repo.signIn(email, password);
-      router.replace(safeNext(params.next) as '/');
+      const session = await repo.signIn(email, password);
+      if (params.next) {
+        router.replace(safeNext(params.next) as '/');
+      } else if (session.role !== 'client') {
+        router.replace('/admin');
+      } else {
+        router.replace('/');
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Connexion impossible.');
     } finally {
