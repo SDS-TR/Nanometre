@@ -1,3 +1,11 @@
+/** Le plancher vient du serveur. Sans valeur distante, le binaire n’est pas bloqué par sa propre config. */
+export function blockedByRemoteFloor(current: string, remoteMinimum: string | null | undefined): boolean {
+  if (!remoteMinimum) {
+    return false;
+  }
+  return versionBelow(current, remoteMinimum);
+}
+
 /** Compare des versions `1.2.3`. Un binaire plus ancien que le minimum doit se mettre à jour. */
 export function versionBelow(current: string, minimum: string): boolean {
   const left = current.split('.').map((part) => Number(part) || 0);

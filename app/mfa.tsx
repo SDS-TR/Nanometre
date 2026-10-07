@@ -136,7 +136,7 @@ export default function MfaScreen() {
             <Text variant="body-md" color={theme.color.text.secondary}>
               Entre le code de ton application d’authentification pour cette session.
             </Text>
-            <Input label="Code à 6 chiffres" value={code} onChangeText={setCode} keyboardType="number-pad" error={error ?? undefined} />
+            <Input label="Code à 6 chiffres" value={code} onChangeText={setCode} keyboardType="number-pad" autoComplete="one-time-code" textContentType="oneTimeCode" error={error ?? undefined} />
             <Button label="Confirmer" onPress={() => void verify()} />
           </>
         ) : null}
@@ -156,7 +156,7 @@ export default function MfaScreen() {
                 {`Clé : ${secret}`}
               </Text>
             ) : null}
-            <Input label="Code à 6 chiffres" value={code} onChangeText={setCode} keyboardType="number-pad" error={error ?? undefined} />
+            <Input label="Code à 6 chiffres" value={code} onChangeText={setCode} keyboardType="number-pad" autoComplete="one-time-code" textContentType="oneTimeCode" error={error ?? undefined} />
             <Button label="Confirmer" onPress={() => void verify()} />
           </>
         ) : null}

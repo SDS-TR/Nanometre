@@ -114,6 +114,10 @@ export default function PaiementScreen() {
     setError(null);
     try {
       const created = await ensureBooking();
+      if (created.totalCents === 0) {
+        await finish(created.id);
+        return;
+      }
       if (draft.paymentMethod === 'sur_place' || created.paymentMethod === 'sur_place') {
         const confirmed = created.status === 'confirme' ? created : await repo.confirmOnSite(created.id);
         await finish(confirmed.id);

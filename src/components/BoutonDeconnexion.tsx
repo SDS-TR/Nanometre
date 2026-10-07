@@ -15,6 +15,11 @@ export function BoutonDeconnexion() {
   const label = arme ? 'Confirmer la déconnexion' : 'Déconnexion';
   return (
     <View style={{ gap: theme.space[2] }}>
+      {repo.mode === 'supabase' ? (
+        <Text variant="body-sm" color={theme.color.text.secondary}>
+          La déconnexion ferme la session sur tous les appareils.
+        </Text>
+      ) : null}
       {arme ? (
         <Text variant="body-sm" color={theme.color.text.secondary}>
           Appuie encore pour quitter ce compte.

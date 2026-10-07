@@ -108,6 +108,11 @@ export default function ProfilScreen() {
             {user.role !== 'client' ? (
               <ListItem title="Espace équipe" subtitle={user.role === 'proprietaire' ? 'Propriétaire' : 'Coiffeur'} onPress={() => router.push('/admin')} />
             ) : null}
+            {repo.mode === 'supabase' ? (
+              <Text variant="body-sm" color={theme.color.text.secondary}>
+                La déconnexion ferme la session sur tous les appareils.
+              </Text>
+            ) : null}
             <Button
               label="Déconnexion"
               variant="ghost"

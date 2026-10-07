@@ -570,7 +570,13 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
     },
     async getSalon() {
       await ready;
-      return { ...seed.salon, openMinute: state.openMinute, closeMinute: state.closeMinute, onsiteLatePolicy: state.onsiteLatePolicy };
+      return {
+        ...seed.salon,
+        openMinute: state.openMinute,
+        closeMinute: state.closeMinute,
+        onsiteLatePolicy: state.onsiteLatePolicy,
+        minAppVersion: '1.0.0',
+      };
     },
     async getBarbers() {
       await ready;
@@ -603,16 +609,20 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       const weekday = weekdayOfIso(date);
       const today = zonedParts(now);
       const earliest = date === today.isoDate ? today.minuteOfDay + 1 : undefined;
+      const inactive = new Set(
+        state.users.filter((user) => user.role === 'coiffeur' && user.active === false && user.barberId).map((user) => user.barberId as string),
+      );
       const offers = (id: string) => {
         const allowed = state.eligibility.get(id);
         return !allowed || allowed.includes(serviceId);
       };
+      const bookable = (id: string) => !inactive.has(id) && offers(id) && (state.schedules.get(id) ?? []).includes(weekday);
       const candidates =
         barberId === 'any'
           ? [...seed.barbers]
-              .filter((barber) => offers(barber.id) && (state.schedules.get(barber.id) ?? []).includes(weekday))
+              .filter((barber) => bookable(barber.id))
               .sort((a, b) => busyFor(state, a.id, date).length - busyFor(state, b.id, date).length)
-          : seed.barbers.filter((item) => item.id === barberId && offers(item.id) && (state.schedules.get(item.id) ?? []).includes(weekday));
+          : seed.barbers.filter((item) => item.id === barberId && bookable(item.id));
       const grid = generateSlots({
         weekday,
         durationMinutes: service.durationMinutes,
@@ -675,6 +685,13 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       if (!service || !barber) {
         throw new Error('Choix incomplet.');
       }
+      const staff = state.users.find((item) => item.role === 'coiffeur' && item.barberId === input.barberId);
+      if (staff?.active === false) {
+        throw new Error('Ce coiffeur est inactif.');
+      }
+      if (!(state.schedules.get(input.barberId) ?? []).includes(weekdayOfIso(input.date))) {
+        throw new Error('Ce coiffeur ne travaille pas ce jour-là.');
+      }
       const slots = await repository.getSlots({
         barberId: input.barberId,
         serviceId: input.serviceId,
@@ -703,6 +720,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
         price = 0;
       }
       const taxes = computeLineTaxes(price);
+      const offered = taxes.totalCents === 0;
       const booking: BookingRecord = {
         id: crypto.randomUUID(),
         clientId: user.id,
@@ -717,8 +735,8 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
         qstCents: taxes.qstCents,
         totalCents: taxes.totalCents,
         paymentMethod: input.paymentMethod,
-        status: input.paymentMethod === 'en_ligne' ? 'en_attente_paiement' : 'confirme',
-        paymentStatus: input.paymentMethod === 'en_ligne' ? 'en_attente' : 'a_encaisser',
+        status: offered || input.paymentMethod !== 'en_ligne' ? 'confirme' : 'en_attente_paiement',
+        paymentStatus: offered || input.paymentMethod !== 'en_ligne' ? 'a_encaisser' : 'en_attente',
         refundedCents: 0,
         feeCents: 0,
         feeGstCents: 0,

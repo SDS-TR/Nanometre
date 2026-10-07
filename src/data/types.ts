@@ -15,6 +15,8 @@ export type Salon = {
   taxNumbersPlaceholder: boolean;
   phone: string;
   onsiteLatePolicy: 'aucun' | 'a_la_prochaine';
+  /** Plancher publié par le serveur. Absent tant que la migration n’est pas appliquée. */
+  minAppVersion?: string | null;
 };
 
 export type Barber = {

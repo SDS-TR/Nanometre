@@ -1,5 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CUTS_PER_REWARD, zonedDateTime } from '../domain';
+import { markPushClearPending, resumePushClear } from './pushClear';
 import type {
   Barber,
   BookingView,
@@ -77,6 +79,11 @@ export function createSupabaseRepository(
     const user = data.session?.user;
     if (user?.email) {
       session = await loadProfile(user.id, user.email);
+      try {
+        await resumePushClear(AsyncStorage, () => supabase.rpc('clear_my_push_tokens'));
+      } catch {
+        // Reprise du jeton au prochain passage si le stockage est indisponible.
+      }
     }
     supabase.auth.onAuthStateChange(async (_event, next) => {
       if (!next?.user.email) {
@@ -121,6 +128,11 @@ export function createSupabaseRepository(
       if (!session) {
         throw new Error('Profil introuvable.');
       }
+      try {
+        await resumePushClear(AsyncStorage, () => supabase.rpc('clear_my_push_tokens'));
+      } catch {
+        // Reprise du jeton au prochain passage si le stockage est indisponible.
+      }
       emit();
       return session;
     },
@@ -140,6 +152,11 @@ export function createSupabaseRepository(
       session = await loadProfile(data.user.id, data.user.email);
       if (!session) {
         throw new Error('Profil introuvable.');
+      }
+      try {
+        await resumePushClear(AsyncStorage, () => supabase.rpc('clear_my_push_tokens'));
+      } catch {
+        // Reprise du jeton au prochain passage si le stockage est indisponible.
       }
       emit();
       return session;
@@ -171,6 +188,11 @@ export function createSupabaseRepository(
         throw new Error('Lien invalide ou expiré.');
       }
       session = await loadProfile(data.session.user.id, data.session.user.email);
+      try {
+        await resumePushClear(AsyncStorage, () => supabase.rpc('clear_my_push_tokens'));
+      } catch {
+        // Reprise du jeton au prochain passage si le stockage est indisponible.
+      }
       if (!session) {
         throw new Error('Profil introuvable.');
       }
@@ -179,12 +201,21 @@ export function createSupabaseRepository(
     },
     async signOut() {
       try {
-        await supabase.rpc('clear_my_push_tokens');
+        const cleared = await supabase.rpc('clear_my_push_tokens');
+        try {
+          await markPushClearPending(AsyncStorage, Boolean(cleared.error));
+        } catch {
+          // Le drapeau est un rappel. La session locale se ferme quand même.
+        }
       } catch {
-        // Le jeton peut rester. La session locale, elle, se ferme.
+        try {
+          await markPushClearPending(AsyncStorage, true);
+        } catch {
+          // Hors ligne et sans stockage : on ferme quand même.
+        }
       }
       try {
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: 'global' });
       } catch {
         // Hors ligne, la session chiffrée est quand même retirée ensuite.
       }

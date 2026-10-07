@@ -11,6 +11,9 @@ import {
   planBookingNotifications,
   planChangeNotification,
   assertMovableSlot,
+  assertSalonHourBounds,
+  futureOutsideHours,
+  hoursConflictMessage,
   occupancyMinutes,
   quotePromo,
   scopeBarber,
@@ -616,17 +619,10 @@ export function createAdmin(input: {
     async updateSalonSettings(payload: { openMinute: number; closeMinute: number; onsiteLatePolicy: Salon['onsiteLatePolicy']; force?: boolean }) {
       const user = actor();
       assertCan(user.role, 'settings');
-      if (payload.closeMinute <= payload.openMinute) {
-        throw new Error('L’heure de fermeture doit suivre l’ouverture.');
-      }
-      const outside = state.bookings.filter(
-        (booking) =>
-          (booking.status === 'confirme' || booking.status === 'en_attente_paiement' || booking.status === 'honore') &&
-          (booking.startMinute < payload.openMinute || booking.startMinute + booking.durationMinutes > payload.closeMinute),
-      );
+      assertSalonHourBounds(payload.openMinute, payload.closeMinute);
+      const outside = futureOutsideHours(state.bookings, payload.openMinute, payload.closeMinute, new Date()).slice(0, 8);
       if (outside.length > 0 && !payload.force) {
-        const names = outside.slice(0, 5).map((booking) => `${booking.clientName} (${booking.date})`).join(', ');
-        throw new Error(`Ces rendez-vous sortent des nouvelles heures : ${names}.`);
+        throw new Error(hoursConflictMessage(outside));
       }
       state.openMinute = payload.openMinute;
       state.closeMinute = payload.closeMinute;

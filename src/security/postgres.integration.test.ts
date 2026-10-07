@@ -458,6 +458,166 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
     expect(kept.rows[0].usage_count).toBe(30);
     expect(Number(kept.rows[0].value)).toBe(20);
   });
+
+  it('insère une réservation sur place, en ligne et avec promo, et refuse congé ou coiffeur inactif', async () => {
+    await pool.query(`delete from public.booking_attempts where user_id = $1`, [clientId]);
+    await pool.query(`delete from public.promo_attempts where user_id = $1`, [clientId]);
+    await pool.query(`delete from public.refund_jobs where booking_id in (select id from public.bookings where client_id = $1)`, [clientId]);
+    await pool.query(`delete from public.stripe_intent_jobs where booking_id in (select id from public.bookings where client_id = $1)`, [clientId]);
+    await pool.query(`delete from public.promo_redemptions where client_id = $1`, [clientId]);
+    await pool.query(`delete from public.payments where booking_id in (select id from public.bookings where client_id = $1)`, [clientId]);
+    await pool.query(`delete from public.bookings where client_id = $1`, [clientId]);
+    await pool.query(`insert into public.barber_services (barber_id, service_id) values ($1, $2) on conflict do nothing`, [barberId, serviceId]);
+    for (const weekday of [2, 3, 4, 5, 6]) {
+      await pool.query(
+        `insert into public.schedules (barber_id, weekday, start_minute, end_minute)
+         values ($1, $2, 540, 1140)
+         on conflict (barber_id, weekday) do nothing`,
+        [barberId, weekday],
+      );
+    }
+    const book = (date: string, method: 'sur_place' | 'en_ligne', promo: string | null) =>
+      withRole(pool, 'authenticated', { sub: clientId, aal: 'aal1' }, (client) =>
+        client.query<{ data: { ok: boolean; id?: string; totalCents?: number; error?: string } }>(
+          `select public.create_booking($1::uuid, $2::uuid, $3::date, 660, $4::public.payment_method, false, $5) as data`,
+          [serviceId, barberId, date, method, promo],
+        ),
+      );
+
+    const onsite = await book('2026-10-09', 'sur_place', null);
+    expect(onsite.rows[0].data.ok).toBe(true);
+    expect(onsite.rows[0].data.totalCents).toBe(4024);
+    const onsiteRow = await pool.query<{ status: string; pay: string }>(
+      `select b.status::text as status, p.status::text as pay
+       from public.bookings b join public.payments p on p.booking_id = b.id where b.id = $1`,
+      [onsite.rows[0].data.id],
+    );
+    expect(onsiteRow.rows[0]).toEqual({ status: 'confirme', pay: 'a_encaisser' });
+
+    const online = await book('2026-10-14', 'en_ligne', null);
+    expect(online.rows[0].data.ok).toBe(true);
+    expect(online.rows[0].data.totalCents).toBe(4024);
+    const onlineRow = await pool.query<{ status: string; pay: string }>(
+      `select b.status::text as status, p.status::text as pay
+       from public.bookings b join public.payments p on p.booking_id = b.id where b.id = $1`,
+      [online.rows[0].data.id],
+    );
+    expect(onlineRow.rows[0]).toEqual({ status: 'en_attente_paiement', pay: 'en_attente' });
+
+    await pool.query(
+      `insert into public.promo_codes (code, discount_type, value, starts_on, ends_on, usage_limit, usage_count)
+       values ('MARDI15', 'percent', 15, '2026-10-01', '2026-12-31', 40, 0)
+       on conflict (code) do update set value = 15, usage_count = 0, usage_limit = 40, active = true, starts_on = '2026-10-01', ends_on = '2026-12-31'`,
+    );
+    const reduced = await book('2026-10-16', 'sur_place', 'mardi15');
+    expect(reduced.rows[0].data).toMatchObject({ ok: true, totalCents: 3421 });
+    const promoUse = await pool.query<{ usage_count: number; discount_cents: number }>(
+      `select c.usage_count, b.discount_cents
+       from public.promo_codes c
+       join public.bookings b on b.promo_code = c.code
+       where c.code = 'MARDI15' and b.id = $1`,
+      [reduced.rows[0].data.id],
+    );
+    expect(promoUse.rows[0].usage_count).toBe(1);
+    expect(promoUse.rows[0].discount_cents).toBe(525);
+
+    await pool.query(`delete from public.refund_jobs where booking_id in (select id from public.bookings where client_id = $1)`, [clientId]);
+    await pool.query(`delete from public.stripe_intent_jobs where booking_id in (select id from public.bookings where client_id = $1)`, [clientId]);
+    await pool.query(`delete from public.promo_redemptions where client_id = $1`, [clientId]);
+    await pool.query(`delete from public.payments where booking_id in (select id from public.bookings where client_id = $1)`, [clientId]);
+    await pool.query(`delete from public.bookings where client_id = $1`, [clientId]);
+
+    await pool.query(`delete from public.schedules where barber_id = $1 and weekday = 5`, [barberId]);
+    const closed = await book('2026-10-23', 'sur_place', null);
+    expect(closed.rows[0].data.ok).toBe(false);
+    expect(closed.rows[0].data.error).toMatch(/ne travaille pas/);
+    await pool.query(
+      `insert into public.schedules (barber_id, weekday, start_minute, end_minute) values ($1, 5, 540, 1140)`,
+      [barberId],
+    );
+
+    await pool.query(`update public.barbers set active = false where id = $1`, [barberId]);
+    const inactive = await book('2026-10-21', 'sur_place', null);
+    expect(inactive.rows[0].data.ok).toBe(false);
+    expect(inactive.rows[0].data.error).toMatch(/inactif/);
+    await pool.query(`update public.barbers set active = true where id = $1`, [barberId]);
+
+    await pool.query(
+      `insert into public.promo_codes (code, discount_type, value, starts_on, ends_on, usage_limit, usage_count, active)
+       values ('LIBRE100', 'percent', 100, '2026-10-01', '2026-12-31', 5, 0, true)
+       on conflict (code) do update set value = 100, usage_count = 0, active = true`,
+    );
+    const free = await book('2026-10-28', 'en_ligne', 'LIBRE100');
+    expect(free.rows[0].data).toMatchObject({ ok: true, totalCents: 0 });
+    const freeRow = await pool.query<{ status: string; pay: string; amount: number }>(
+      `select b.status::text as status, p.status::text as pay, p.amount_cents as amount
+       from public.bookings b join public.payments p on p.booking_id = b.id where b.id = $1`,
+      [free.rows[0].data.id],
+    );
+    expect(freeRow.rows[0]).toEqual({ status: 'confirme', pay: 'a_encaisser', amount: 0 });
+    const consumed = await pool.query<{ usage_count: number }>(`select usage_count from public.promo_codes where code = 'LIBRE100'`);
+    expect(consumed.rows[0].usage_count).toBe(1);
+
+    await expect(
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) =>
+        client.query(`select public.admin_update_salon(-600, 5000, 'aucun', true)`),
+      ),
+    ).rejects.toThrow(/Réglage invalide/);
+
+    await pool.query(`delete from public.refund_jobs where booking_id in (select id from public.bookings where starts_at > now())`);
+    await pool.query(`delete from public.stripe_intent_jobs where booking_id in (select id from public.bookings where starts_at > now())`);
+    await pool.query(`delete from public.promo_redemptions where booking_id in (select id from public.bookings where starts_at > now())`);
+    await pool.query(`delete from public.payments where booking_id in (select id from public.bookings where starts_at > now())`);
+    await pool.query(`delete from public.bookings where starts_at > now()`);
+    const pastId = '66666666-6666-4666-8666-666666666666';
+    await pool.query(
+      `insert into public.bookings (
+         id, client_id, client_name, barber_id, service_id, starts_at, ends_at, duration_minutes,
+         price_cents, gst_cents, qst_cents, total_cents, payment_method, status
+       ) values (
+         $1, $2, 'Loïc Bergeron', $3, $4, '2026-09-01 12:00:00+00', '2026-09-01 12:30:00+00', 30,
+         3500, 175, 349, 4024, 'sur_place'::public.payment_method, 'honore'::public.booking_status
+       )`,
+      [pastId, clientId, barberId, serviceId],
+    );
+    await withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) =>
+      client.query(`select public.admin_update_salon(600, 1020, 'aucun', false)`),
+    );
+    const futureId = '77777777-7777-4777-8777-777777777777';
+    await pool.query(
+      `insert into public.bookings (
+         id, client_id, client_name, barber_id, service_id, starts_at, ends_at, duration_minutes,
+         price_cents, gst_cents, qst_cents, total_cents, payment_method, status
+       ) values (
+         $1, $2, 'Loïc Bergeron', $3, $4, '2026-10-20 12:00:00+00', '2026-10-20 12:30:00+00', 30,
+         3500, 175, 349, 4024, 'sur_place'::public.payment_method, 'confirme'::public.booking_status
+       )`,
+      [futureId, clientId, barberId, serviceId],
+    );
+    await expect(
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) =>
+        client.query(`select public.admin_update_salon(600, 1020, 'aucun', false)`),
+      ),
+    ).rejects.toThrow(/sortent/);
+    try {
+      await withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) =>
+        client.query(`select public.admin_update_salon(600, 1020, 'aucun', false)`),
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      expect(message).not.toMatch(/Loïc|Bergeron/);
+      expect(message).toContain(futureId);
+    }
+    await withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) =>
+      client.query(`select public.admin_update_salon(540, 1140, 'a_la_prochaine', true)`),
+    );
+
+    const path = await pool.query<{ proconfig: string[] | null }>(
+      `select proconfig from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public' and p.proname = 'create_booking'`,
+    );
+    expect(path.rows[0].proconfig?.join(' ')).toMatch(/search_path=""/);
+  });
 });
 
 async function insertUser(pool: pg.Pool, id: string, email: string, name: string, role: string, barber: string | null) {

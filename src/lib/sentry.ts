@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react-native';
-import { scrubUnknown } from './sentryScrub';
+import Constants from 'expo-constants';
+import { scrubBreadcrumb, scrubEvent } from './sentryScrub';
 
 const dsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
 
@@ -10,21 +11,23 @@ export function sentryEnabled(): boolean {
 if (dsn) {
   Sentry.init({
     dsn,
+    environment: __DEV__ ? 'development' : 'production',
+    release: Constants.expoConfig?.version ?? '0.0.0',
     sendDefaultPii: false,
     enableAutoSessionTracking: true,
     beforeSend(event) {
-      return scrubUnknown(event) as typeof event;
+      return scrubEvent(event);
     },
     beforeBreadcrumb(breadcrumb) {
-      return scrubUnknown(breadcrumb) as typeof breadcrumb;
+      return scrubBreadcrumb(breadcrumb);
     },
   });
 }
 
+/** Envoie l’erreur d’origine, pile comprise. Le nettoyage est dans beforeSend, pas ici. */
 export function reportError(error: unknown): void {
   if (!dsn) {
     return;
   }
-  const scrubbed = error instanceof Error ? new Error(String(scrubUnknown(error.message))) : error;
-  Sentry.captureException(scrubbed);
+  Sentry.captureException(error);
 }

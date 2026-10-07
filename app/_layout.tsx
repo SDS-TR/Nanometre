@@ -27,7 +27,9 @@ import { useTheme } from '../src/theme';
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
-  reportError(error);
+  useEffect(() => {
+    reportError(error);
+  }, [error]);
   return (
     <View style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 16 }}>
       <Text variant="heading-md">Quelque chose s’est détraqué.</Text>

@@ -2,40 +2,51 @@ import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
-import { versionBelow } from '../lib/version';
+import { blockedByRemoteFloor } from '../lib/version';
+import { useAppState } from '../providers/AppState';
 import { useTheme } from '../theme';
 import { Text } from './Text';
 
-function minimumVersion(): string {
-  const extra = Constants.expoConfig?.extra as { minimumVersion?: string } | undefined;
-  return extra?.minimumVersion ?? Constants.expoConfig?.version ?? '0.0.0';
-}
-
 /**
- * Si le binaire est plus ancien que `extra.minimumVersion`, on charge la mise à jour
- * OTA quand `expo-updates` est activé. Sinon l’écran bloque : il faut un build EAS.
+ * Compare la version du binaire au plancher publié par le serveur (`salon_public.minAppVersion`).
+ * La config embarquée ne sert pas de plancher : un binaire ne peut pas se déclarer trop vieux.
+ * Les mises à jour OTA restent désactivées tant que `updates.enabled` est faux.
  */
 export function GardeVersion() {
   const theme = useTheme();
+  const { repo, ready } = useAppState();
   const current = Constants.expoConfig?.version ?? '0.0.0';
-  const outdated = versionBelow(current, minimumVersion());
-  const [blocked, setBlocked] = useState(outdated && !Updates.isEnabled);
+  const [blocked, setBlocked] = useState(false);
 
   useEffect(() => {
-    if (!outdated || !Updates.isEnabled) {
-      return;
+    if (!ready) {
+      return undefined;
     }
-    Updates.checkForUpdateAsync()
-      .then(async (result) => {
-        if (!result.isAvailable) {
+    let cancelled = false;
+    repo
+      .getSalon()
+      .then((salon) => {
+        if (cancelled || !blockedByRemoteFloor(current, salon.minAppVersion)) {
+          return;
+        }
+        if (!Updates.isEnabled) {
           setBlocked(true);
           return;
         }
-        await Updates.fetchUpdateAsync();
-        await Updates.reloadAsync();
+        return Updates.checkForUpdateAsync().then(async (result) => {
+          if (!result.isAvailable) {
+            setBlocked(true);
+            return;
+          }
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync();
+        });
       })
-      .catch(() => setBlocked(true));
-  }, [outdated]);
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, repo, current]);
 
   if (!blocked) {
     return null;

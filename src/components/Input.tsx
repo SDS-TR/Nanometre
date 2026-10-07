@@ -12,8 +12,8 @@ type Props = {
   secureTextEntry?: boolean;
   keyboardType?: 'default' | 'email-address' | 'phone-pad' | 'number-pad';
   autoCapitalize?: 'none' | 'words' | 'sentences' | 'characters';
-  autoComplete?: 'email' | 'current-password' | 'new-password' | 'name' | 'off';
-  textContentType?: 'emailAddress' | 'password' | 'newPassword' | 'name' | 'none';
+  autoComplete?: 'email' | 'current-password' | 'new-password' | 'name' | 'off' | 'one-time-code';
+  textContentType?: 'emailAddress' | 'password' | 'newPassword' | 'name' | 'none' | 'oneTimeCode';
   returnKeyType?: 'done' | 'next' | 'go';
   onSubmitEditing?: () => void;
   disabled?: boolean;
