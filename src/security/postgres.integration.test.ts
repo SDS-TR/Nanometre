@@ -413,12 +413,12 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
     const before = await pool.query<{ starts_at: Date }>(`select starts_at from public.bookings where id = $1`, [id]);
     await expect(
       withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) =>
-        client.query(`select public.admin_move($1::uuid, '2026-10-12'::date, 540)`, [id]),
+        client.query(`select public.admin_move($1::uuid, $2::date, 540)`, [id, upcoming(1)]),
       ),
     ).rejects.toThrow(/fermé/);
     await expect(
       withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) =>
-        client.query(`select public.admin_move($1::uuid, '2027-10-06'::date, 7)`, [id]),
+        client.query(`select public.admin_move($1::uuid, $2::date, 7)`, [id, upcoming(3)]),
       ),
     ).rejects.toThrow(/invalide|heures/);
     const after = await pool.query<{ starts_at: Date }>(`select starts_at from public.bookings where id = $1`, [id]);
@@ -484,7 +484,12 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
         ),
       );
 
-    const onsite = await book('2026-10-09', 'sur_place', null);
+    // Dates relatives au jour réel : create_booking refuse un créneau passé selon now() côté Postgres.
+    const friday = upcoming(5);
+    const wednesday = upcoming(3);
+    const promoFrom = addDays(torontoToday(), -1);
+    const promoTo = addDays(torontoToday(), 90);
+    const onsite = await book(friday, 'sur_place', null);
     expect(onsite.rows[0].data.ok).toBe(true);
     expect(onsite.rows[0].data.totalCents).toBe(4024);
     const onsiteRow = await pool.query<{ status: string; pay: string }>(
@@ -494,7 +499,7 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
     );
     expect(onsiteRow.rows[0]).toEqual({ status: 'confirme', pay: 'a_encaisser' });
 
-    const online = await book('2026-10-14', 'en_ligne', null);
+    const online = await book(wednesday, 'en_ligne', null);
     expect(online.rows[0].data.ok).toBe(true);
     expect(online.rows[0].data.totalCents).toBe(4024);
     const onlineRow = await pool.query<{ status: string; pay: string }>(
@@ -506,10 +511,11 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
 
     await pool.query(
       `insert into public.promo_codes (code, discount_type, value, starts_on, ends_on, usage_limit, usage_count)
-       values ('MARDI15', 'percent', 15, '2026-10-01', '2026-12-31', 40, 0)
-       on conflict (code) do update set value = 15, usage_count = 0, usage_limit = 40, active = true, starts_on = '2026-10-01', ends_on = '2026-12-31'`,
+       values ('MARDI15', 'percent', 15, $1, $2, 40, 0)
+       on conflict (code) do update set value = 15, usage_count = 0, usage_limit = 40, active = true, starts_on = $1, ends_on = $2`,
+      [promoFrom, promoTo],
     );
-    const reduced = await book('2026-10-16', 'sur_place', 'mardi15');
+    const reduced = await book(addDays(friday, 7), 'sur_place', 'mardi15');
     expect(reduced.rows[0].data).toMatchObject({ ok: true, totalCents: 3421 });
     const promoUse = await pool.query<{ usage_count: number; discount_cents: number }>(
       `select c.usage_count, b.discount_cents
@@ -528,7 +534,7 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
     await pool.query(`delete from public.bookings where client_id = $1`, [clientId]);
 
     await pool.query(`delete from public.schedules where barber_id = $1 and weekday = 5`, [barberId]);
-    const closed = await book('2026-10-23', 'sur_place', null);
+    const closed = await book(addDays(friday, 14), 'sur_place', null);
     expect(closed.rows[0].data.ok).toBe(false);
     expect(closed.rows[0].data.error).toMatch(/ne travaille pas/);
     await pool.query(
@@ -537,17 +543,18 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
     );
 
     await pool.query(`update public.barbers set active = false where id = $1`, [barberId]);
-    const inactive = await book('2026-10-21', 'sur_place', null);
+    const inactive = await book(addDays(wednesday, 7), 'sur_place', null);
     expect(inactive.rows[0].data.ok).toBe(false);
     expect(inactive.rows[0].data.error).toMatch(/inactif/);
     await pool.query(`update public.barbers set active = true where id = $1`, [barberId]);
 
     await pool.query(
       `insert into public.promo_codes (code, discount_type, value, starts_on, ends_on, usage_limit, usage_count, active)
-       values ('LIBRE100', 'percent', 100, '2026-10-01', '2026-12-31', 5, 0, true)
-       on conflict (code) do update set value = 100, usage_count = 0, active = true`,
+       values ('LIBRE100', 'percent', 100, $1, $2, 5, 0, true)
+       on conflict (code) do update set value = 100, usage_count = 0, active = true, starts_on = $1, ends_on = $2`,
+      [promoFrom, promoTo],
     );
-    const free = await book('2026-10-28', 'en_ligne', 'LIBRE100');
+    const free = await book(addDays(wednesday, 14), 'en_ligne', 'LIBRE100');
     expect(free.rows[0].data).toMatchObject({ ok: true, totalCents: 0 });
     const freeRow = await pool.query<{ status: string; pay: string; amount: number }>(
       `select b.status::text as status, p.status::text as pay, p.amount_cents as amount
@@ -589,10 +596,10 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
          id, client_id, client_name, barber_id, service_id, starts_at, ends_at, duration_minutes,
          price_cents, gst_cents, qst_cents, total_cents, payment_method, status
        ) values (
-         $1, $2, 'Loïc Bergeron', $3, $4, '2026-10-20 12:00:00+00', '2026-10-20 12:30:00+00', 30,
+         $1, $2, 'Loïc Bergeron', $3, $4, ($5::date + time '12:00') at time zone 'UTC', ($5::date + time '12:30') at time zone 'UTC', 30,
          3500, 175, 349, 4024, 'sur_place'::public.payment_method, 'confirme'::public.booking_status
        )`,
-      [futureId, clientId, barberId, serviceId],
+      [futureId, clientId, barberId, serviceId, upcoming(2)],
     );
     await expect(
       withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) =>
@@ -638,6 +645,26 @@ async function insertUser(pool: pg.Pool, id: string, email: string, name: string
     name,
     barber,
   ]);
+}
+
+/** Date du jour à Toronto, au format AAAA-MM-JJ. */
+function torontoToday(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());
+}
+
+function addDays(date: string, days: number): string {
+  const next = new Date(`${date}T00:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next.toISOString().slice(0, 10);
+}
+
+/** Prochain jour de semaine donné (0 = dimanche), au moins deux jours après aujourd’hui à Toronto. */
+function upcoming(weekday: number): string {
+  let date = addDays(torontoToday(), 2);
+  while (new Date(`${date}T00:00:00Z`).getUTCDay() !== weekday) {
+    date = addDays(date, 1);
+  }
+  return date;
 }
 
 async function insertBooking(

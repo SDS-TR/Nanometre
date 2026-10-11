@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createLocalRepository } from '../data/localRepository';
 import { memoryStore } from '../data/storage';
 import { readableAudit } from './format';
@@ -6,11 +6,18 @@ import { readableAudit } from './format';
 const THOMAS = 'f4074385-3194-5838-b949-59b1014d8e70';
 
 describe('revue faible', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('rend le journal lisible, sans identifiant', () => {
     expect(readableAudit('invitation', 'invitation · Léa · coiffeur · 20000000-0000-4000-8000-000000000002')).not.toMatch(/[0-9a-f]{8}-/);
   });
 
   it('annule un rendez-vous sans compte client', async () => {
+    // Les rendez-vous de démo sont datés début octobre 2026 : on fige l’horloge avant eux.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-01T15:00:00Z'));
     const data = createLocalRepository(memoryStore());
     await data.ready;
     await data.signIn('karim@lenanometre.ca', 'nanometre');

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createLocalRepository } from '../data/localRepository';
 import { memoryStore } from '../data/storage';
 import { chairSpanLabel, openDaysPhrase, payButtonLabel, slotLegend } from './format';
@@ -6,6 +6,10 @@ import { holdExpired } from './holds';
 import { computeDashboard } from './dashboard';
 
 describe('revue moyenne', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('écrit les horaires et la capacité à partir des heures du salon', () => {
     expect(slotLegend(20 * 60)).toContain('20');
     expect(openDaysPhrase([2, 3, 4, 5, 6])).toBe('Du mardi au samedi');
@@ -59,6 +63,9 @@ describe('revue moyenne', () => {
   });
 
   it('avertit avant de fermer le salon sur un rendez-vous existant', async () => {
+    // Les rendez-vous de démo sont datés début octobre 2026 : on fige l’horloge avant eux.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-01T15:00:00Z'));
     const data = createLocalRepository(memoryStore());
     await data.ready;
     await data.signIn('karim@lenanometre.ca', 'nanometre');
