@@ -7,6 +7,8 @@ import type {
   BookingView,
   CreateBookingInput,
   LoyaltyView,
+  ManagedBarber,
+  ManagedService,
   Repository,
   Review,
   Salon,
@@ -481,6 +483,45 @@ export function createSupabaseRepository(
     },
     async setPushToken(token) {
       const { error } = await supabase.rpc('set_push_token', { p_token: token });
+      fail(error);
+    },
+    listManagedBarbers: () => rows<ManagedBarber[]>(supabase.rpc('admin_barbers')),
+    async createBarber(input) {
+      const id = await rows<string>(
+        supabase.rpc('admin_create_barber', {
+          p_full_name: input.fullName,
+          p_short_name: input.shortName,
+          p_specialty: input.specialty ?? '',
+          p_weekdays: input.weekdays,
+          p_service_ids: input.serviceIds,
+        }),
+      );
+      return { id };
+    },
+    archiveBarber: (barberId) => rows<{ deactivatedAccounts: number }>(supabase.rpc('admin_archive_barber', { p_barber: barberId })),
+    async reactivateBarber(barberId) {
+      const { error } = await supabase.rpc('admin_reactivate_barber', { p_barber: barberId });
+      fail(error);
+    },
+    listManagedServices: () => rows<ManagedService[]>(supabase.rpc('admin_services')),
+    async createService(input) {
+      const id = await rows<string>(
+        supabase.rpc('admin_create_service', {
+          p_name: input.name,
+          p_description: input.description ?? '',
+          p_duration: input.durationMinutes,
+          p_price: input.priceCents,
+          p_barber_ids: input.barberIds,
+        }),
+      );
+      return { id };
+    },
+    async archiveService(serviceId) {
+      const { error } = await supabase.rpc('admin_archive_service', { p_service: serviceId });
+      fail(error);
+    },
+    async reactivateService(serviceId) {
+      const { error } = await supabase.rpc('admin_reactivate_service', { p_service: serviceId });
       fail(error);
     },
   };

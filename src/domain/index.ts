@@ -17,3 +17,4 @@ export * from './adminForms';
 export * from './eligibility';
 export * from './holds';
 export * from './salonHours';
+export * from './catalogue';

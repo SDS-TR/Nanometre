@@ -56,9 +56,12 @@ serve(async (req) => {
   }
 
   if (plan.barberId) {
-    const { data: barber } = await admin.from('barbers').select('id').eq('id', plan.barberId).maybeSingle();
+    const { data: barber } = await admin.from('barbers').select('id, active').eq('id', plan.barberId).maybeSingle();
     if (!barber) {
       return json({ error: 'Coiffeur introuvable.' }, 400);
+    }
+    if (barber.active === false) {
+      return json({ error: 'Ce coiffeur est retiré. Réactive-le avant de l’inviter.' }, 400);
     }
   }
 

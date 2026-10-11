@@ -8,8 +8,8 @@ import { useAppState } from '../../../../src/providers/AppState';
 import { useTheme } from '../../../../src/theme';
 
 const links = [
-  { href: '/admin/gestion/coiffeurs', title: 'Coiffeurs', subtitle: 'Heures et prestations' },
-  { href: '/admin/gestion/prestations', title: 'Prestations', subtitle: 'Prix avant taxes' },
+  { href: '/admin/gestion/coiffeurs', title: 'Coiffeurs', subtitle: 'Ajouter, retirer, jours et prestations' },
+  { href: '/admin/gestion/prestations', title: 'Prestations', subtitle: 'Ajouter, retirer, prix avant taxes' },
   { href: '/admin/gestion/avis', title: 'Avis', subtitle: 'Publier ou masquer' },
   { href: '/admin/gestion/clients', title: 'Clients', subtitle: 'Notes, historique, fidélité' },
   { href: '/admin/gestion/promos', title: 'Codes promo', subtitle: 'Pourcentage ou montant' },

@@ -625,6 +625,188 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
     );
     expect(path.rows[0].proconfig?.join(' ')).toMatch(/search_path=""/);
   });
+
+  it('ajoute, retire et réactive une chaise sans perdre l’historique', async () => {
+    const coiffeurId = '55555555-5555-4555-8555-555555555555';
+    const owner = <T,>(sql: string, params: unknown[] = []) =>
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) => client.query<T & pg.QueryResultRow>(sql, params));
+    const asClient = <T,>(sql: string, params: unknown[] = []) =>
+      withRole(pool, 'authenticated', { sub: clientId, aal: 'aal1' }, (client) => client.query<T & pg.QueryResultRow>(sql, params));
+    const book = (barber: string, service: string, date: string) =>
+      asClient<{ data: { ok: boolean; id?: string; error?: string } }>(
+        `select public.create_booking($1::uuid, $2::uuid, $3::date, 600, 'sur_place'::public.payment_method, false, null) as data`,
+        [service, barber, date],
+      );
+    await pool.query(`delete from public.booking_attempts where user_id = $1`, [clientId]);
+
+    for (const name of ['admin_barbers()', 'admin_create_barber(text, text, text, integer[], uuid[])', 'admin_archive_barber(uuid)', 'admin_reactivate_barber(uuid)', 'catalogue_slug(text, text)', 'assert_owner(text)']) {
+      const allowed = await pool.query(`select has_function_privilege('anon', $1, 'execute') as ok`, [`public.${name}`]);
+      expect(allowed.rows[0].ok).toBe(false);
+    }
+    const create = `select public.admin_create_barber('Noah Pelletier', 'Noah', '', array[2,3,4,5,6], array[$1::uuid]) as id`;
+    await expect(asClient(create, [serviceId])).rejects.toThrow(/Accès refusé/);
+    await expect(
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal1' }, (client) => client.query(create, [serviceId])),
+    ).rejects.toThrow(/Vérification renforcée requise/);
+    await expect(owner(`select public.admin_create_barber('Noah Pelletier', 'Noah', '', array[1], array[$1::uuid])`, [serviceId])).rejects.toThrow(
+      /au moins un jour/,
+    );
+    await expect(owner(`select public.admin_create_barber('Noah Pelletier', 'Noah', '', array[2], array[]::uuid[])`)).rejects.toThrow(
+      /au moins une prestation/,
+    );
+    const created = await owner<{ id: string }>(create, [serviceId]);
+    const noah = created.rows[0].id;
+    const row = await pool.query(`select slug, photo_path, active from public.barbers where id = $1`, [noah]);
+    expect(row.rows[0]).toEqual({ slug: 'noah-pelletier', photo_path: '', active: true });
+    const publicList = await withRole(pool, 'anon', {}, (client) => client.query<{ data: { id: string }[] }>(`select public.visible_barbers() as data`));
+    expect(publicList.rows[0].data.map((item) => item.id)).toContain(noah);
+    const wednesday = upcoming(3);
+    const slots = await withRole(pool, 'anon', {}, (client) =>
+      client.query<{ data: { available: boolean; barberId: string | null }[] }>(`select public.list_slots($1::uuid, $2::date, $3::uuid) as data`, [serviceId, wednesday, noah]),
+    );
+    expect(slots.rows[0].data.some((slot) => slot.available && slot.barberId === noah)).toBe(true);
+
+    await insertUser(pool, coiffeurId, 'noah@lenanometre.ca', 'Noah Pelletier', 'coiffeur', noah);
+    await expect(
+      withRole(pool, 'authenticated', { sub: coiffeurId, aal: 'aal2' }, (client) => client.query(`select public.admin_archive_barber($1::uuid)`, [noah])),
+    ).rejects.toThrow(/Accès refusé/);
+
+    const booked = await book(noah, serviceId, wednesday);
+    expect(booked.rows[0].data.ok).toBe(true);
+    await expect(owner(`select public.admin_archive_barber($1::uuid)`, [noah])).rejects.toThrow(/Noah Pelletier a encore 1 rendez-vous à venir/);
+    const stillActive = await pool.query(`select active from public.barbers where id = $1`, [noah]);
+    expect(stillActive.rows[0].active).toBe(true);
+    await pool.query(`update public.bookings set status = 'annule', cancelled_at = now() where id = $1`, [booked.rows[0].data.id]);
+
+    const archived = await owner<{ data: { deactivatedAccounts: number } }>(`select public.admin_archive_barber($1::uuid) as data`, [noah]);
+    expect(archived.rows[0].data.deactivatedAccounts).toBe(1);
+    const account = await pool.query(`select active, invited_at from public.profiles where id = $1`, [coiffeurId]);
+    expect(account.rows[0]).toEqual({ active: false, invited_at: null });
+    const hidden = await withRole(pool, 'anon', {}, (client) => client.query<{ data: { id: string }[] }>(`select public.visible_barbers() as data`));
+    expect(hidden.rows[0].data.map((item) => item.id)).not.toContain(noah);
+    const noSlots = await withRole(pool, 'anon', {}, (client) =>
+      client.query<{ data: { available: boolean }[] }>(`select public.list_slots($1::uuid, $2::date, $3::uuid) as data`, [serviceId, addDays(wednesday, 7), noah]),
+    );
+    expect(noSlots.rows[0].data.some((slot) => slot.available)).toBe(false);
+    const refused = await book(noah, serviceId, addDays(wednesday, 7));
+    expect(refused.rows[0].data).toMatchObject({ ok: false, error: 'Ce coiffeur est inactif.' });
+    const history = await asClient<{ data: ({ id: string; barberName: string } | null)[] }>(`select public.my_bookings() as data`);
+    expect(history.rows[0].data.find((item) => item?.id === booked.rows[0].data.id)?.barberName).toBe('Noah Pelletier');
+    const managed = await owner<{ data: { id: string; active: boolean }[] }>(`select public.admin_barbers() as data`);
+    expect(managed.rows[0].data.find((item) => item.id === noah)?.active).toBe(false);
+    const logged = await pool.query(`select count(*)::int as n from public.audit_log where action = 'coiffeur_retrait' and entity_id = $1`, [noah]);
+    expect(logged.rows[0].n).toBe(1);
+    await expect(owner(`select public.admin_set_active($1::uuid, true)`, [coiffeurId])).rejects.toThrow(/chaise de ce coiffeur est retirée/);
+
+    await owner(`select public.admin_reactivate_barber($1::uuid)`, [noah]);
+    await expect(owner(`select public.admin_reactivate_barber($1::uuid)`, [noah])).rejects.toThrow(/déjà actif/);
+    await owner(`select public.admin_set_active($1::uuid, true)`, [coiffeurId]);
+
+    // Dernière chaise active : refus. Chaise liée au propriétaire : il reste propriétaire actif.
+    await pool.query(`update public.profiles set active = false where id = $1`, [coiffeurId]);
+    await owner(`select public.admin_archive_barber($1::uuid)`, [noah]);
+    await expect(owner(`select public.admin_archive_barber($1::uuid)`, [barberId])).rejects.toThrow(/au moins un coiffeur actif/);
+    await owner(`select public.admin_reactivate_barber($1::uuid)`, [noah]);
+    await pool.query(`update public.bookings set status = 'annule' where barber_id = $1 and ends_at > now() and status in ('confirme', 'en_attente_paiement')`, [barberId]);
+    await owner(`select public.admin_archive_barber($1::uuid)`, [barberId]);
+    const ownerRow = await pool.query(`select role::text as role, active from public.profiles where id = $1`, [ownerId]);
+    expect(ownerRow.rows[0]).toEqual({ role: 'proprietaire', active: true });
+    await owner(`select public.admin_reactivate_barber($1::uuid)`, [barberId]);
+
+    const config = await pool.query<{ proname: string; cfg: string }>(
+      `select p.proname, array_to_string(p.proconfig, ' ') as cfg from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public' and p.proname in ('admin_barbers', 'admin_create_barber', 'admin_archive_barber', 'admin_reactivate_barber',
+         'admin_services', 'admin_create_service', 'admin_archive_service', 'admin_reactivate_service', 'admin_set_service', 'admin_set_active',
+         'admin_move', 'list_slots', 'assert_owner', 'catalogue_slug')`,
+    );
+    expect(config.rows).toHaveLength(14);
+    for (const fn of config.rows) {
+      expect(fn.cfg, fn.proname).toMatch(/search_path=""/);
+    }
+  });
+
+  it('ajoute, retire et réactive une prestation sans toucher aux reçus', async () => {
+    const owner = <T,>(sql: string, params: unknown[] = []) =>
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) => client.query<T & pg.QueryResultRow>(sql, params));
+    const asClient = <T,>(sql: string, params: unknown[] = []) =>
+      withRole(pool, 'authenticated', { sub: clientId, aal: 'aal1' }, (client) => client.query<T & pg.QueryResultRow>(sql, params));
+    await pool.query(`delete from public.booking_attempts where user_id = $1`, [clientId]);
+    const noah = (await pool.query<{ id: string }>(`select id from public.barbers where slug = 'noah-pelletier'`)).rows[0].id;
+
+    const createService = `select public.admin_create_service($1, $2, $3, $4, $5::uuid[]) as id`;
+    await expect(asClient(createService, ['Coupe longue', '', 45, 4200, [noah]])).rejects.toThrow(/Accès refusé/);
+    await expect(
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal1' }, (client) => client.query(createService, ['Coupe longue', '', 45, 4200, [noah]])),
+    ).rejects.toThrow(/Vérification renforcée requise/);
+    await expect(owner(createService, ['coupe classique', '', 30, 3500, [noah]])).rejects.toThrow(/déjà ce nom/);
+    await expect(owner(createService, ['Coupe longue', '', 7, 4200, [noah]])).rejects.toThrow(/Durée invalide/);
+    await expect(owner(createService, ['Coupe longue', '', 45, 0, [noah]])).rejects.toThrow(/Tarif invalide/);
+    await expect(owner(createService, ['Coupe longue', '', 45, 4200, []])).rejects.toThrow(/au moins un coiffeur actif/);
+    const longue = (await owner<{ id: string }>(createService, ['Coupe longue', 'Cheveux mi-longs', 45, 4200, [noah]])).rows[0].id;
+    const offeredBy = await pool.query(`select barber_id from public.barber_services where service_id = $1`, [longue]);
+    expect(offeredBy.rows.map((item) => item.barber_id)).toEqual([noah]);
+    const catalogue = await withRole(pool, 'anon', {}, (client) => client.query<{ data: { id: string }[] }>(`select public.visible_services() as data`));
+    expect(catalogue.rows[0].data.map((item) => item.id)).toContain(longue);
+
+    // Noah ne garde que la nouvelle prestation : on ne peut ni la lui enlever, ni la retirer du catalogue.
+    await owner(`select public.admin_set_service($1::uuid, $2::uuid, false)`, [noah, serviceId]);
+    await expect(owner(`select public.admin_set_service($1::uuid, $2::uuid, false)`, [noah, longue])).rejects.toThrow(/garder au moins une prestation/);
+    await expect(owner(`select public.admin_archive_service($1::uuid)`, [longue])).rejects.toThrow(/seule prestation de : Noah/);
+    await owner(`select public.admin_set_service($1::uuid, $2::uuid, true)`, [noah, serviceId]);
+
+    const thursday = upcoming(4);
+    const booked = await asClient<{ data: { ok: boolean; id: string } }>(
+      `select public.create_booking($1::uuid, $2::uuid, $3::date, 660, 'sur_place'::public.payment_method, false, null) as data`,
+      [longue, noah, thursday],
+    );
+    expect(booked.rows[0].data.ok).toBe(true);
+    await expect(owner(`select public.admin_archive_service($1::uuid)`, [longue])).rejects.toThrow(/« Coupe longue » a encore 1 rendez-vous à venir/);
+    await pool.query(`update public.bookings set status = 'annule', cancelled_at = now() where id = $1`, [booked.rows[0].data.id]);
+    const pastId = '88888888-8888-4888-8888-888888888888';
+    await pool.query(
+      `insert into public.bookings (
+         id, client_id, client_name, barber_id, service_id, starts_at, ends_at, duration_minutes,
+         price_cents, gst_cents, qst_cents, total_cents, payment_method, status
+       ) values (
+         $1, $2, 'Alex Gagnon', $3, $4, '2026-09-02 14:00:00+00', '2026-09-02 14:45:00+00', 45,
+         4200, 210, 419, 4829, 'sur_place'::public.payment_method, 'confirme'::public.booking_status
+       )`,
+      [pastId, clientId, noah, longue],
+    );
+    await pool.query(
+      `insert into public.payments (booking_id, method, status, amount_cents) values ($1, 'sur_place'::public.payment_method, 'a_encaisser'::public.payment_status, 4829)`,
+      [pastId],
+    );
+    await owner(`select public.admin_archive_service($1::uuid)`, [longue]);
+    const gone = await withRole(pool, 'anon', {}, (client) => client.query<{ data: { id: string }[] }>(`select public.visible_services() as data`));
+    expect(gone.rows[0].data.map((item) => item.id)).not.toContain(longue);
+    await expect(
+      withRole(pool, 'anon', {}, (client) => client.query(`select public.list_slots($1::uuid, $2::date, null)`, [longue, addDays(thursday, 7)])),
+    ).rejects.toThrow(/Prestation introuvable/);
+    const refused = await asClient<{ data: { ok: boolean; error: string } }>(
+      `select public.create_booking($1::uuid, $2::uuid, $3::date, 660, 'sur_place'::public.payment_method, false, null) as data`,
+      [longue, noah, addDays(thursday, 7)],
+    );
+    expect(refused.rows[0].data).toMatchObject({ ok: false, error: 'Prestation introuvable.' });
+    const history = await asClient<{ data: ({ id: string; serviceName: string; priceCents: number; totalCents: number } | null)[] }>(
+      `select public.my_bookings() as data`,
+    );
+    expect(history.rows[0].data.find((item) => item?.id === pastId)).toMatchObject({ serviceName: 'Coupe longue', priceCents: 4200, totalCents: 4829 });
+    await expect(owner(`select public.admin_move($1::uuid, $2::date, 600)`, [pastId, addDays(thursday, 7)])).rejects.toThrow(/prestation est retirée/);
+    const managed = await owner<{ data: { id: string; active: boolean }[] }>(`select public.admin_services() as data`);
+    expect(managed.rows[0].data.find((item) => item.id === longue)?.active).toBe(false);
+    await expect(owner(`select public.admin_set_service($1::uuid, $2::uuid, true)`, [barberId, longue])).rejects.toThrow(/retirée/);
+
+    await owner(`select public.admin_reactivate_service($1::uuid)`, [longue]);
+    await owner(`select public.admin_archive_service($1::uuid)`, [longue]);
+    await expect(owner(`select public.admin_archive_service($1::uuid)`, [serviceId])).rejects.toThrow(/au moins une prestation/);
+    const audit = await pool.query<{ action: string }>(
+      `select action from public.audit_log where entity = 'service' and entity_id = $1 order by created_at`,
+      [longue],
+    );
+    expect(audit.rows.map((item) => item.action)).toEqual(['prestation_ajout', 'prestation_retrait', 'prestation_reactivation', 'prestation_retrait']);
+    await owner(`select public.admin_reactivate_service($1::uuid)`, [longue]);
+  });
 });
 
 async function insertUser(pool: pg.Pool, id: string, email: string, name: string, role: string, barber: string | null) {

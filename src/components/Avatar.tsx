@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { View } from 'react-native';
-import { photoSource } from '../data/photos';
+import { hasPhoto, photoSource } from '../data/photos';
 import { useTheme } from '../theme';
 import { Text } from './Text';
 
@@ -33,7 +33,7 @@ export function Avatar({ name, photo, size = 'md' }: Props) {
         justifyContent: 'center',
       }}
     >
-      {photo ? (
+      {photo && hasPhoto(photo) ? (
         <Image source={photoSource(photo)} style={{ width: '100%', height: '100%' }} contentFit="cover" contentPosition="top" />
       ) : (
         <Text variant="label-md" color={theme.color.accent.onSubtle}>

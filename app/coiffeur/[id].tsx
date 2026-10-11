@@ -8,7 +8,8 @@ import { RatingStars } from '../../src/components/RatingStars';
 import { Screen } from '../../src/components/Screen';
 import { LoadingBlock, StateMessage } from '../../src/components/StateView';
 import { Text } from '../../src/components/Text';
-import { photoSource } from '../../src/data/photos';
+import { Avatar } from '../../src/components/Avatar';
+import { hasPhoto, photoSource } from '../../src/data/photos';
 import { useAsync } from '../../src/hooks/useAsync';
 import { useTheme } from '../../src/theme';
 
@@ -52,12 +53,18 @@ export default function ProfilCoiffeurScreen() {
       }
     >
       <Header back title={barber.fullName} />
-      <Image source={photoSource(barber.photo)} style={{ width: '100%', height: 280 }} contentFit="cover" contentPosition="top" />
+      {hasPhoto(barber.photo) ? (
+        <Image source={photoSource(barber.photo)} style={{ width: '100%', height: 280 }} contentFit="cover" contentPosition="top" />
+      ) : (
+        <View style={{ alignItems: 'center', paddingVertical: theme.space[6], backgroundColor: theme.color.bg.sunken }}>
+          <Avatar name={barber.fullName} size="xl" />
+        </View>
+      )}
       <View style={{ padding: theme.space[4], gap: theme.space[5] }}>
         <View style={{ gap: theme.space[2] }}>
           <Text variant="heading-lg">{barber.fullName}</Text>
           <Text variant="body-md" color={theme.color.text.secondary}>
-            {barber.specialty} · {barber.years} ans de métier
+            {barber.years > 0 ? `${barber.specialty} · ${barber.years} ans de métier` : barber.specialty}
           </Text>
           <RatingStars value={barber.rating} count={barber.reviewCount} />
         </View>

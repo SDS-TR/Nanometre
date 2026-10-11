@@ -111,6 +111,12 @@ const AUDIT_LABELS: Record<string, string> = {
   deplacement: 'Déplacement',
   annulation: 'Annulation',
   remboursement_frais: 'Remboursement de frais',
+  coiffeur_ajout: 'Coiffeur ajouté',
+  coiffeur_retrait: 'Coiffeur retiré',
+  coiffeur_reactivation: 'Coiffeur réactivé',
+  prestation_ajout: 'Prestation ajoutée',
+  prestation_retrait: 'Prestation retirée',
+  prestation_reactivation: 'Prestation réactivée',
 };
 
 export function readableAudit(action: string, detail: string): string {

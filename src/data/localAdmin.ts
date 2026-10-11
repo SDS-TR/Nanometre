@@ -15,6 +15,7 @@ import {
   futureOutsideHours,
   hoursConflictMessage,
   occupancyMinutes,
+  periodBounds,
   quotePromo,
   scopeBarber,
   zonedDateTime,
@@ -48,7 +49,10 @@ export type BlockSlot = {
 
 export type StoredNotification = NotificationView & { userId: string };
 
-type CatalogBarber = { id: string; fullName: string; shortName: string };
+/** Prestation locale. active absent = active (anciennes sauvegardes). */
+export type LocalService = Service & { active?: boolean };
+
+export type CatalogBarber = { id: string; fullName: string; shortName: string; active: boolean };
 
 export type AdminState = {
   sessionUserId: string | null;
@@ -64,11 +68,13 @@ export type AdminState = {
   notifications: StoredNotification[];
   optIn: Set<string>;
   audit: AuditEntry[];
-  services: Service[];
+  services: LocalService[];
   reviews: Review[];
   loyalty: Map<string, { points: number; stamps: number; rewardsAvailable: number }>;
   /** Prestations qu'un coiffeur peut faire. Absent = toutes. */
   eligibility: Map<string, string[]>;
+  /** Chaises connues, retirées comprises (l’historique garde leur nom). */
+  barbers: CatalogBarber[];
 };
 
 const DEFAULT_PROMOS: PromoCode[] = [
@@ -84,10 +90,9 @@ export function defaultPromos(): PromoCode[] {
 
 export function createAdmin(input: {
   state: AdminState;
-  barbers: CatalogBarber[];
   emit: () => void;
 }) {
-  const { state, barbers, emit } = input;
+  const { state, emit } = input;
 
   function actor(): Account {
     const user = state.users.find((item) => item.id === state.sessionUserId);
@@ -98,7 +103,7 @@ export function createAdmin(input: {
   }
 
   function barberName(id: string): string {
-    return barbers.find((barber) => barber.id === id)?.fullName ?? 'Coiffeur';
+    return state.barbers.find((barber) => barber.id === id)?.fullName ?? 'Coiffeur';
   }
 
   function serviceName(id: string): string {
@@ -119,15 +124,21 @@ export function createAdmin(input: {
   }
 
   function toDashboard(anchor: string, period: 'jour' | 'semaine' | 'mois', barberId: string | null, includeMoney: boolean): DashboardView {
-    const names = new Set(
-      barbers.filter((barber) => !barberId || barber.id === barberId).map((barber) => barber.fullName),
+    const scoped = state.barbers.filter((barber) => !barberId || barber.id === barberId);
+    const names = new Set(scoped.map((barber) => barber.fullName));
+    const { from, to } = periodBounds(anchor, period);
+    // Une chaise retirée reste au tableau seulement si elle a travaillé dans la période.
+    const listed = scoped.filter(
+      (barber) =>
+        barber.active ||
+        state.bookings.some((booking) => booking.barberId === barber.id && booking.date >= from && booking.date <= to),
     );
     return computeDashboard({
       anchor,
       period,
       includeMoney,
       openSpanMinutes: state.closeMinute - state.openMinute,
-      barbers: barbers.filter((barber) => names.has(barber.fullName)).map((barber) => ({ fullName: barber.fullName })),
+      barbers: listed.map((barber) => ({ fullName: barber.fullName })),
       bookings: state.bookings
         .filter((booking) => names.has(barberName(booking.barberId)))
         .map((booking) => ({
@@ -349,6 +360,12 @@ export function createAdmin(input: {
       const booking = state.bookings.find((item) => item.id === payload.bookingId);
       if (!booking || booking.status !== 'confirme') {
         throw new Error('Ce rendez-vous ne peut pas être déplacé.');
+      }
+      if (state.barbers.find((item) => item.id === booking.barberId)?.active === false) {
+        throw new Error('Ce coiffeur est retiré.');
+      }
+      if (state.services.find((item) => item.id === booking.serviceId)?.active === false) {
+        throw new Error('Cette prestation est retirée.');
       }
       const active = new Set(['confirme', 'honore', 'en_attente_paiement']);
       const busy = state.bookings
@@ -583,6 +600,9 @@ export function createAdmin(input: {
           nextRole: 'proprietaire',
         });
       }
+      if (active && target.role === 'coiffeur' && state.barbers.find((item) => item.id === target.barberId)?.active === false) {
+        throw new Error('La chaise de ce coiffeur est retirée. Réactive-la dans Coiffeurs d’abord.');
+      }
       target.active = active;
       audit(active ? 'reactivation' : 'desactivation', target.fullName);
       emit();
@@ -601,6 +621,15 @@ export function createAdmin(input: {
       }
       if (payload.role === 'coiffeur' && !payload.barberId) {
         throw new Error('Choisis la chaise de ce coiffeur.');
+      }
+      if (payload.barberId) {
+        const chair = state.barbers.find((item) => item.id === payload.barberId);
+        if (!chair) {
+          throw new Error('Coiffeur introuvable.');
+        }
+        if (!chair.active) {
+          throw new Error('Ce coiffeur est retiré. Réactive-le avant de l’inviter.');
+        }
       }
       state.users.push({
         id: crypto.randomUUID(),
@@ -663,7 +692,7 @@ export function createAdmin(input: {
       const user = actor();
       assertCan(user.role, 'barbers');
       const all = state.services.map((service) => service.id);
-      return barbers.map((barber) => ({
+      return state.barbers.map((barber) => ({
         barberId: barber.id,
         weekdays: state.schedules.get(barber.id) ?? [2, 3, 4, 5, 6],
         serviceIds: state.eligibility.get(barber.id) ?? all,
@@ -675,14 +704,26 @@ export function createAdmin(input: {
       const all = state.services.map((service) => service.id);
       const current = new Set(state.eligibility.get(barberId) ?? all);
       if (eligible) {
+        if (state.services.find((service) => service.id === serviceId)?.active === false) {
+          throw new Error('Cette prestation est retirée.');
+        }
         current.add(serviceId);
       } else {
+        const chair = state.barbers.find((item) => item.id === barberId);
+        const remaining = state.services.filter((service) => service.active !== false && service.id !== serviceId && current.has(service.id));
+        if (chair?.active !== false && remaining.length === 0) {
+          throw new Error('Un coiffeur actif doit garder au moins une prestation.');
+        }
         current.delete(serviceId);
       }
       state.eligibility.set(barberId, [...current]);
       emit();
     },
   };
+}
+
+export function auditEntry(state: Pick<AdminState, 'audit'>, action: string, detail: string) {
+  state.audit.unshift({ id: crypto.randomUUID(), action, detail, at: new Date().toISOString() });
 }
 
 function canLoyalty(role: Account['role']): boolean {

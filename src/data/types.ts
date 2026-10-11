@@ -1,4 +1,4 @@
-import type { LoyaltyState, PaymentMethod, PaymentStatus, BookingLifecycle } from '../domain';
+import type { LoyaltyState, PaymentMethod, PaymentStatus, BookingLifecycle, NewBarberInput, NewServiceInput } from '../domain';
 
 export type Role = 'client' | 'coiffeur' | 'proprietaire';
 
@@ -183,7 +183,40 @@ export interface Repository {
   getBarberSetup(): Promise<BarberSetup[]>;
   setBarberService(input: { barberId: string; serviceId: string; eligible: boolean }): Promise<void>;
   setPushToken(token: string): Promise<void>;
+  /** Propriétaire : toutes les chaises, retirées comprises. */
+  listManagedBarbers(): Promise<ManagedBarber[]>;
+  createBarber(input: NewBarberInput): Promise<{ id: string }>;
+  /** Archive la chaise. Refusé s’il reste des rendez-vous à venir. */
+  archiveBarber(barberId: string): Promise<{ deactivatedAccounts: number }>;
+  reactivateBarber(barberId: string): Promise<void>;
+  /** Propriétaire : toutes les prestations, retirées comprises. */
+  listManagedServices(): Promise<ManagedService[]>;
+  createService(input: NewServiceInput): Promise<{ id: string }>;
+  archiveService(serviceId: string): Promise<void>;
+  reactivateService(serviceId: string): Promise<void>;
 }
+
+export type ManagedBarber = {
+  id: string;
+  slug: string;
+  fullName: string;
+  shortName: string;
+  specialty: string;
+  photo: string;
+  sortOrder: number;
+  active: boolean;
+  weekdays: number[];
+  serviceIds: string[];
+  upcomingCount: number;
+  /** Comptes coiffeur actifs ou invités liés à la chaise. */
+  accountCount: number;
+};
+
+export type ManagedService = Service & {
+  active: boolean;
+  barberIds: string[];
+  upcomingCount: number;
+};
 
 export type BarberSetup = {
   barberId: string;

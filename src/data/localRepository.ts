@@ -6,7 +6,16 @@ import {
   holdExpired,
   isOpenWeekday,
   assertLastOwnerSurvives,
+  assertCan,
+  AccessDeniedError,
+  isUpcomingBooking,
+  orphanServiceMessage,
   quoteCancellation,
+  uniqueSlug,
+  upcomingBarberMessage,
+  upcomingServiceMessage,
+  validateNewBarber,
+  validateNewService,
   restoreReward,
   type PromoCode,
   weekdayOfIso,
@@ -18,14 +27,17 @@ import {
   type PaymentStatus,
 } from '../domain';
 import { maskClientName } from '../lib/privacy';
-import { createAdmin, defaultPromos, type BlockSlot, type StoredNotification } from './localAdmin';
+import { auditEntry, createAdmin, defaultPromos, type BlockSlot, type LocalService, type StoredNotification } from './localAdmin';
 import seed from './seed.normalized.json';
 import type { KeyValueStore } from './storage';
 import type {
   Account,
+  Barber,
   BookingRecord,
   BookingView,
   LoyaltyView,
+  ManagedBarber,
+  ManagedService,
   Repository,
   Review,
   Salon,
@@ -37,6 +49,10 @@ import type {
 const STORAGE_KEY = 'lenanometre.delta.v2';
 const DEMO_LATE_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const ACTIVE = new Set(['en_attente_paiement', 'confirme', 'honore']);
+const ALL_WEEKDAYS = [2, 3, 4, 5, 6];
+
+/** Chaise locale. active = false : retirée, cachée des réservations, gardée pour l’historique. */
+type LocalBarber = Omit<Barber, 'serviceIds'> & { active: boolean };
 
 type Delta = {
   sessionUserId: string | null;
@@ -59,6 +75,10 @@ type Delta = {
   eligibility?: [string, string[]][];
   pushTokens?: [string, string][];
   deletedUserIds?: string[];
+  addedBarbers?: LocalBarber[];
+  archivedBarberIds?: string[];
+  addedServices?: Service[];
+  archivedServiceIds?: string[];
 };
 
 type State = {
@@ -78,9 +98,10 @@ type State = {
   notifications: StoredNotification[];
   optIn: Set<string>;
   audit: { id: string; action: string; detail: string; at: string }[];
-  services: Service[];
+  services: LocalService[];
   eligibility: Map<string, string[]>;
   pushTokens: Map<string, string>;
+  barbers: LocalBarber[];
 };
 
 function cloneSeed(): State {
@@ -130,9 +151,10 @@ function cloneSeed(): State {
     notifications: [],
     optIn: new Set(),
     audit: [],
-    services: seed.services.map((service) => ({ ...service })) as Service[],
+    services: seed.services.map((service) => ({ ...service, active: true })) as LocalService[],
     eligibility: new Map(),
     pushTokens: new Map(),
+    barbers: seed.barbers.map((barber) => ({ ...barber, active: true })),
   };
 }
 
@@ -175,8 +197,8 @@ function busyFor(state: State, barberId: string, date: string) {
 }
 
 function present(state: State, booking: BookingRecord): BookingView {
-  const barber = seed.barbers.find((item) => item.id === booking.barberId);
-  const service = seed.services.find((item) => item.id === booking.serviceId);
+  const barber = state.barbers.find((item) => item.id === booking.barberId);
+  const service = state.services.find((item) => item.id === booking.serviceId);
   return {
     ...booking,
     barberName: barber?.fullName ?? 'Coiffeur',
@@ -220,8 +242,8 @@ function placeDemoLateCancel(state: State, now: Date) {
   if (future) {
     return;
   }
-  const service = seed.services.find((item) => item.slug === 'coupe-classique');
-  const barber = seed.barbers.find((item) => item.slug === 'karim-b');
+  const service = state.services.find((item) => item.slug === 'coupe-classique' && item.active !== false);
+  const barber = state.barbers.find((item) => item.slug === 'karim-b' && item.active);
   if (!service || !barber) {
     return;
   }
@@ -340,6 +362,24 @@ function applyDelta(state: State, delta: Delta) {
   state.notifications = delta.notifications ?? [];
   state.optIn = new Set(delta.optIn ?? []);
   state.audit = delta.audit ?? [];
+  for (const service of delta.addedServices ?? []) {
+    if (!state.services.some((item) => item.id === service.id)) {
+      state.services.push({ ...service, active: true });
+    }
+  }
+  const archivedServices = new Set(delta.archivedServiceIds ?? []);
+  for (const service of state.services) {
+    service.active = !archivedServices.has(service.id);
+  }
+  for (const barber of delta.addedBarbers ?? []) {
+    if (!state.barbers.some((item) => item.id === barber.id)) {
+      state.barbers.push({ ...barber, active: true });
+    }
+  }
+  const archivedBarbers = new Set(delta.archivedBarberIds ?? []);
+  for (const barber of state.barbers) {
+    barber.active = !archivedBarbers.has(barber.id);
+  }
   for (const price of delta.servicePrices ?? []) {
     const service = state.services.find((item) => item.id === price.id);
     if (service) {
@@ -405,6 +445,12 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       eligibility: [...state.eligibility.entries()],
       pushTokens: [...state.pushTokens.entries()],
       deletedUserIds: seed.users.filter((user) => !state.users.some((item) => item.id === user.id)).map((user) => user.id),
+      addedBarbers: state.barbers.filter((barber) => !seed.barbers.some((item) => item.id === barber.id)),
+      archivedBarberIds: state.barbers.filter((barber) => !barber.active).map((barber) => barber.id),
+      addedServices: state.services
+        .filter((service) => !seed.services.some((item) => item.id === service.id))
+        .map(({ active: _active, ...service }) => service),
+      archivedServiceIds: state.services.filter((service) => service.active === false).map((service) => service.id),
     };
     await storage.setItem(STORAGE_KEY, JSON.stringify(delta));
   }
@@ -426,11 +472,35 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
     return state.users.find((user) => user.email.toLowerCase() === email.trim().toLowerCase());
   }
 
-  const admin = createAdmin({
-    state,
-    barbers: seed.barbers.map((barber) => ({ id: barber.id, fullName: barber.fullName, shortName: barber.shortName })),
-    emit,
-  });
+  const admin = createAdmin({ state, emit });
+
+  function requireOwner(action: 'barbers' | 'services'): Account {
+    const user = state.users.find((item) => item.id === state.sessionUserId);
+    if (!user || user.active === false) {
+      throw new AccessDeniedError();
+    }
+    assertCan(user.role, action);
+    if (user.role !== 'proprietaire') {
+      throw new AccessDeniedError();
+    }
+    return user;
+  }
+
+  function upcomingCount(match: (booking: BookingRecord) => boolean, now = new Date()): number {
+    return state.bookings.filter(
+      (booking) =>
+        match(booking) &&
+        isUpcomingBooking({ status: booking.status, endsAt: zonedDateTime(booking.date, booking.startMinute + booking.durationMinutes) }, now),
+    ).length;
+  }
+
+  function offeredBy(barberId: string): string[] {
+    return state.eligibility.get(barberId) ?? state.services.map((service) => service.id);
+  }
+
+  function activeServiceIds(): Set<string> {
+    return new Set(state.services.filter((service) => service.active !== false).map((service) => service.id));
+  }
 
   const repository: Repository = {
     mode: 'local',
@@ -581,9 +651,10 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
     async getBarbers() {
       await ready;
       const all = state.services.map((service) => service.id);
-      return [...seed.barbers]
+      return state.barbers
+        .filter((barber) => barber.active)
         .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((barber) => {
+        .map(({ active: _active, ...barber }) => {
           const published = state.reviews.filter((review) => review.barberId === barber.id && review.status === 'publie');
           const rating = published.length === 0 ? 0 : Math.round((published.reduce((sum, review) => sum + review.stars, 0) / published.length) * 10) / 10;
           return { ...barber, serviceIds: state.eligibility.get(barber.id) ?? all, rating, reviewCount: published.length };
@@ -591,7 +662,10 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
     },
     async getServices() {
       await ready;
-      return [...state.services].sort((a, b) => a.sortOrder - b.sortOrder);
+      return state.services
+        .filter((service) => service.active !== false)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map(({ active: _active, ...service }) => service);
     },
     async getReviews(barberId) {
       await ready;
@@ -602,7 +676,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
     async getSlots({ barberId, serviceId, date, now = new Date() }) {
       await ready;
       releaseExpiredHolds(state, now);
-      const service = state.services.find((item) => item.id === serviceId);
+      const service = state.services.find((item) => item.id === serviceId && item.active !== false);
       if (!service) {
         throw new Error('Prestation introuvable.');
       }
@@ -617,12 +691,13 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
         return !allowed || allowed.includes(serviceId);
       };
       const bookable = (id: string) => !inactive.has(id) && offers(id) && (state.schedules.get(id) ?? []).includes(weekday);
+      const chairs = state.barbers.filter((barber) => barber.active);
       const candidates =
         barberId === 'any'
-          ? [...seed.barbers]
+          ? [...chairs]
               .filter((barber) => bookable(barber.id))
               .sort((a, b) => busyFor(state, a.id, date).length - busyFor(state, b.id, date).length)
-          : seed.barbers.filter((item) => item.id === barberId && bookable(item.id));
+          : chairs.filter((item) => item.id === barberId && bookable(item.id));
       const grid = generateSlots({
         weekday,
         durationMinutes: service.durationMinutes,
@@ -681,9 +756,15 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       await ready;
       const user = requireUser();
       const service = state.services.find((item) => item.id === input.serviceId);
-      const barber = seed.barbers.find((item) => item.id === input.barberId);
+      const barber = state.barbers.find((item) => item.id === input.barberId);
       if (!service || !barber) {
         throw new Error('Choix incomplet.');
+      }
+      if (service.active === false) {
+        throw new Error('Prestation introuvable.');
+      }
+      if (!barber.active) {
+        throw new Error('Ce coiffeur est inactif.');
       }
       const staff = state.users.find((item) => item.role === 'coiffeur' && item.barberId === input.barberId);
       if (staff?.active === false) {
@@ -860,7 +941,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       if (stars < 1 || stars > 5) {
         throw new Error('Choisis une note entre 1 et 5.');
       }
-      const service = seed.services.find((item) => item.id === booking.serviceId);
+      const service = state.services.find((item) => item.id === booking.serviceId);
       state.reviews.push({
         id: crypto.randomUUID(),
         barberId: booking.barberId,
@@ -1017,6 +1098,199 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       await ready;
       const user = requireUser();
       state.pushTokens.set(user.id, token);
+      emit();
+    },
+    async listManagedBarbers() {
+      await ready;
+      requireOwner('barbers');
+      return [...state.barbers]
+        .sort((a, b) => Number(b.active) - Number(a.active) || a.sortOrder - b.sortOrder)
+        .map(
+          (barber): ManagedBarber => ({
+            id: barber.id,
+            slug: barber.slug,
+            fullName: barber.fullName,
+            shortName: barber.shortName,
+            specialty: barber.specialty,
+            photo: barber.photo,
+            sortOrder: barber.sortOrder,
+            active: barber.active,
+            weekdays: state.schedules.get(barber.id) ?? ALL_WEEKDAYS,
+            serviceIds: offeredBy(barber.id),
+            upcomingCount: upcomingCount((booking) => booking.barberId === barber.id),
+            accountCount: state.users.filter((user) => user.role === 'coiffeur' && user.barberId === barber.id && user.active !== false).length,
+          }),
+        );
+    },
+    async createBarber(input) {
+      await ready;
+      requireOwner('barbers');
+      const clean = validateNewBarber(input, activeServiceIds());
+      const id = crypto.randomUUID();
+      state.barbers.push({
+        id,
+        slug: uniqueSlug(clean.fullName, state.barbers.map((barber) => barber.slug)),
+        fullName: clean.fullName,
+        shortName: clean.shortName,
+        specialty: clean.specialty,
+        bio: `${clean.shortName} fait partie de l’équipe du Nanomètre.`,
+        years: 0,
+        photo: '',
+        rating: 0,
+        reviewCount: 0,
+        sortOrder: Math.max(0, ...state.barbers.map((barber) => barber.sortOrder)) + 1,
+        active: true,
+      });
+      state.schedules.set(id, clean.weekdays);
+      state.eligibility.set(id, clean.serviceIds);
+      auditEntry(state, 'coiffeur_ajout', clean.fullName);
+      emit();
+      return { id };
+    },
+    async archiveBarber(barberId) {
+      await ready;
+      requireOwner('barbers');
+      const barber = state.barbers.find((item) => item.id === barberId);
+      if (!barber) {
+        throw new Error('Coiffeur introuvable.');
+      }
+      if (!barber.active) {
+        throw new Error('Ce coiffeur est déjà retiré.');
+      }
+      if (!state.barbers.some((item) => item.active && item.id !== barberId)) {
+        throw new Error('Il doit rester au moins un coiffeur actif.');
+      }
+      releaseExpiredHolds(state);
+      const upcoming = upcomingCount((booking) => booking.barberId === barberId);
+      if (upcoming > 0) {
+        throw new Error(upcomingBarberMessage(barber.fullName, upcoming));
+      }
+      barber.active = false;
+      let deactivatedAccounts = 0;
+      for (const user of state.users) {
+        // Un compte propriétaire lié à la chaise reste actif.
+        if (user.role === 'coiffeur' && user.barberId === barberId && user.active !== false) {
+          user.active = false;
+          deactivatedAccounts += 1;
+          if (state.sessionUserId === user.id) {
+            state.sessionUserId = null;
+          }
+        }
+      }
+      auditEntry(state, 'coiffeur_retrait', deactivatedAccounts > 0 ? `${barber.fullName} · compte désactivé` : barber.fullName);
+      emit();
+      return { deactivatedAccounts };
+    },
+    async reactivateBarber(barberId) {
+      await ready;
+      requireOwner('barbers');
+      const barber = state.barbers.find((item) => item.id === barberId);
+      if (!barber) {
+        throw new Error('Coiffeur introuvable.');
+      }
+      if (barber.active) {
+        throw new Error('Ce coiffeur est déjà actif.');
+      }
+      barber.active = true;
+      auditEntry(state, 'coiffeur_reactivation', barber.fullName);
+      emit();
+    },
+    async listManagedServices() {
+      await ready;
+      requireOwner('services');
+      return [...state.services]
+        .sort((a, b) => Number(b.active !== false) - Number(a.active !== false) || a.sortOrder - b.sortOrder)
+        .map(
+          ({ active, ...service }): ManagedService => ({
+            ...service,
+            active: active !== false,
+            barberIds: state.barbers.filter((barber) => offeredBy(barber.id).includes(service.id)).map((barber) => barber.id),
+            upcomingCount: upcomingCount((booking) => booking.serviceId === service.id),
+          }),
+        );
+    },
+    async createService(input) {
+      await ready;
+      requireOwner('services');
+      const clean = validateNewService(
+        input,
+        new Set(state.barbers.filter((barber) => barber.active).map((barber) => barber.id)),
+        state.services.filter((service) => service.active !== false).map((service) => service.name),
+      );
+      const before = state.services.map((service) => service.id);
+      const id = crypto.randomUUID();
+      state.services.push({
+        id,
+        slug: uniqueSlug(clean.name, state.services.map((service) => service.slug)),
+        name: clean.name,
+        description: clean.description,
+        durationMinutes: clean.durationMinutes,
+        priceCents: clean.priceCents,
+        photo: '',
+        sortOrder: Math.max(0, ...state.services.map((service) => service.sortOrder)) + 1,
+        active: true,
+      });
+      for (const barber of state.barbers) {
+        const current = state.eligibility.get(barber.id);
+        if (clean.barberIds.includes(barber.id)) {
+          if (current && !current.includes(id)) {
+            state.eligibility.set(barber.id, [...current, id]);
+          }
+        } else if (!current) {
+          // Absent voulait dire « toutes » : on fige la liste d’avant, sans la nouvelle.
+          state.eligibility.set(barber.id, before);
+        }
+      }
+      auditEntry(state, 'prestation_ajout', clean.name);
+      emit();
+      return { id };
+    },
+    async archiveService(serviceId) {
+      await ready;
+      requireOwner('services');
+      const service = state.services.find((item) => item.id === serviceId);
+      if (!service) {
+        throw new Error('Prestation introuvable.');
+      }
+      if (service.active === false) {
+        throw new Error('Cette prestation est déjà retirée.');
+      }
+      if (!state.services.some((item) => item.active !== false && item.id !== serviceId)) {
+        throw new Error('Le catalogue doit garder au moins une prestation.');
+      }
+      releaseExpiredHolds(state);
+      const upcoming = upcomingCount((booking) => booking.serviceId === serviceId);
+      if (upcoming > 0) {
+        throw new Error(upcomingServiceMessage(service.name, upcoming));
+      }
+      const active = activeServiceIds();
+      const orphans = state.barbers
+        .filter((barber) => barber.active)
+        .filter((barber) => {
+          const offered = offeredBy(barber.id);
+          return offered.includes(serviceId) && !offered.some((id) => id !== serviceId && active.has(id));
+        })
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((barber) => barber.shortName);
+      if (orphans.length > 0) {
+        throw new Error(orphanServiceMessage(orphans));
+      }
+      service.active = false;
+      auditEntry(state, 'prestation_retrait', service.name);
+      emit();
+    },
+    async reactivateService(serviceId) {
+      await ready;
+      requireOwner('services');
+      const service = state.services.find((item) => item.id === serviceId);
+      if (!service) {
+        throw new Error('Prestation introuvable.');
+      }
+      if (service.active !== false) {
+        throw new Error('Cette prestation est déjà active.');
+      }
+      service.active = true;
+      auditEntry(state, 'prestation_reactivation', service.name);
       emit();
     },
   };
