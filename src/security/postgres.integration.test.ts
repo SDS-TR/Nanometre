@@ -807,6 +807,237 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
     expect(audit.rows.map((item) => item.action)).toEqual(['prestation_ajout', 'prestation_retrait', 'prestation_reactivation', 'prestation_retrait']);
     await owner(`select public.admin_reactivate_service($1::uuid)`, [longue]);
   });
+
+  it('durcit l’équipe et le catalogue : verrous, heures du salon, jours, réactivation et plafond d’invitations', async () => {
+    const owner = <T,>(sql: string, params: unknown[] = []) =>
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) => client.query<T & pg.QueryResultRow>(sql, params));
+    const asClient = <T,>(sql: string, params: unknown[] = []) =>
+      withRole(pool, 'authenticated', { sub: clientId, aal: 'aal1' }, (client) => client.query<T & pg.QueryResultRow>(sql, params));
+    const book = (barber: string, date: string, start: number) =>
+      asClient<{ data: { ok: boolean; id?: string; error?: string } }>(
+        `select public.create_booking($1::uuid, $2::uuid, $3::date, $4, 'sur_place'::public.payment_method, false, null) as data`,
+        [serviceId, barber, date, start],
+      );
+    const freeClient = async () => {
+      await pool.query(`delete from public.booking_attempts where user_id = $1`, [clientId]);
+      await pool.query(
+        `update public.bookings set status = 'annule', cancelled_at = now()
+         where client_id = $1 and starts_at > now() and status in ('confirme', 'en_attente_paiement')`,
+        [clientId],
+      );
+    };
+    await freeClient();
+
+    const ousmane = (
+      await owner<{ id: string }>(`select public.admin_create_barber('Ousmane Diallo', 'Ousmane', '', array[2,3,4,5,6], array[$1::uuid]) as id`, [serviceId])
+    ).rows[0].id;
+    const rasage = (
+      await owner<{ id: string }>(`select public.admin_create_service('Rasage test', '', 30, 2500, array[$1::uuid]) as id`, [ousmane])
+    ).rows[0].id;
+
+    // M-2 : list_slots suit salon_settings, comme create_booking.
+    await owner(`select public.admin_update_salon(600, 960, 'aucun', true)`);
+    const wednesday = addDays(upcoming(3), 7);
+    const narrow = await withRole(pool, 'anon', {}, (client) =>
+      client.query<{ data: { startMinute: number }[] }>(`select public.list_slots($1::uuid, $2::date, $3::uuid) as data`, [serviceId, wednesday, ousmane]),
+    );
+    const narrowStarts = narrow.rows[0].data.map((slot) => slot.startMinute);
+    expect(narrowStarts[0]).toBe(600);
+    expect(narrowStarts[narrowStarts.length - 1]).toBe(930);
+    await owner(`select public.admin_update_salon(480, 1200, 'aucun', true)`);
+    const wide = await withRole(pool, 'anon', {}, (client) =>
+      client.query<{ data: { startMinute: number; available: boolean }[] }>(`select public.list_slots($1::uuid, $2::date, $3::uuid) as data`, [serviceId, wednesday, ousmane]),
+    );
+    expect(wide.rows[0].data[0]).toMatchObject({ startMinute: 480, available: true });
+    expect(wide.rows[0].data[wide.rows[0].data.length - 1].startMinute).toBe(1170);
+    const early = await book(ousmane, wednesday, 480);
+    expect(early.rows[0].data.ok).toBe(true);
+    await pool.query(`update public.bookings set status = 'annule', cancelled_at = now() where id = $1`, [early.rows[0].data.id]);
+    await owner(`select public.admin_update_salon(540, 1140, 'a_la_prochaine', true)`);
+    await freeClient();
+
+    // F-3 : jours bornés, dernier jour gardé, rendez-vous à venir protégés, messages en français.
+    await expect(owner(`select public.admin_set_weekday($1::uuid, 0, true)`, [ousmane])).rejects.toThrow(/mardi au samedi/);
+    await expect(owner(`select public.admin_set_weekday($1::uuid, 99, true)`, [ousmane])).rejects.toThrow(/^Choisis un jour d’ouverture du salon/);
+    await expect(owner(`select public.admin_set_weekday($1::uuid, 1, false)`, [ousmane])).rejects.toThrow(/mardi au samedi/);
+    await expect(
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal1' }, (client) => client.query(`select public.admin_set_weekday($1::uuid, 3, false)`, [ousmane])),
+    ).rejects.toThrow(/Vérification renforcée requise/);
+    const thisWednesday = upcoming(3);
+    const onWednesday = await book(ousmane, thisWednesday, 600);
+    expect(onWednesday.rows[0].data.ok).toBe(true);
+    await expect(owner(`select public.admin_set_weekday($1::uuid, 3, false)`, [ousmane])).rejects.toThrow(
+      /Ousmane a encore 1 rendez-vous à venir le mercredi/,
+    );
+    await pool.query(`update public.bookings set status = 'annule', cancelled_at = now() where id = $1`, [onWednesday.rows[0].data.id]);
+    for (const day of [3, 4, 5, 6]) {
+      await owner(`select public.admin_set_weekday($1::uuid, $2, false)`, [ousmane, day]);
+    }
+    await expect(owner(`select public.admin_set_weekday($1::uuid, 2, false)`, [ousmane])).rejects.toThrow(/Ousmane doit garder au moins un jour de travail/);
+    for (const day of [3, 4, 5, 6]) {
+      await owner(`select public.admin_set_weekday($1::uuid, $2, true)`, [ousmane, day]);
+    }
+    const schedule = await pool.query<{ days: number[] }>(`select array_agg(weekday order by weekday) as days from public.schedules where barber_id = $1`, [ousmane]);
+    expect(schedule.rows[0].days).toEqual([2, 3, 4, 5, 6]);
+    const dayAudit = await pool.query(`select count(*)::int as n from public.audit_log where action = 'coiffeur_jour' and entity_id = $1`, [ousmane]);
+    expect(dayAudit.rows[0].n).toBe(8);
+    await freeClient();
+
+    // F-4 : deux retraits simultanés ne laissent pas Ousmane sans prestation.
+    const first = await openSession(pool, { sub: ownerId, aal: 'aal2' });
+    const second = await openSession(pool, { sub: ownerId, aal: 'aal2' });
+    try {
+      await first.query(`select public.admin_set_service($1::uuid, $2::uuid, false)`, [ousmane, serviceId]);
+      const racing = second.query(`select public.admin_set_service($1::uuid, $2::uuid, false)`, [ousmane, rasage]);
+      const outcome = racing.then(
+        () => 'ok',
+        (error: Error) => error.message,
+      );
+      await sleep(300);
+      await first.query('commit');
+      expect(await outcome).toMatch(/garder au moins une prestation/);
+      await second.query('rollback');
+    } finally {
+      first.release();
+      second.release();
+    }
+    const left = await pool.query(`select count(*)::int as n from public.barber_services where barber_id = $1`, [ousmane]);
+    expect(left.rows[0].n).toBe(1);
+    await owner(`select public.admin_set_service($1::uuid, $2::uuid, true)`, [ousmane, serviceId]);
+
+    // M-1 : un rendez-vous passé ramené dans le futur ne finit pas sur une chaise retirée.
+    const pastId = '99999999-9999-4999-8999-999999999991';
+    await pool.query(
+      `insert into public.bookings (
+         id, client_id, client_name, barber_id, service_id, starts_at, ends_at, duration_minutes,
+         price_cents, gst_cents, qst_cents, total_cents, payment_method, status
+       ) values (
+         $1, $2, 'Alex Gagnon', $3, $4, '2026-09-02 14:00:00+00', '2026-09-02 14:30:00+00', 30,
+         3500, 175, 349, 4024, 'sur_place'::public.payment_method, 'confirme'::public.booking_status
+       )`,
+      [pastId, clientId, ousmane, serviceId],
+    );
+    const target = addDays(upcoming(4), 7);
+    // G : l’archivage tient la chaise, le déplacement attend puis est refusé.
+    let archiving = await openSession(pool, { sub: ownerId, aal: 'aal2' });
+    let moving = await openSession(pool, { sub: ownerId, aal: 'aal2' });
+    try {
+      await archiving.query(`select public.admin_archive_barber($1::uuid)`, [ousmane]);
+      const outcome = moving.query(`select public.admin_move($1::uuid, $2::date, 600)`, [pastId, target]).then(
+        () => 'ok',
+        (error: Error) => error.message,
+      );
+      await sleep(300);
+      await archiving.query('commit');
+      expect(await outcome).toMatch(/Ce coiffeur est retiré/);
+      await moving.query('rollback');
+    } finally {
+      archiving.release();
+      moving.release();
+    }
+    const stayedPast = await pool.query(`select starts_at < now() as past from public.bookings where id = $1`, [pastId]);
+    expect(stayedPast.rows[0].past).toBe(true);
+    await owner(`select public.admin_reactivate_barber($1::uuid)`, [ousmane]);
+    // H : le déplacement tient la chaise, l’archivage attend puis voit le rendez-vous à venir.
+    archiving = await openSession(pool, { sub: ownerId, aal: 'aal2' });
+    moving = await openSession(pool, { sub: ownerId, aal: 'aal2' });
+    try {
+      await moving.query(`select public.admin_move($1::uuid, $2::date, 600)`, [pastId, target]);
+      const outcome = archiving.query(`select public.admin_archive_barber($1::uuid)`, [ousmane]).then(
+        () => 'ok',
+        (error: Error) => error.message,
+      );
+      await sleep(300);
+      await moving.query('commit');
+      expect(await outcome).toMatch(/Ousmane Diallo a encore 1 rendez-vous à venir/);
+      await archiving.query('rollback');
+    } finally {
+      archiving.release();
+      moving.release();
+    }
+    const orphan = await pool.query(
+      `select count(*)::int as n from public.bookings bk join public.barbers b on b.id = bk.barber_id
+       where not b.active and bk.status = 'confirme' and bk.ends_at > now()`,
+    );
+    expect(orphan.rows[0].n).toBe(0);
+    await pool.query(`update public.bookings set status = 'annule', cancelled_at = now() where id = $1`, [pastId]);
+
+    // F-2 : une chaise ne revient pas sans prestation active.
+    await owner(`select public.admin_archive_barber($1::uuid)`, [ousmane]);
+    await owner(`select public.admin_set_service($1::uuid, $2::uuid, false)`, [ousmane, serviceId]);
+    await owner(`select public.admin_archive_service($1::uuid)`, [rasage]);
+    await expect(owner(`select public.admin_reactivate_barber($1::uuid)`, [ousmane])).rejects.toThrow(
+      /Ousmane n’offre plus aucune prestation active/,
+    );
+    const stillArchived = await pool.query(`select active from public.barbers where id = $1`, [ousmane]);
+    expect(stillArchived.rows[0].active).toBe(false);
+
+    // F-1 : ni la première connexion, ni un changement de rôle n’activent un coiffeur sur une chaise retirée.
+    const lateInvite = '66666666-6666-4666-8666-666666666666';
+    await insertUser(pool, lateInvite, 'ousmane@lenanometre.ca', 'Ousmane Diallo', 'coiffeur', ousmane);
+    await pool.query(`update public.profiles set active = false, invited_at = now() where id = $1`, [lateInvite]);
+    await pool.query(`update auth.users set last_sign_in_at = now() where id = $1`, [lateInvite]);
+    const blocked = await pool.query(`select active, invited_at from public.profiles where id = $1`, [lateInvite]);
+    expect(blocked.rows[0]).toEqual({ active: false, invited_at: null });
+    const blockedAudit = await pool.query(
+      `select detail->>'raison' as raison from public.audit_log where action = 'activation_bloquee' and entity_id = $1`,
+      [lateInvite],
+    );
+    expect(blockedAudit.rows.map((row) => row.raison)).toEqual(['chaise_retiree']);
+    const coOwner = '77777777-7777-4777-8777-777777777777';
+    await insertUser(pool, coOwner, 'associe@lenanometre.ca', 'Associé', 'proprietaire', ousmane);
+    await expect(owner(`select public.admin_set_role($1::uuid, 'coiffeur')`, [coOwner])).rejects.toThrow(/chaise de ce coiffeur est retirée/);
+    const coOwnerRow = await pool.query(`select role::text as role, active from public.profiles where id = $1`, [coOwner]);
+    expect(coOwnerRow.rows[0]).toEqual({ role: 'proprietaire', active: true });
+
+    // F-2 (suite) : une prestation ajoutée sur la chaise retirée permet la réactivation.
+    await owner(`select public.admin_set_service($1::uuid, $2::uuid, true)`, [ousmane, serviceId]);
+    await owner(`select public.admin_reactivate_barber($1::uuid)`, [ousmane]);
+    // Sur une chaise active, le changement de rôle reste possible.
+    await owner(`select public.admin_set_role($1::uuid, 'coiffeur')`, [coOwner]);
+    await owner(`select public.admin_set_role($1::uuid, 'proprietaire')`, [coOwner]);
+    await pool.query(`update public.profiles set active = false where id = $1`, [coOwner]);
+
+    // F-5 : plafond de 10 invitations par heure et par propriétaire, réservé à la clé de service.
+    const claim = `select public.claim_invite_attempt($1::uuid) as ok`;
+    for (const role of ['anon', 'authenticated'] as const) {
+      const allowed = await pool.query(`select has_function_privilege($1, 'public.claim_invite_attempt(uuid)', 'execute') as ok`, [role]);
+      expect(allowed.rows[0].ok).toBe(false);
+    }
+    await expect(owner(claim, [ownerId])).rejects.toThrow(/permission denied/);
+    await pool.query(`delete from public.invite_attempts where owner_id = $1`, [ownerId]);
+    const answers: boolean[] = [];
+    for (let index = 0; index < 11; index += 1) {
+      const result = await withRole(pool, 'service_role', {}, (client) => client.query<{ ok: boolean }>(claim, [ownerId]));
+      answers.push(result.rows[0].ok);
+    }
+    expect(answers.filter(Boolean)).toHaveLength(10);
+    expect(answers[10]).toBe(false);
+    const capped = await pool.query(`select count(*)::int as n from public.audit_log where action = 'invitation_plafond' and actor_id = $1`, [ownerId]);
+    expect(capped.rows[0].n).toBe(1);
+    await pool.query(`update public.invite_attempts set created_at = now() - interval '2 hours' where owner_id = $1`, [ownerId]);
+    const reopened = await withRole(pool, 'service_role', {}, (client) => client.query<{ ok: boolean }>(claim, [ownerId]));
+    expect(reopened.rows[0].ok).toBe(true);
+    await pool.query(`delete from public.invite_attempts where owner_id = $1`, [ownerId]);
+    const rls = await pool.query(`select relrowsecurity from pg_class where oid = 'public.invite_attempts'::regclass`);
+    expect(rls.rows[0].relrowsecurity).toBe(true);
+    await expect(
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) => client.query(`select * from public.invite_attempts`)),
+    ).rejects.toThrow(/permission denied/);
+
+    const config = await pool.query<{ proname: string; cfg: string }>(
+      `select p.proname, array_to_string(p.proconfig, ' ') as cfg from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public' and p.proname in ('admin_set_weekday', 'admin_set_role', 'activate_invited_profile', 'claim_invite_attempt',
+         'admin_reactivate_barber', 'admin_set_service', 'admin_move', 'list_slots')`,
+    );
+    expect(config.rows).toHaveLength(8);
+    for (const fn of config.rows) {
+      expect(fn.cfg, fn.proname).toMatch(/search_path=""/);
+      expect(fn.cfg, fn.proname).not.toMatch(/search_path=public/);
+    }
+    await owner(`select public.admin_reactivate_service($1::uuid)`, [rasage]);
+    await freeClient();
+  });
 });
 
 async function insertUser(pool: pg.Pool, id: string, email: string, name: string, role: string, barber: string | null) {
@@ -906,4 +1137,20 @@ async function withRole<T>(
   } finally {
     client.release();
   }
+}
+
+async function openSession(pool: pg.Pool, claims: Claims): Promise<pg.PoolClient> {
+  const client = await pool.connect();
+  await client.query('begin');
+  await client.query(`select set_config('request.jwt.claim.sub', $1, true)`, [claims.sub ?? '']);
+  await client.query(`select set_config('request.jwt.claim.role', 'authenticated', true)`);
+  await client.query(`select set_config('request.jwt.claims', $1, true)`, [
+    JSON.stringify({ aal: claims.aal ?? 'aal1', role: 'authenticated', sub: claims.sub ?? '' }),
+  ]);
+  await client.query('set local role authenticated');
+  return client;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

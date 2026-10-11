@@ -32,6 +32,8 @@ export default function CreneauScreen() {
     },
     [serviceId, barberId, date],
   );
+  // M-2 : la légende suit l’heure de fermeture réglée pour le salon.
+  const salon = useAsync((repo) => repo.getSalon(), []);
   const selected = query.data?.find((slot) => slot.startMinute === draft.startMinute && slot.available) ?? null;
   return (
     <Screen
@@ -84,6 +86,7 @@ export default function CreneauScreen() {
           slots={query.data ?? []}
           selectedStart={draft.date === date ? (draft.startMinute ?? null) : null}
           onSelect={(slot) => update({ date, startMinute: slot.startMinute, endMinute: slot.endMinute, assignedBarberId: slot.barberId ?? undefined })}
+          closeMinute={salon.data?.closeMinute}
         />
       )}
     </Screen>

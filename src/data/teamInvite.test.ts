@@ -71,7 +71,9 @@ describe('invitation équipe', () => {
   });
 
   it('invite Auth côté serveur, lie le profil et journalise', () => {
-    const source = readFileSync(new URL('../../supabase/functions/invite-team-member/index.ts', import.meta.url), 'utf8');
+    const entry = readFileSync(new URL('../../supabase/functions/invite-team-member/index.ts', import.meta.url), 'utf8');
+    const source = readFileSync(new URL('../../supabase/functions/invite-team-member/handler.ts', import.meta.url), 'utf8');
+    expect(entry).toContain('handleInviteRequest(req, runtimeFromEnv())');
     const sql = readFileSync(new URL('../../supabase/migrations/20261001140000_team_invite.sql', import.meta.url), 'utf8');
     expect(source).toContain('inviteUserByEmail');
     expect(source).toContain('SUPABASE_SERVICE_ROLE_KEY');
@@ -81,6 +83,13 @@ describe('invitation équipe', () => {
     expect(source).toContain('active: false');
     expect(source).toContain('https://lenanometre.ca/auth/callback');
     expect(source).toContain('Vérification renforcée requise');
+    // E-1 : l’aal2 vaut pour tous les rôles, pas seulement pour un propriétaire invité.
+    expect(source).toContain("if (accessLevel(authorization) !== 'aal2')");
+    expect(source).not.toMatch(/plan\.role === 'proprietaire' && accessLevel/);
+    // F-5 : plafond compté en base avant l’envoi du courriel.
+    expect(source.indexOf('claimInviteAttempt(user.id)')).toBeGreaterThan(-1);
+    expect(source.indexOf('claimInviteAttempt(user.id)')).toBeLessThan(source.indexOf('runtime.inviteUserByEmail('));
+    expect(source).toContain("rpc('claim_invite_attempt'");
     expect(source).not.toMatch(/password/i);
     expect(sql).toContain('L’invitation se fait par le serveur.');
     expect(sql).not.toMatch(/password/i);

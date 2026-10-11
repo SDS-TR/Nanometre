@@ -19,6 +19,14 @@ import {
   quotePromo,
   scopeBarber,
   zonedDateTime,
+  ARCHIVED_CHAIR_MESSAGE,
+  INVALID_WEEKDAY_MESSAGE,
+  INVITE_LIMIT_MESSAGE,
+  INVITES_PER_HOUR,
+  isUpcomingBooking,
+  lastWeekdayMessage,
+  upcomingWeekdayMessage,
+  weekdayOfIso,
   type PromoCode,
 } from '../domain';
 import type {
@@ -93,6 +101,8 @@ export function createAdmin(input: {
   emit: () => void;
 }) {
   const { state, emit } = input;
+  /** F-5 : tentatives d’invitation par propriétaire (heure glissante), comme claim_invite_attempt. */
+  const inviteAttempts = new Map<string, number[]>();
 
   function actor(): Account {
     const user = state.users.find((item) => item.id === state.sessionUserId);
@@ -575,6 +585,14 @@ export function createAdmin(input: {
       if (!target || target.role === 'client') {
         throw new Error('Membre introuvable.');
       }
+      if (role === 'coiffeur') {
+        if (!target.barberId) {
+          throw new Error('Choisis la chaise de ce coiffeur.');
+        }
+        if (state.barbers.find((item) => item.id === target.barberId)?.active === false) {
+          throw new Error(ARCHIVED_CHAIR_MESSAGE);
+        }
+      }
       assertLastOwnerSurvives({
         owners: state.users.filter((item) => item.role === 'proprietaire').map((item) => ({ id: item.id, active: item.active !== false })),
         targetId: userId,
@@ -601,7 +619,7 @@ export function createAdmin(input: {
         });
       }
       if (active && target.role === 'coiffeur' && state.barbers.find((item) => item.id === target.barberId)?.active === false) {
-        throw new Error('La chaise de ce coiffeur est retirée. Réactive-la dans Coiffeurs d’abord.');
+        throw new Error(ARCHIVED_CHAIR_MESSAGE);
       }
       target.active = active;
       audit(active ? 'reactivation' : 'desactivation', target.fullName);
@@ -622,6 +640,13 @@ export function createAdmin(input: {
       if (payload.role === 'coiffeur' && !payload.barberId) {
         throw new Error('Choisis la chaise de ce coiffeur.');
       }
+      const now = Date.now();
+      const recent = (inviteAttempts.get(user.id) ?? []).filter((at) => now - at < 60 * 60 * 1000);
+      if (recent.length >= INVITES_PER_HOUR) {
+        inviteAttempts.set(user.id, recent);
+        throw new Error(INVITE_LIMIT_MESSAGE);
+      }
+      inviteAttempts.set(user.id, [...recent, now]);
       if (payload.barberId) {
         const chair = state.barbers.find((item) => item.id === payload.barberId);
         if (!chair) {
@@ -671,13 +696,37 @@ export function createAdmin(input: {
     async setBarberWeekday(barberId: string, weekday: number, open: boolean) {
       const user = actor();
       assertCan(user.role, 'barbers');
+      if (!Number.isInteger(weekday) || weekday < 2 || weekday > 6) {
+        throw new Error(INVALID_WEEKDAY_MESSAGE);
+      }
+      const chair = state.barbers.find((item) => item.id === barberId);
+      if (!chair) {
+        throw new Error('Coiffeur introuvable.');
+      }
       const days = new Set(state.schedules.get(barberId) ?? [2, 3, 4, 5, 6]);
+      if (open === days.has(weekday)) {
+        return;
+      }
       if (open) {
         days.add(weekday);
       } else {
+        if (chair.active && ![...days].some((day) => day !== weekday && day >= 2 && day <= 6)) {
+          throw new Error(lastWeekdayMessage(chair.shortName));
+        }
+        const now = new Date();
+        const upcoming = state.bookings.filter(
+          (booking) =>
+            booking.barberId === barberId &&
+            weekdayOfIso(booking.date) === weekday &&
+            isUpcomingBooking({ status: booking.status, endsAt: zonedDateTime(booking.date, booking.startMinute + booking.durationMinutes) }, now),
+        ).length;
+        if (upcoming > 0) {
+          throw new Error(upcomingWeekdayMessage(chair.shortName, upcoming, weekday));
+        }
         days.delete(weekday);
       }
       state.schedules.set(barberId, [...days].sort());
+      auditEntry(state, 'coiffeur_jour', `${chair.fullName} · ${weekday} · ${open ? 'travaille' : 'congé'}`);
       emit();
     },
     async listAudit(): Promise<AuditEntry[]> {

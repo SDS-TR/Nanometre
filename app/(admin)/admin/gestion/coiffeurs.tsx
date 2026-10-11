@@ -11,14 +11,15 @@ import { Screen } from '../../../../src/components/Screen';
 import { LoadingBlock, StateMessage } from '../../../../src/components/StateView';
 import { Text } from '../../../../src/components/Text';
 import type { ManagedBarber } from '../../../../src/data/types';
-import { upcomingBarberMessage, WEEKDAY_CHIPS } from '../../../../src/domain';
+import { friendlyError, upcomingBarberMessage, WEEKDAY_CHIPS } from '../../../../src/domain';
 import { useAsync } from '../../../../src/hooks/useAsync';
 import { useAppState } from '../../../../src/providers/AppState';
 import { useTheme } from '../../../../src/theme';
 
 
+/** F-3 : jamais de message brut de la base dans un toast. */
 function message(reason: unknown, fallback: string): string {
-  return reason instanceof Error && reason.message ? reason.message : fallback;
+  return friendlyError(reason, fallback);
 }
 
 export default function CoiffeursScreen() {
@@ -214,22 +215,52 @@ export default function CoiffeursScreen() {
             </Text>
             {archived.map((barber) => {
               const key = `reactiver:${barber.id}`;
+              const offered = new Set(barber.serviceIds);
+              // F-2 : une chaise réactivée doit offrir au moins une prestation active.
+              const needsService = !activeServices.some((service) => offered.has(service.id));
               return (
-                <View key={barber.id} style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space[3] }}>
-                  <Avatar name={barber.fullName} photo={barber.photo} size="sm" />
-                  <View style={{ flex: 1, gap: theme.space[1] }}>
-                    <Text variant="label-md">{barber.fullName}</Text>
-                    <Badge label="Retiré" tone="neutral" />
+                <View key={barber.id} style={{ gap: theme.space[2] }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space[3] }}>
+                    <Avatar name={barber.fullName} photo={barber.photo} size="sm" />
+                    <View style={{ flex: 1, gap: theme.space[1] }}>
+                      <Text variant="label-md">{barber.fullName}</Text>
+                      <Badge label="Retiré" tone="neutral" />
+                    </View>
+                    <Button
+                      label="Réactiver"
+                      variant="secondary"
+                      size="sm"
+                      loading={busy === key}
+                      disabled={needsService || (busy !== null && busy !== key)}
+                      accessibilityLabel={`Réactiver ${barber.fullName}`}
+                      onPress={() => run(key, () => repo.reactivateBarber(barber.id), `${barber.shortName} est de retour à l’horaire.`, 'Réactivation impossible.')}
+                    />
                   </View>
-                  <Button
-                    label="Réactiver"
-                    variant="secondary"
-                    size="sm"
-                    loading={busy === key}
-                    disabled={busy !== null && busy !== key}
-                    accessibilityLabel={`Réactiver ${barber.fullName}`}
-                    onPress={() => run(key, () => repo.reactivateBarber(barber.id), `${barber.shortName} est de retour à l’horaire.`, 'Réactivation impossible.')}
-                  />
+                  {needsService ? (
+                    <>
+                      <Text variant="body-sm" color={theme.color.text.secondary}>
+                        {`${barber.shortName} n’offre plus aucune prestation active. Choisis-lui au moins une prestation pour le réactiver.`}
+                      </Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space[2] }}>
+                        {activeServices.map((service) => (
+                          <Chip
+                            key={service.id}
+                            label={service.name}
+                            selected={false}
+                            disabled={busy !== null}
+                            onPress={() =>
+                              run(
+                                `service:${barber.id}`,
+                                () => repo.setBarberService({ barberId: barber.id, serviceId: service.id, eligible: true }),
+                                `${service.name} ajouté à ${barber.shortName}.`,
+                                'Changement refusé.',
+                              )
+                            }
+                          />
+                        ))}
+                      </View>
+                    </>
+                  ) : null}
                 </View>
               );
             })}

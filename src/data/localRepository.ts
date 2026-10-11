@@ -10,6 +10,8 @@ import {
   AccessDeniedError,
   isUpcomingBooking,
   orphanServiceMessage,
+  reactivateWithoutServiceMessage,
+  reactivateWithoutWeekdayMessage,
   quoteCancellation,
   uniqueSlug,
   upcomingBarberMessage,
@@ -258,6 +260,8 @@ function placeDemoLateCancel(state: State, now: Date) {
       durationMinutes: service.durationMinutes,
       busy: busyFor(state, barber.id, date),
       earliestStartMinute: date === today ? zonedParts(now).minuteOfDay + 15 : undefined,
+      openMinute: state.openMinute,
+      closeMinute: state.closeMinute,
     });
     const slot = slots.find((item) => {
       if (!item.available) {
@@ -1190,6 +1194,13 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       }
       if (barber.active) {
         throw new Error('Ce coiffeur est déjà actif.');
+      }
+      const active = activeServiceIds();
+      if (!offeredBy(barber.id).some((id) => active.has(id))) {
+        throw new Error(reactivateWithoutServiceMessage(barber.shortName));
+      }
+      if (!(state.schedules.get(barber.id) ?? ALL_WEEKDAYS).some((day) => day >= 2 && day <= 6)) {
+        throw new Error(reactivateWithoutWeekdayMessage(barber.shortName));
       }
       barber.active = true;
       auditEntry(state, 'coiffeur_reactivation', barber.fullName);

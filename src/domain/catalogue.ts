@@ -123,3 +123,47 @@ export function orphanServiceMessage(shortNames: string[]): string {
 export function isUpcomingBooking(input: { status: string; endsAt: Date }, now: Date): boolean {
   return (input.status === 'confirme' || input.status === 'en_attente_paiement') && input.endsAt.getTime() > now.getTime();
 }
+
+const WEEKDAY_NAMES = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'] as const;
+
+/** F-3 : mêmes textes que admin_set_weekday. */
+export const INVALID_WEEKDAY_MESSAGE = 'Choisis un jour d’ouverture du salon (mardi au samedi).';
+
+export function lastWeekdayMessage(shortName: string): string {
+  return `${shortName} doit garder au moins un jour de travail.`;
+}
+
+export function upcomingWeekdayMessage(shortName: string, count: number, weekday: number): string {
+  return `${shortName} a encore ${count} rendez-vous à venir le ${WEEKDAY_NAMES[weekday] ?? 'jour choisi'}. Déplace-les ou annule-les dans l’agenda, puis réessaie.`;
+}
+
+/** F-2 : mêmes textes que admin_reactivate_barber. */
+export function reactivateWithoutServiceMessage(shortName: string): string {
+  return `${shortName} n’offre plus aucune prestation active. Choisis-lui au moins une prestation, puis réactive-le.`;
+}
+
+export function reactivateWithoutWeekdayMessage(shortName: string): string {
+  return `${shortName} n’a aucun jour de travail (mardi au samedi). Ajoute-lui un jour, puis réactive-le.`;
+}
+
+/** F-1 : même texte que admin_set_active et admin_set_role. */
+export const ARCHIVED_CHAIR_MESSAGE = 'La chaise de ce coiffeur est retirée. Réactive-la dans Coiffeurs d’abord.';
+
+/** F-5 : plafond d’invitations par propriétaire, comme claim_invite_attempt. */
+export const INVITES_PER_HOUR = 10;
+export const INVITE_LIMIT_MESSAGE = 'Trop d’invitations envoyées. Réessaie dans une heure.';
+
+const TECHNICAL_ERROR =
+  /failing row|violates|constraint|duplicate key|null value|syntax error|relation "|column "|function .*does not exist|permission denied|invalid input|pgrst|jwt|sqlstate|\berror:/i;
+
+/**
+ * Message à afficher dans un toast. Les messages en français de nos fonctions passent ;
+ * un message brut de Postgres ou de PostgREST est remplacé par le texte de repli.
+ */
+export function friendlyError(reason: unknown, fallback: string): string {
+  const text = reason instanceof Error ? reason.message.trim() : typeof reason === 'string' ? reason.trim() : '';
+  if (!text || text.length > 240 || TECHNICAL_ERROR.test(text)) {
+    return fallback;
+  }
+  return text;
+}
