@@ -25,8 +25,10 @@ export function occupancyMinutes(durationMinutes: number): number {
 }
 
 /** Dimanche = 0 … samedi = 6. Le salon est ouvert du mardi au samedi. */
+export const OPEN_WEEKDAYS = [2, 3, 4, 5, 6] as const;
+
 export function isOpenWeekday(weekday: number): boolean {
-  return weekday >= 2 && weekday <= 6;
+  return OPEN_WEEKDAYS.some((day) => day === weekday);
 }
 
 export function intervalsOverlap(a: Interval, b: Interval): boolean {

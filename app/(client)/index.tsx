@@ -1,8 +1,8 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import type { ReactNode } from 'react';
-import { ScrollView, View } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { Linking, Pressable, ScrollView, View } from 'react-native';
 import { Button } from '../../src/components/Button';
 import { CarteCoiffeur } from '../../src/components/CarteCoiffeur';
 import { CarteCoupe } from '../../src/components/CarteCoupe';
@@ -12,7 +12,7 @@ import { LoadingBlock, StateMessage } from '../../src/components/StateView';
 import { Text } from '../../src/components/Text';
 import { photos } from '../../src/data/photos';
 import type { BookingView, Salon } from '../../src/data/types';
-import { formatTime, openDaysPhrase, zonedDateTime } from '../../src/domain';
+import { formatTime, mapsSearchUri, OPEN_WEEKDAYS, openDaysPhrase, phoneTelUri, zonedDateTime } from '../../src/domain';
 import { useAsync } from '../../src/hooks/useAsync';
 import { useAppState } from '../../src/providers/AppState';
 import { useTheme } from '../../src/theme';
@@ -62,7 +62,7 @@ export default function AccueilScreen() {
             {salon.city}
           </Text>
           <Text variant="body-sm" color={theme.color.text.muted}>
-            {openDaysPhrase([2, 3, 4, 5, 6])} · {formatTime(salon.openMinute)} à {formatTime(salon.closeMinute)}
+            {openDaysPhrase([...OPEN_WEEKDAYS])} · {formatTime(salon.openMinute)} à {formatTime(salon.closeMinute)}
           </Text>
         </View>
       </View>
@@ -116,15 +116,45 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function Address({ salon }: { salon: Salon }) {
   const theme = useTheme();
+  const [error, setError] = useState<string | null>(null);
+
+  async function openExternal(buildUrl: () => string) {
+    try {
+      await Linking.openURL(buildUrl());
+      setError(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Le lien ne s’ouvre pas sur cet appareil.');
+    }
+  }
+
   return (
     <View style={{ gap: theme.space[1], paddingBottom: theme.space[4] }}>
-      <Text variant="label-md">{salon.address}</Text>
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel={`Itinéraire vers ${salon.address}`}
+        onPress={() => void openExternal(() => mapsSearchUri(salon.address, salon.city))}
+      >
+        <Text variant="label-md" color={theme.color.accent.default} style={{ textDecorationLine: 'underline' }}>
+          {salon.address}
+        </Text>
+      </Pressable>
       <Text variant="body-sm" color={theme.color.text.secondary}>
         {salon.city}
       </Text>
-      <Text variant="caption" color={theme.color.text.muted}>
-        {salon.phone}
-      </Text>
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel={`Appeler le salon au ${salon.phone}`}
+        onPress={() => void openExternal(() => phoneTelUri(salon.phone))}
+      >
+        <Text variant="caption" color={theme.color.accent.default} style={{ textDecorationLine: 'underline' }}>
+          {salon.phone}
+        </Text>
+      </Pressable>
+      {error ? (
+        <Text variant="caption" color={theme.color.error.default}>
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }

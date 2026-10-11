@@ -54,6 +54,27 @@ export function formatDuration(minutes: number): string {
 
 const WEEKDAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 
+/** « 418 555-0199 » → « tel:4185550199 ». */
+export function phoneTelUri(phone: string): string {
+  const compact = phone.replace(/[^\d+]/g, '');
+  if (!/^\+?\d{10,15}$/.test(compact)) {
+    throw new Error('Téléphone invalide');
+  }
+  return `tel:${compact}`;
+}
+
+/** Adresse et ville → recherche Google Maps. */
+export function mapsSearchUri(address: string, city: string): string {
+  const query = [address, city]
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
+    .join(', ');
+  if (!query) {
+    throw new Error('Adresse invalide');
+  }
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
 /** « Du mardi au samedi » quand les jours se suivent. */
 export function openDaysPhrase(weekdays: number[]): string {
   const days = [...new Set(weekdays)].filter((day) => day >= 0 && day <= 6).sort((a, b) => a - b);

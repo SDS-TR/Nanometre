@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { freeSlots, generateSlots, occupancyMinutes } from './slots';
+import { openDaysPhrase } from './format';
+import { freeSlots, generateSlots, isOpenWeekday, occupancyMinutes, OPEN_WEEKDAYS } from './slots';
 
 /** Julien Morel, mardi 6 oct. 2026, sans le rendez-vous en cours d’Alex (14 h 30). */
 const julienBusy = [
@@ -26,6 +27,14 @@ describe('créneaux', () => {
   it('ferme le dimanche et le lundi', () => {
     expect(generateSlots({ weekday: 0, durationMinutes: 30 })).toEqual([]);
     expect(generateSlots({ weekday: 1, durationMinutes: 30 })).toEqual([]);
+  });
+
+  it('publie les mêmes jours ouverts que la phrase d’accueil', () => {
+    expect([...OPEN_WEEKDAYS]).toEqual([2, 3, 4, 5, 6]);
+    for (let day = 0; day <= 6; day += 1) {
+      expect(isOpenWeekday(day)).toBe(OPEN_WEEKDAYS.some((open) => open === day));
+    }
+    expect(openDaysPhrase([...OPEN_WEEKDAYS])).toBe('Du mardi au samedi');
   });
 
   it('aligne les départs sur 15 min et rien ne dépasse 19 h', () => {

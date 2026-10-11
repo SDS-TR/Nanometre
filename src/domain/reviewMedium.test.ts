@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createLocalRepository } from '../data/localRepository';
 import { memoryStore } from '../data/storage';
-import { chairSpanLabel, openDaysPhrase, payButtonLabel, slotLegend } from './format';
+import { chairSpanLabel, mapsSearchUri, openDaysPhrase, payButtonLabel, phoneTelUri, slotLegend } from './format';
 import { holdExpired } from './holds';
 import { computeDashboard } from './dashboard';
 
@@ -23,6 +23,15 @@ describe('revue moyenne', () => {
       openSpanMinutes: 11 * 60,
     });
     expect(board.occupancy).toBe(0);
+  });
+
+  it('prépare le téléphone et l’adresse du salon pour un lien', () => {
+    expect(phoneTelUri('418 555-0199')).toBe('tel:4185550199');
+    expect(mapsSearchUri('425, rue Saint-Vallier Ouest', 'Québec (Québec) G1K 1K8')).toBe(
+      'https://www.google.com/maps/search/?api=1&query=425%2C%20rue%20Saint-Vallier%20Ouest%2C%20Qu%C3%A9bec%20(Qu%C3%A9bec)%20G1K%201K8',
+    );
+    expect(() => phoneTelUri('sans numéro')).toThrow('Téléphone invalide');
+    expect(() => mapsSearchUri('  ', ' ')).toThrow('Adresse invalide');
   });
 
   it('nomme le paiement sur place sans parler d’un prélèvement', () => {
