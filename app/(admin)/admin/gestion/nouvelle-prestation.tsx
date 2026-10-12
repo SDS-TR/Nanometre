@@ -9,7 +9,7 @@ import { Screen } from '../../../../src/components/Screen';
 import { LoadingBlock, StateMessage } from '../../../../src/components/StateView';
 import { Text } from '../../../../src/components/Text';
 import { useToast } from '../../../../src/components/Toast';
-import { formatCad, formatDuration, friendlyError, parsePriceCents, SERVICE_DURATIONS, validateNewService } from '../../../../src/domain';
+import { formatCad, formatDuration, friendlyError, parseDurationMinutes, parsePriceCents, SERVICE_DURATIONS, validateNewService } from '../../../../src/domain';
 import { useAsync } from '../../../../src/hooks/useAsync';
 import { useAppState } from '../../../../src/providers/AppState';
 import { useTheme } from '../../../../src/theme';
@@ -33,6 +33,7 @@ export default function NouvellePrestationScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [duration, setDuration] = useState<number>(30);
+  const [custom, setCustom] = useState('');
   const [price, setPrice] = useState('');
   const [priceError, setPriceError] = useState<string | null>(null);
   const [barberIds, setBarberIds] = useState<string[] | null>(null);
@@ -67,7 +68,16 @@ export default function NouvellePrestationScreen() {
       setPriceError('Tarif invalide. Exemple : 35,00');
       return;
     }
-    const input = { name, description, durationMinutes: duration, priceCents: cents, barberIds: chosen };
+    let minutes = duration;
+    if (custom.trim()) {
+      try {
+        minutes = parseDurationMinutes(custom);
+      } catch (reason) {
+        setError(friendlyError(reason, 'Durée invalide.'));
+        return;
+      }
+    }
+    const input = { name, description, durationMinutes: minutes, priceCents: cents, barberIds: chosen };
     try {
       validateNewService(input, new Set(catalogue.data?.barbers.map((barber) => barber.id) ?? []), catalogue.data?.names ?? []);
     } catch (reason) {
@@ -116,9 +126,18 @@ export default function NouvellePrestationScreen() {
         <Text variant="heading-sm">Durée</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space[2] }}>
           {SERVICE_DURATIONS.map((minutes) => (
-            <Chip key={minutes} label={formatDuration(minutes)} selected={duration === minutes} onPress={() => setDuration(minutes)} />
+            <Chip
+              key={minutes}
+              label={formatDuration(minutes)}
+              selected={!custom.trim() && duration === minutes}
+              onPress={() => {
+                setCustom('');
+                setDuration(minutes);
+              }}
+            />
           ))}
         </View>
+        <Input label="Autre durée, en minutes" value={custom} onChangeText={setCustom} placeholder="50" keyboardType="number-pad" />
 
         <Input
           label="Prix HT, en dollars"

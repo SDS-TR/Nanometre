@@ -30,7 +30,7 @@ export function SelecteurDate({ date, onChange, onToday }: Props) {
         <ChevronRight color={theme.color.text.primary} size={22} />
       </Pressable>
       {onToday ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="Revenir à aujourd’hui" onPress={onToday} style={{ minHeight: theme.touchTarget.min, justifyContent: 'center', paddingHorizontal: theme.space[2] }}>
+        <Pressable accessibilityRole="button" onPress={onToday} style={{ minHeight: theme.touchTarget.min, justifyContent: 'center', paddingHorizontal: theme.space[2] }}>
           <Text variant="label-sm" color={theme.color.accent.default}>
             Aujourd’hui
           </Text>

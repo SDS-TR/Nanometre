@@ -45,7 +45,7 @@ export function SelecteurDate({ date, onChange, onToday }: Props) {
         />
       ) : null}
       {onToday ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="Revenir à aujourd’hui" onPress={onToday} style={{ minHeight: theme.touchTarget.min, justifyContent: 'center' }}>
+        <Pressable accessibilityRole="button" onPress={onToday} style={{ minHeight: theme.touchTarget.min, justifyContent: 'center' }}>
           <Text variant="label-sm" color={theme.color.accent.default}>
             Aujourd’hui
           </Text>
