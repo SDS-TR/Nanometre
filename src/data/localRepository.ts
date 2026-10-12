@@ -22,6 +22,21 @@ import {
   restoreReward,
   type PromoCode,
   weekdayOfIso,
+  demoRebaseDays,
+  defaultSalonWeek,
+  dayHoursLabel,
+  futureOutsideWeek,
+  hoursConflictMessage,
+  validateSalonWeek,
+  weekdayLong,
+  type SalonDay,
+  formatCad,
+  formatLongDate,
+  formatTime,
+  occupancyMinutes,
+  REASSIGN_TARGET_MESSAGE,
+  validateServiceDetails,
+  rebaseIso,
   zonedDateTime,
   zonedParts,
   type BookingLifecycle,
@@ -52,9 +67,12 @@ import type {
 const STORAGE_KEY = 'lenanometre.delta.v2';
 const DEMO_LATE_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const ACTIVE = new Set(['en_attente_paiement', 'confirme', 'honore']);
-const ALL_WEEKDAYS = [2, 3, 4, 5, 6];
+const ALL_WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
 
 /** Chaise locale. active = false : retirée, cachée des réservations, gardée pour l’historique. */
+/** Changement de prix d’une prestation (historique visible par le propriétaire). */
+export type PriceChange = { id: string; serviceId: string; oldCents: number; newCents: number; at: string };
+
 type LocalBarber = Omit<Barber, 'serviceIds'> & { active: boolean };
 
 type Delta = {
@@ -82,6 +100,12 @@ type Delta = {
   archivedBarberIds?: string[];
   addedServices?: Service[];
   archivedServiceIds?: string[];
+  /** Décalage (jours) du seed quand ce delta a été écrit. Absent = 0 (avant le 12 octobre). */
+  rebaseDays?: number;
+  /** Nom, description et durée modifiés après coup. */
+  serviceDetails?: { id: string; name: string; description: string; durationMinutes: number }[];
+  priceHistory?: PriceChange[];
+  salonWeek?: SalonDay[];
 };
 
 type State = {
@@ -105,9 +129,12 @@ type State = {
   eligibility: Map<string, string[]>;
   pushTokens: Map<string, string>;
   barbers: LocalBarber[];
+  priceHistory: PriceChange[];
+  /** Horaires du salon, jour par jour. Défaut : 7 jours sur 7, 0 h à 24 h. */
+  salonWeek: SalonDay[];
 };
 
-function cloneSeed(): State {
+function cloneSeed(rebase = 0): State {
   const users: Account[] = seed.users.map((user) => ({
     id: user.id,
     email: user.email,
@@ -131,6 +158,7 @@ function cloneSeed(): State {
     bookings: seed.bookings.map(
       (booking): BookingRecord => ({
         ...booking,
+        date: rebaseIso(booking.date, rebase),
         paymentMethod: booking.paymentMethod as PaymentMethod,
         status: booking.status as BookingLifecycle,
         paymentStatus: booking.paymentStatus as PaymentStatus,
@@ -140,17 +168,18 @@ function cloneSeed(): State {
     reviews: seed.reviews.map(
       (review): Review => ({
         ...review,
+        date: rebaseIso(review.date, rebase),
         status: review.status as Review['status'],
       }),
     ),
     pendingMagicEmail: null,
     blocks: [],
     notes: new Map(),
-    promos: defaultPromos(),
+    promos: defaultPromos().map((promo) => ({ ...promo, startsOn: rebaseIso(promo.startsOn, rebase), endsOn: rebaseIso(promo.endsOn, rebase) })),
     openMinute: seed.salon.openMinute,
     closeMinute: seed.salon.closeMinute,
     onsiteLatePolicy: 'aucun',
-    schedules: new Map(seed.barbers.map((barber) => [barber.id, [2, 3, 4, 5, 6]])),
+    schedules: new Map(seed.barbers.map((barber) => [barber.id, [0, 1, 2, 3, 4, 5, 6]])),
     notifications: [],
     optIn: new Set(),
     audit: [],
@@ -158,6 +187,23 @@ function cloneSeed(): State {
     eligibility: new Map(),
     pushTokens: new Map(),
     barbers: seed.barbers.map((barber) => ({ ...barber, active: true })),
+    priceHistory: [],
+    salonWeek: defaultSalonWeek(),
+  };
+}
+
+/** Glisse les dates d’un ancien delta quand la semaine de démo change. */
+function slideDelta(delta: Delta, days: number): Delta {
+  if (days === 0) {
+    return delta;
+  }
+  const move = (iso: string) => rebaseIso(iso, days);
+  return {
+    ...delta,
+    bookingPatches: delta.bookingPatches.map((booking) => ({ ...booking, date: move(booking.date) })),
+    reviewPatches: delta.reviewPatches.map((review) => ({ ...review, date: move(review.date) })),
+    blocks: (delta.blocks ?? []).map((block) => ({ ...block, date: move(block.date) })),
+    promos: (delta.promos ?? []).map((promo) => ({ ...promo, startsOn: move(promo.startsOn), endsOn: move(promo.endsOn) })),
   };
 }
 
@@ -253,7 +299,7 @@ function placeDemoLateCancel(state: State, now: Date) {
   const today = zonedParts(now).isoDate;
   for (let offset = 0; offset < 4; offset += 1) {
     const date = shift(today, offset);
-    if (!isOpenWeekday(weekdayOfIso(date))) {
+    if (!isOpenWeekday(weekdayOfIso(date), state.salonWeek)) {
       continue;
     }
     const slots = generateSlots({
@@ -263,6 +309,7 @@ function placeDemoLateCancel(state: State, now: Date) {
       earliestStartMinute: date === today ? zonedParts(now).minuteOfDay + 15 : undefined,
       openMinute: state.openMinute,
       closeMinute: state.closeMinute,
+      week: state.salonWeek,
     });
     const slot = slots.find((item) => {
       if (!item.available) {
@@ -385,6 +432,16 @@ function applyDelta(state: State, delta: Delta) {
   for (const barber of state.barbers) {
     barber.active = !archivedBarbers.has(barber.id);
   }
+  for (const detail of delta.serviceDetails ?? []) {
+    const service = state.services.find((item) => item.id === detail.id);
+    if (service) {
+      service.name = detail.name;
+      service.description = detail.description;
+      service.durationMinutes = detail.durationMinutes;
+    }
+  }
+  state.priceHistory = delta.priceHistory ?? [];
+  state.salonWeek = delta.salonWeek ?? defaultSalonWeek();
   for (const price of delta.servicePrices ?? []) {
     const service = state.services.find((item) => item.id === price.id);
     if (service) {
@@ -399,21 +456,26 @@ function applyDelta(state: State, delta: Delta) {
   }
 }
 
-export function createLocalRepository(storage: KeyValueStore): Repository {
-  let state = cloneSeed();
+export function createLocalRepository(storage: KeyValueStore, options: { now?: () => Date } = {}): Repository {
+  const clock = options.now ?? (() => new Date());
+  // Bogue 1 (revue du 12 oct.) : le seed suit la date du jour, à la semaine près.
+  const rebase = demoRebaseDays(zonedParts(clock()).isoDate);
+  const state = cloneSeed(rebase);
+  const seedBookings = new Map(cloneSeed(rebase).bookings.map((booking) => [booking.id, JSON.stringify(booking)]));
+  const seedServices = new Map(seed.services.map((service) => [service.id, service]));
   const listeners = new Set<() => void>();
 
   const ready = (async () => {
     const raw = await storage.getItem(STORAGE_KEY);
     if (raw) {
-      applyDelta(state, JSON.parse(raw) as Delta);
+      const delta = JSON.parse(raw) as Delta;
+      applyDelta(state, slideDelta(delta, rebase - (delta.rebaseDays ?? 0)));
     }
-    placeDemoLateCancel(state, new Date());
+    placeDemoLateCancel(state, clock());
     await persist();
   })();
 
   async function persist() {
-    const seedIds = new Set(seed.bookings.map((booking) => booking.id));
     const seedLoyalty = new Map(seed.loyalty.map((row) => [row.clientId, JSON.stringify(row)]));
     const delta: Delta = {
       sessionUserId: state.sessionUserId,
@@ -425,13 +487,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
           return original && (original.role !== user.role || user.active === false || original.barberId !== user.barberId);
         })
         .map((user) => ({ id: user.id, role: user.role, active: user.active !== false, barberId: user.barberId })),
-      bookingPatches: state.bookings.filter((booking) => {
-        if (!seedIds.has(booking.id)) {
-          return true;
-        }
-        const original = seed.bookings.find((item) => item.id === booking.id);
-        return JSON.stringify(original) !== JSON.stringify(booking);
-      }),
+      bookingPatches: state.bookings.filter((booking) => seedBookings.get(booking.id) !== JSON.stringify(booking)),
       loyaltyPatches: [...state.loyalty.entries()]
         .filter(([clientId, value]) => seedLoyalty.get(clientId) !== JSON.stringify({ clientId, ...value }))
         .map(([clientId, value]) => ({ clientId, ...value })),
@@ -456,6 +512,18 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
         .filter((service) => !seed.services.some((item) => item.id === service.id))
         .map(({ active: _active, ...service }) => service),
       archivedServiceIds: state.services.filter((service) => service.active === false).map((service) => service.id),
+      rebaseDays: rebase,
+      serviceDetails: state.services
+        .filter((service) => {
+          const original = seedServices.get(service.id);
+          return (
+            original &&
+            (original.name !== service.name || original.description !== service.description || original.durationMinutes !== service.durationMinutes)
+          );
+        })
+        .map((service) => ({ id: service.id, name: service.name, description: service.description, durationMinutes: service.durationMinutes })),
+      priceHistory: state.priceHistory,
+      salonWeek: state.salonWeek,
     };
     await storage.setItem(STORAGE_KEY, JSON.stringify(delta));
   }
@@ -649,6 +717,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
         ...seed.salon,
         openMinute: state.openMinute,
         closeMinute: state.closeMinute,
+        week: state.salonWeek.map((day) => ({ ...day })),
         onsiteLatePolicy: state.onsiteLatePolicy,
         minAppVersion: '1.0.0',
       };
@@ -709,6 +778,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
         earliestStartMinute: earliest,
         openMinute: state.openMinute,
         closeMinute: state.closeMinute,
+        week: state.salonWeek,
       });
       const merged: SlotView[] = grid.map((slot) => ({
         startMinute: slot.startMinute,
@@ -724,6 +794,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
           earliestStartMinute: earliest,
           openMinute: state.openMinute,
           closeMinute: state.closeMinute,
+          week: state.salonWeek,
         });
         slots.forEach((slot, index) => {
           if (slot.available && !merged[index].available) {
@@ -1081,7 +1152,132 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
     },
     updateService: async (input) => {
       await ready;
+      requireOwner('services');
+      const service = state.services.find((item) => item.id === input.serviceId);
+      const before = service?.priceCents;
       await admin.updateService(input.serviceId, input.priceCents);
+      if (service && before !== undefined && before !== input.priceCents) {
+        state.priceHistory.unshift({ id: crypto.randomUUID(), serviceId: service.id, oldCents: before, newCents: input.priceCents, at: clock().toISOString() });
+        auditEntry(state, 'prestation_prix', `${service.name} : ${formatCad(before)} → ${formatCad(input.priceCents)}`);
+        emit();
+      }
+    },
+    async setSalonHours({ week, force }) {
+      await ready;
+      requireOwner('barbers');
+      const clean = validateSalonWeek(week);
+      const now = clock();
+      const outside = futureOutsideWeek(
+        state.bookings
+          .filter((booking) => ACTIVE.has(booking.status) && zonedDateTime(booking.date, booking.startMinute).getTime() > now.getTime())
+          .map((booking) => ({ id: booking.id, weekday: weekdayOfIso(booking.date), startMinute: booking.startMinute, durationMinutes: booking.durationMinutes })),
+        clean,
+      ).slice(0, 8);
+      if (outside.length > 0 && !force) {
+        throw new Error(hoursConflictMessage(outside));
+      }
+      state.salonWeek = clean;
+      auditEntry(
+        state,
+        'salon_horaires',
+        clean.map((day) => `${weekdayLong(day.weekday)} ${day.open ? dayHoursLabel(day.openMinute, day.closeMinute) : 'fermé'}`).join(' · '),
+      );
+      emit();
+      return repository.getSalon();
+    },
+    async updateServiceDetails(input) {
+      await ready;
+      requireOwner('services');
+      const service = state.services.find((item) => item.id === input.serviceId);
+      if (!service) {
+        throw new Error('Prestation introuvable.');
+      }
+      const clean = validateServiceDetails(
+        input,
+        state.services.filter((item) => item.active !== false && item.id !== service.id).map((item) => item.name),
+      );
+      if (clean.name === service.name && clean.description === service.description && clean.durationMinutes === service.durationMinutes) {
+        return;
+      }
+      const changes = [
+        clean.name !== service.name ? `nom : ${service.name} → ${clean.name}` : null,
+        clean.durationMinutes !== service.durationMinutes ? `durée : ${service.durationMinutes} → ${clean.durationMinutes} min` : null,
+        clean.description !== service.description ? 'description' : null,
+      ].filter(Boolean);
+      service.name = clean.name;
+      service.description = clean.description;
+      service.durationMinutes = clean.durationMinutes;
+      auditEntry(state, 'prestation_modification', `${clean.name} · ${changes.join(', ')}`);
+      emit();
+    },
+    async listPriceHistory(serviceId) {
+      await ready;
+      requireOwner('services');
+      return state.priceHistory
+        .filter((entry) => entry.serviceId === serviceId)
+        .map(({ id, at, oldCents, newCents }) => ({ id, at, oldCents, newCents }));
+    },
+    async reassignBarberBookings({ fromBarberId, toBarberId }) {
+      await ready;
+      requireOwner('barbers');
+      const from = state.barbers.find((item) => item.id === fromBarberId);
+      if (!from) {
+        throw new Error('Coiffeur introuvable.');
+      }
+      const to = state.barbers.find((item) => item.id === toBarberId);
+      if (!to || !to.active || to.id === from.id) {
+        throw new Error(REASSIGN_TARGET_MESSAGE);
+      }
+      releaseExpiredHolds(state);
+      const now = clock();
+      const days = state.schedules.get(to.id) ?? ALL_WEEKDAYS;
+      const offered = offeredBy(to.id);
+      const pending = state.bookings
+        .filter(
+          (booking) =>
+            booking.barberId === from.id &&
+            isUpcomingBooking({ status: booking.status, endsAt: zonedDateTime(booking.date, booking.startMinute + booking.durationMinutes) }, now),
+        )
+        .sort((a, b) => a.date.localeCompare(b.date) || a.startMinute - b.startMinute);
+      let moved = 0;
+      for (const booking of pending) {
+        const start = booking.startMinute;
+        const end = start + occupancyMinutes(booking.durationMinutes);
+        const clash =
+          state.bookings.some(
+            (other) =>
+              other.id !== booking.id &&
+              other.barberId === to.id &&
+              other.date === booking.date &&
+              ACTIVE.has(other.status) &&
+              other.startMinute < end &&
+              other.startMinute + occupancyMinutes(other.durationMinutes) > start,
+          ) ||
+          state.blocks.some((block) => block.barberId === to.id && block.date === booking.date && block.startMinute < end && block.endMinute > start);
+        if (!offered.includes(booking.serviceId) || !days.includes(weekdayOfIso(booking.date)) || clash) {
+          continue;
+        }
+        booking.barberId = to.id;
+        moved += 1;
+        admin.notifyChange(
+          booking,
+          'changement',
+          `Ton rendez-vous du ${formatLongDate(booking.date)} à ${formatTime(booking.startMinute)} sera avec ${to.shortName}.`,
+        );
+      }
+      const kept = pending.length - moved;
+      auditEntry(state, 'coiffeur_reassignation', `${from.fullName} → ${to.fullName} · ${moved} réassigné(s), ${kept} restant(s)`);
+      emit();
+      return { moved, kept };
+    },
+    async resetDemo() {
+      await ready;
+      // Garde la session d’un compte de démo ; un compte créé pendant la démo disparaît.
+      const keep = seed.users.some((user) => user.id === state.sessionUserId) ? state.sessionUserId : null;
+      Object.assign(state, cloneSeed(rebase));
+      state.sessionUserId = keep;
+      placeDemoLateCancel(state, clock());
+      emit();
     },
     setBarberWeekday: async (input) => {
       await ready;
@@ -1200,7 +1396,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       if (!offeredBy(barber.id).some((id) => active.has(id))) {
         throw new Error(reactivateWithoutServiceMessage(barber.shortName));
       }
-      if (!(state.schedules.get(barber.id) ?? ALL_WEEKDAYS).some((day) => day >= 2 && day <= 6)) {
+      if (!(state.schedules.get(barber.id) ?? ALL_WEEKDAYS).some((day) => day >= 0 && day <= 6)) {
         throw new Error(reactivateWithoutWeekdayMessage(barber.shortName));
       }
       barber.active = true;
@@ -1327,5 +1523,5 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
 }
 
 export function salonFromSeed(): Salon {
-  return { ...seed.salon, onsiteLatePolicy: 'aucun' };
+  return { ...seed.salon, week: defaultSalonWeek(), onsiteLatePolicy: 'aucun' };
 }

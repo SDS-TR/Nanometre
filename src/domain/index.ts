@@ -19,3 +19,6 @@ export * from './holds';
 export * from './salonHours';
 export * from './catalogue';
 export * from './serverMessages';
+export * from './demoClock';
+export * from './closedDay';
+export * from './salonWeek';

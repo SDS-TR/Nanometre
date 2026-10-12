@@ -1,7 +1,9 @@
+import { salonDayHours, type SalonDay } from './salonWeek';
 import { isOpenWeekday } from './slots';
 import { addDaysIso, weekdayOfIso } from './zonedTime';
 
-export type DashboardPeriod = 'jour' | 'semaine' | 'mois';
+/** « 30j » : les 30 derniers jours jusqu’à l’ancre comprise (statistiques par coiffeur). */
+export type DashboardPeriod = 'jour' | 'semaine' | 'mois' | '30j';
 
 export type DashboardBooking = {
   date: string;
@@ -23,6 +25,9 @@ const OPEN_SPAN = 10 * 60;
 export function periodBounds(anchor: string, period: DashboardPeriod): { from: string; to: string } {
   if (period === 'jour') {
     return { from: anchor, to: anchor };
+  }
+  if (period === '30j') {
+    return { from: addDaysIso(anchor, -29), to: anchor };
   }
   if (period === 'mois') {
     const [year, month] = anchor.split('-').map(Number);
@@ -51,14 +56,23 @@ export function computeDashboard(input: {
   includeMoney: boolean;
   /** Minutes d’ouverture d’une chaise. 10 h si le salon n’a pas encore été chargé. */
   openSpanMinutes?: number;
+  /** Semaine du salon : seuls les jours ouverts comptent dans la capacité. */
+  week?: readonly SalonDay[] | null;
 }) {
   const { from, to } = periodBounds(input.anchor, input.period);
   const rows = input.bookings.filter((booking) => inRange(booking.date, from, to));
   const cuts = rows.filter((booking) => countsAsCut(booking.status));
   const cancelled = rows.filter((booking) => booking.status === 'annule' || booking.status === 'annule_tardif');
-  const openDays = eachDate(from, to).filter((date) => isOpenWeekday(weekdayOfIso(date)));
+  const openDays = eachDate(from, to).filter((date) => isOpenWeekday(weekdayOfIso(date), input.week));
   const span = input.openSpanMinutes ?? OPEN_SPAN;
-  const capacity = Math.max(1, input.barbers.length) * span * Math.max(1, openDays.length);
+  // Avec la semaine du salon, chaque jour ouvert compte ses propres heures.
+  const chairMinutes = input.week
+    ? Math.max(1, openDays.reduce((sum, date) => {
+        const hours = salonDayHours(weekdayOfIso(date), input.week);
+        return sum + (hours ? hours.closeMinute - hours.openMinute : 0);
+      }, 0))
+    : span * Math.max(1, openDays.length);
+  const capacity = Math.max(1, input.barbers.length) * chairMinutes;
   const busy = cuts.reduce((sum, booking) => sum + booking.durationMinutes, 0);
   // priceCents est déjà le hors taxes après promo. Les frais tardifs ajoutent leur part HT.
   const revenueHt = cuts.reduce((sum, booking) => sum + booking.priceCents, 0) +
@@ -68,11 +82,13 @@ export function computeDashboard(input: {
 
   const perBarber = input.barbers.map((barber) => {
     const own = cuts.filter((booking) => booking.barberName === barber.fullName);
+    const ownCancelled = cancelled.filter((booking) => booking.barberName === barber.fullName).length;
     const ownBusy = own.reduce((sum, booking) => sum + booking.durationMinutes, 0);
-    const barberCapacity = span * Math.max(1, openDays.length);
+    const barberCapacity = chairMinutes;
     return {
       name: barber.fullName,
       cuts: own.length,
+      cancelled: ownCancelled,
       occupancy: ownBusy / barberCapacity,
       revenueHtCents: input.includeMoney ? own.reduce((sum, booking) => sum + booking.priceCents, 0) : null,
     };

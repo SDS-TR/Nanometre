@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  defaultSalonWeek,
   ARCHIVED_CHAIR_MESSAGE,
   friendlyError,
   generateSlots,
@@ -55,30 +56,40 @@ async function bookAsClient(data: Repository, barberId: string, date: string) {
 }
 
 describe('durcissement équipe et catalogue (démo)', () => {
-  it('M-2 : les créneaux suivent les heures réglées pour le salon', async () => {
+  it('M-2 : les créneaux suivent les heures réglées pour le salon, jour par jour', async () => {
     const { data, ousmane } = await owner();
     const date = nextWeekday(3);
-    await data.updateSalonSettings({ openMinute: 600, closeMinute: 960, onsiteLatePolicy: 'aucun', force: true });
+    const wednesday = (openMinute: number, closeMinute: number, open = true) =>
+      defaultSalonWeek().map((day) => (day.weekday === 3 ? { ...day, open, openMinute, closeMinute } : day));
+    await data.setSalonHours({ week: wednesday(600, 960), force: true });
     const narrow = (await data.getSlots({ barberId: ousmane, serviceId: CLASSIQUE, date })).map((slot) => slot.startMinute);
     expect(narrow[0]).toBe(600);
     expect(narrow[narrow.length - 1]).toBe(930);
-    await data.updateSalonSettings({ openMinute: 480, closeMinute: 1200, onsiteLatePolicy: 'aucun', force: true });
+    await data.setSalonHours({ week: wednesday(480, 1200), force: true });
     const wide = await data.getSlots({ barberId: ousmane, serviceId: CLASSIQUE, date });
     expect(wide[0]).toMatchObject({ startMinute: 480, available: true });
     expect(wide[wide.length - 1].startMinute).toBe(1170);
     expect(generateSlots({ weekday: 3, durationMinutes: 30, openMinute: 600, closeMinute: 960 }).map((slot) => slot.startMinute).at(-1)).toBe(930);
+    // Jour fermé par le propriétaire : aucun créneau, et le salon le dit.
+    await data.setSalonHours({ week: wednesday(480, 1200, false), force: true });
+    expect(await data.getSlots({ barberId: ousmane, serviceId: CLASSIQUE, date })).toEqual([]);
+    expect((await data.getSalon()).week?.find((day) => day.weekday === 3)?.open).toBe(false);
+    // Fermeture avant l’ouverture, ou aucun jour ouvert : refusé.
+    await expect(data.setSalonHours({ week: wednesday(900, 600) })).rejects.toThrow('L’heure de fermeture doit suivre l’heure d’ouverture.');
+    await expect(data.setSalonHours({ week: defaultSalonWeek().map((day) => ({ ...day, open: false })) })).rejects.toThrow('Le salon doit ouvrir au moins un jour.');
   });
 
-  it('F-3 : refuse le dimanche, le dernier jour et un jour avec des rendez-vous à venir', async () => {
+  it('F-3 : accepte le dimanche, refuse un jour inconnu, le dernier jour et un jour avec des rendez-vous à venir', async () => {
     const { data, ousmane } = await owner();
-    await expect(data.setBarberWeekday({ barberId: ousmane, weekday: 0, open: true })).rejects.toThrow(INVALID_WEEKDAY_MESSAGE);
+    await data.setBarberWeekday({ barberId: ousmane, weekday: 0, open: true });
+    await data.setBarberWeekday({ barberId: ousmane, weekday: 0, open: false });
     await expect(data.setBarberWeekday({ barberId: ousmane, weekday: 99, open: true })).rejects.toThrow(INVALID_WEEKDAY_MESSAGE);
     const wednesday = nextWeekday(3);
     await bookAsClient(data, ousmane, wednesday);
     await expect(data.setBarberWeekday({ barberId: ousmane, weekday: 3, open: false })).rejects.toThrow(
       'Ousmane a encore 1 rendez-vous à venir le mercredi.',
     );
-    for (const weekday of [2, 4, 5]) {
+    for (const weekday of [0, 1, 2, 4, 5]) {
       await data.setBarberWeekday({ barberId: ousmane, weekday, open: false });
     }
     await expect(data.setBarberWeekday({ barberId: ousmane, weekday: 6, open: false })).resolves.toBeUndefined();

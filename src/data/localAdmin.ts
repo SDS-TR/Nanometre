@@ -28,6 +28,9 @@ import {
   upcomingBarberServiceMessage,
   upcomingWeekdayMessage,
   weekdayOfIso,
+  type DashboardPeriod,
+  type SalonDay,
+  salonDayHours,
   type PromoCode,
 } from '../domain';
 import type {
@@ -84,6 +87,8 @@ export type AdminState = {
   eligibility: Map<string, string[]>;
   /** Chaises connues, retirées comprises (l’historique garde leur nom). */
   barbers: CatalogBarber[];
+  /** Horaires du salon, jour par jour. */
+  salonWeek: SalonDay[];
 };
 
 const DEFAULT_PROMOS: PromoCode[] = [
@@ -134,7 +139,7 @@ export function createAdmin(input: {
     return role === 'proprietaire';
   }
 
-  function toDashboard(anchor: string, period: 'jour' | 'semaine' | 'mois', barberId: string | null, includeMoney: boolean): DashboardView {
+  function toDashboard(anchor: string, period: DashboardPeriod, barberId: string | null, includeMoney: boolean): DashboardView {
     const scoped = state.barbers.filter((barber) => !barberId || barber.id === barberId);
     const names = new Set(scoped.map((barber) => barber.fullName));
     const { from, to } = periodBounds(anchor, period);
@@ -149,6 +154,7 @@ export function createAdmin(input: {
       period,
       includeMoney,
       openSpanMinutes: state.closeMinute - state.openMinute,
+      week: state.salonWeek,
       barbers: listed.map((barber) => ({ fullName: barber.fullName })),
       bookings: state.bookings
         .filter((booking) => names.has(barberName(booking.barberId)))
@@ -266,7 +272,7 @@ export function createAdmin(input: {
         .sort((a, b) => a.sendAt.localeCompare(b.sendAt))
         .map(({ userId: _userId, ...job }) => job);
     },
-    async getDashboard(anchor: string, period: 'jour' | 'semaine' | 'mois') {
+    async getDashboard(anchor: string, period: DashboardPeriod) {
       const user = actor();
       assertCan(user.role, 'dashboard');
       return toDashboard(anchor, period, null, true);
@@ -392,13 +398,15 @@ export function createAdmin(input: {
         .filter((block) => block.barberId === booking.barberId && block.date === payload.date)
         .map((block) => ({ start: block.startMinute, end: block.endMinute }));
       const allowed = state.eligibility.get(booking.barberId);
+      const hours = salonDayHours(weekdayOfIso(payload.date), state.salonWeek);
       assertMovableSlot({
         date: payload.date,
         startMinute: payload.startMinute,
         durationMinutes: booking.durationMinutes,
-        openMinute: state.openMinute,
-        closeMinute: state.closeMinute,
-        openWeekdays: state.schedules.get(booking.barberId) ?? [2, 3, 4, 5, 6],
+        openMinute: hours?.openMinute ?? 0,
+        closeMinute: hours?.closeMinute ?? 0,
+        salonOpen: hours !== null,
+        openWeekdays: state.schedules.get(booking.barberId) ?? [0, 1, 2, 3, 4, 5, 6],
         eligible: !allowed || allowed.includes(booking.serviceId),
         busy,
         blocked,
@@ -697,21 +705,21 @@ export function createAdmin(input: {
     async setBarberWeekday(barberId: string, weekday: number, open: boolean) {
       const user = actor();
       assertCan(user.role, 'barbers');
-      if (!Number.isInteger(weekday) || weekday < 2 || weekday > 6) {
+      if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) {
         throw new Error(INVALID_WEEKDAY_MESSAGE);
       }
       const chair = state.barbers.find((item) => item.id === barberId);
       if (!chair) {
         throw new Error('Coiffeur introuvable.');
       }
-      const days = new Set(state.schedules.get(barberId) ?? [2, 3, 4, 5, 6]);
+      const days = new Set(state.schedules.get(barberId) ?? [0, 1, 2, 3, 4, 5, 6]);
       if (open === days.has(weekday)) {
         return;
       }
       if (open) {
         days.add(weekday);
       } else {
-        if (chair.active && ![...days].some((day) => day !== weekday && day >= 2 && day <= 6)) {
+        if (chair.active && ![...days].some((day) => day !== weekday && day >= 0 && day <= 6)) {
           throw new Error(lastWeekdayMessage(chair.shortName));
         }
         const now = new Date();
@@ -736,7 +744,7 @@ export function createAdmin(input: {
       return state.audit;
     },
     weekdays(barberId: string) {
-      return state.schedules.get(barberId) ?? [2, 3, 4, 5, 6];
+      return state.schedules.get(barberId) ?? [0, 1, 2, 3, 4, 5, 6];
     },
     async barberSetup(): Promise<{ barberId: string; weekdays: number[]; serviceIds: string[] }[]> {
       const user = actor();
@@ -744,7 +752,7 @@ export function createAdmin(input: {
       const all = state.services.map((service) => service.id);
       return state.barbers.map((barber) => ({
         barberId: barber.id,
-        weekdays: state.schedules.get(barber.id) ?? [2, 3, 4, 5, 6],
+        weekdays: state.schedules.get(barber.id) ?? [0, 1, 2, 3, 4, 5, 6],
         serviceIds: state.eligibility.get(barber.id) ?? all,
       }));
     },

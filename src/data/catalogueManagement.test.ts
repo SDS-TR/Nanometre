@@ -56,7 +56,10 @@ describe('règles du catalogue', () => {
     expect(uniqueSlug('Noah', ['noah', 'noah-2'])).toBe('noah-3');
     const services = new Set([CLASSIQUE]);
     expect(() => validateNewBarber({ fullName: 'N', shortName: 'N', weekdays: [2], serviceIds: [CLASSIQUE] }, services)).toThrow('nom complet');
-    expect(() => validateNewBarber({ fullName: 'Noah P', shortName: 'Noah', weekdays: [0], serviceIds: [CLASSIQUE] }, services)).toThrow('jour');
+    expect(() => validateNewBarber({ fullName: 'Noah P', shortName: 'Noah', weekdays: [], serviceIds: [CLASSIQUE] }, services)).toThrow('jour');
+    expect(() => validateNewBarber({ fullName: 'Noah P', shortName: 'Noah', weekdays: [7], serviceIds: [CLASSIQUE] }, services)).toThrow('jour');
+    // Dimanche et lundi sont des jours de travail valides depuis les horaires du 12 octobre.
+    expect(validateNewBarber({ fullName: 'Noah P', shortName: 'Noah', weekdays: [0, 1], serviceIds: [CLASSIQUE] }, services).weekdays).toEqual([0, 1]);
     expect(() => validateNewBarber({ fullName: 'Noah P', shortName: 'Noah', weekdays: [2], serviceIds: [] }, services)).toThrow('prestation');
     expect(validateNewBarber({ fullName: ' Noah P ', shortName: 'Noah', weekdays: [3, 2, 3], serviceIds: [CLASSIQUE] }, services)).toMatchObject({
       fullName: 'Noah P',

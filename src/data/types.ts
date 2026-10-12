@@ -1,4 +1,4 @@
-import type { LoyaltyState, PaymentMethod, PaymentStatus, BookingLifecycle, NewBarberInput, NewServiceInput } from '../domain';
+import type { DashboardPeriod, SalonDay, ReassignResult, LoyaltyState, PaymentMethod, PaymentStatus, BookingLifecycle, NewBarberInput, NewServiceInput } from '../domain';
 
 export type Role = 'client' | 'coiffeur' | 'proprietaire';
 
@@ -15,6 +15,8 @@ export type Salon = {
   taxNumbersPlaceholder: boolean;
   phone: string;
   onsiteLatePolicy: 'aucun' | 'a_la_prochaine';
+  /** Horaires jour par jour (Gestion > Horaires). Absent sur un serveur sans la migration du 12 octobre. */
+  week?: SalonDay[];
   /** Plancher publié par le serveur. Absent tant que la migration n’est pas appliquée. */
   minAppVersion?: string | null;
 };
@@ -156,7 +158,7 @@ export interface Repository {
   setNotificationOptIn(enabled: boolean): Promise<void>;
   notificationOptIn(): Promise<boolean>;
   listMyNotifications(): Promise<NotificationView[]>;
-  getDashboard(input: { anchor: string; period: 'jour' | 'semaine' | 'mois' }): Promise<DashboardView>;
+  getDashboard(input: { anchor: string; period: DashboardPeriod }): Promise<DashboardView>;
   getDay(date: string): Promise<DashboardView>;
   getAgenda(input: { date: string; barberId?: string | null }): Promise<AgendaEntry[]>;
   blockSlot(input: { barberId: string; date: string; startMinute: number; endMinute: number; reason: string }): Promise<void>;
@@ -178,6 +180,8 @@ export interface Repository {
   inviteMember(input: { fullName: string; email: string; role: Role; barberId: string | null }): Promise<{ invited: true }>;
   updateSalonSettings(input: { openMinute: number; closeMinute: number; onsiteLatePolicy: Salon['onsiteLatePolicy']; force?: boolean }): Promise<Salon>;
   updateService(input: { serviceId: string; priceCents: number }): Promise<void>;
+  /** Propriétaire : jours ouverts et heures du salon. `force` passe outre les rendez-vous hors des nouvelles heures. */
+  setSalonHours(input: { week: SalonDay[]; force?: boolean }): Promise<Salon>;
   setBarberWeekday(input: { barberId: string; weekday: number; open: boolean }): Promise<void>;
   listAudit(): Promise<AuditEntry[]>;
   getBarberSetup(): Promise<BarberSetup[]>;
@@ -195,7 +199,17 @@ export interface Repository {
   archiveService(serviceId: string): Promise<void>;
   /** N-4 : `barberIds` ajoute des coiffeurs actifs à la prestation avant de la réactiver. */
   reactivateService(serviceId: string, barberIds?: string[]): Promise<void>;
+  /** Propriétaire : nom, description et durée. Les rendez-vous déjà pris gardent leur durée. */
+  updateServiceDetails(input: { serviceId: string; name: string; description: string; durationMinutes: number }): Promise<void>;
+  /** Propriétaire : changements de prix d’une prestation, du plus récent au plus ancien. */
+  listPriceHistory(serviceId: string): Promise<PriceHistoryEntry[]>;
+  /** Propriétaire : passe les rendez-vous à venir d’une chaise à une autre quand c’est possible. */
+  reassignBarberBookings(input: { fromBarberId: string; toBarberId: string }): Promise<ReassignResult>;
+  /** Mode démo seulement : remet les données de démo à neuf. Absent sur Supabase. */
+  resetDemo?: () => Promise<void>;
 }
+
+export type PriceHistoryEntry = { id: string; at: string; oldCents: number; newCents: number };
 
 export type ManagedBarber = {
   id: string;
@@ -234,7 +248,7 @@ export type DashboardView = {
   occupancy: number;
   revenueHtCents: number | null;
   revenueTtcCents: number | null;
-  perBarber: { name: string; cuts: number; occupancy: number; revenueHtCents: number | null }[];
+  perBarber: { name: string; cuts: number; cancelled: number; occupancy: number; revenueHtCents: number | null }[];
   topServices: { name: string; count: number; revenueHtCents: number | null }[];
 };
 

@@ -9,8 +9,10 @@ export type MoveCheck = {
   durationMinutes: number;
   openMinute: number;
   closeMinute: number;
-  /** Jours où CE coiffeur travaille. Le salon reste fermé dimanche et lundi. */
+  /** Jours où CE coiffeur travaille. */
   openWeekdays: number[];
+  /** Jours ouverts du salon (Horaires). Absent = tous. */
+  salonOpen?: boolean;
   eligible: boolean;
   busy: { start: number; end: number }[];
   blocked: { start: number; end: number }[];
@@ -38,8 +40,11 @@ export function assertMovableSlot(input: MoveCheck): void {
     throw new Error('Ce coiffeur ne fait pas cette prestation.');
   }
   const weekday = weekdayOfIso(input.date);
-  if (weekday < 2 || weekday > 6 || !input.openWeekdays.includes(weekday)) {
+  if (input.salonOpen === false) {
     throw new Error('Le salon est fermé ce jour-là.');
+  }
+  if (!input.openWeekdays.includes(weekday)) {
+    throw new Error('Ce coiffeur ne travaille pas ce jour-là.');
   }
   const occupancy = occupancyMinutes(input.durationMinutes);
   if (input.startMinute < input.openMinute || input.startMinute + occupancy > input.closeMinute) {

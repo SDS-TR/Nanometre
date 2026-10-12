@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { CUTS_PER_REWARD, zonedDateTime } from '../domain';
+import { CUTS_PER_REWARD, zonedDateTime, type ReassignResult } from '../domain';
 import { markPushClearPending, resumePushClear } from './pushClear';
 import type {
+  PriceHistoryEntry,
   Barber,
   BookingView,
   CreateBookingInput,
@@ -527,5 +528,23 @@ export function createSupabaseRepository(
       );
       fail(error);
     },
+    async setSalonHours({ week, force }) {
+      const { error } = await supabase.rpc('admin_set_salon_hours', { p_week: week, p_force: Boolean(force) });
+      fail(error);
+      const salon = await rows<Salon[]>(supabase.rpc('salon_public'));
+      return salon[0];
+    },
+    async updateServiceDetails(input) {
+      const { error } = await supabase.rpc('admin_update_service_details', {
+        p_service: input.serviceId,
+        p_name: input.name,
+        p_description: input.description,
+        p_duration: input.durationMinutes,
+      });
+      fail(error);
+    },
+    listPriceHistory: (serviceId) => rows<PriceHistoryEntry[]>(supabase.rpc('admin_service_price_history', { p_service: serviceId })),
+    reassignBarberBookings: (input) =>
+      rows<ReassignResult>(supabase.rpc('admin_reassign_barber_bookings', { p_from: input.fromBarberId, p_to: input.toBarberId })),
   };
 }

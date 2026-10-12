@@ -1,3 +1,4 @@
+import { demoRebaseDays, rebaseIso } from './demoClock';
 import { zonedParts } from './zonedTime';
 
 /** Journée chargée dans les captures de démo. Jamais en production. */
@@ -9,5 +10,7 @@ export function demoTeamDateEnabled(dev = typeof __DEV__ !== 'undefined' && __DE
 
 /** L’espace équipe s’ouvre sur aujourd’hui, à Québec. */
 export function teamDate(now: Date, demo = demoTeamDateEnabled()): string {
-  return demo ? DEMO_TEAM_DATE : zonedParts(now).isoDate;
+  const today = zonedParts(now).isoDate;
+  // La journée chargée suit le seed, décalé comme lui (voir demoClock).
+  return demo ? rebaseIso(DEMO_TEAM_DATE, demoRebaseDays(today)) : today;
 }

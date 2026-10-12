@@ -411,6 +411,8 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
       offsetHours: 72,
     });
     const before = await pool.query<{ starts_at: Date }>(`select starts_at from public.bookings where id = $1`, [id]);
+    // Le lundi est ouvert par défaut : le propriétaire le ferme d’abord dans les horaires du salon.
+    await pool.query(`update public.salon_hours set is_open = false where weekday = 1`);
     await expect(
       withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) =>
         client.query(`select public.admin_move($1::uuid, $2::date, 540)`, [id, upcoming(1)]),
@@ -423,6 +425,7 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
     ).rejects.toThrow(/invalide|heures/);
     const after = await pool.query<{ starts_at: Date }>(`select starts_at from public.bookings where id = $1`, [id]);
     expect(after.rows[0].starts_at.toISOString()).toBe(before.rows[0].starts_at.toISOString());
+    await pool.query(`update public.salon_hours set is_open = true, open_minute = 0, close_minute = 1440 where weekday = 1`);
   });
 
   it('refuse un prix nul et un pourcentage hors limites, et garde le compteur promo', async () => {
@@ -648,8 +651,8 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
     await expect(
       withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal1' }, (client) => client.query(create, [serviceId])),
     ).rejects.toThrow(/Vérification renforcée requise/);
-    await expect(owner(`select public.admin_create_barber('Noah Pelletier', 'Noah', '', array[1], array[$1::uuid])`, [serviceId])).rejects.toThrow(
-      /au moins un jour/,
+    await expect(owner(`select public.admin_create_barber('Noah Pelletier', 'Noah', '', array[7], array[$1::uuid])`, [serviceId])).rejects.toThrow(
+      /jour de la semaine|au moins un jour/,
     );
     await expect(owner(`select public.admin_create_barber('Noah Pelletier', 'Noah', '', array[2], array[]::uuid[])`)).rejects.toThrow(
       /au moins une prestation/,
@@ -835,8 +838,12 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
       await owner<{ id: string }>(`select public.admin_create_service('Rasage test', '', 30, 2500, array[$1::uuid]) as id`, [ousmane])
     ).rows[0].id;
 
-    // M-2 : list_slots suit salon_settings, comme create_booking.
-    await owner(`select public.admin_update_salon(600, 960, 'aucun', true)`);
+    // M-2 : list_slots suit salon_hours (jour par jour), comme create_booking.
+    const week = (openMinute: number, closeMinute: number, open = true) =>
+      JSON.stringify([0, 1, 2, 3, 4, 5, 6].map((weekday) =>
+        weekday === 3 ? { weekday, open, openMinute: open ? openMinute : null, closeMinute: open ? closeMinute : null } : { weekday, open: true, openMinute: 0, closeMinute: 1440 },
+      ));
+    await owner(`select public.admin_set_salon_hours($1::jsonb, true)`, [week(600, 960)]);
     const wednesday = addDays(upcoming(3), 7);
     const narrow = await withRole(pool, 'anon', {}, (client) =>
       client.query<{ data: { startMinute: number }[] }>(`select public.list_slots($1::uuid, $2::date, $3::uuid) as data`, [serviceId, wednesday, ousmane]),
@@ -844,7 +851,7 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
     const narrowStarts = narrow.rows[0].data.map((slot) => slot.startMinute);
     expect(narrowStarts[0]).toBe(600);
     expect(narrowStarts[narrowStarts.length - 1]).toBe(930);
-    await owner(`select public.admin_update_salon(480, 1200, 'aucun', true)`);
+    await owner(`select public.admin_set_salon_hours($1::jsonb, true)`, [week(480, 1200)]);
     const wide = await withRole(pool, 'anon', {}, (client) =>
       client.query<{ data: { startMinute: number; available: boolean }[] }>(`select public.list_slots($1::uuid, $2::date, $3::uuid) as data`, [serviceId, wednesday, ousmane]),
     );
@@ -853,13 +860,13 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
     const early = await book(ousmane, wednesday, 480);
     expect(early.rows[0].data.ok).toBe(true);
     await pool.query(`update public.bookings set status = 'annule', cancelled_at = now() where id = $1`, [early.rows[0].data.id]);
-    await owner(`select public.admin_update_salon(540, 1140, 'a_la_prochaine', true)`);
+    await owner(`select public.admin_set_salon_hours($1::jsonb, true)`, [week(0, 1440)]);
     await freeClient();
 
     // F-3 : jours bornés, dernier jour gardé, rendez-vous à venir protégés, messages en français.
-    await expect(owner(`select public.admin_set_weekday($1::uuid, 0, true)`, [ousmane])).rejects.toThrow(/mardi au samedi/);
-    await expect(owner(`select public.admin_set_weekday($1::uuid, 99, true)`, [ousmane])).rejects.toThrow(/^Choisis un jour d’ouverture du salon/);
-    await expect(owner(`select public.admin_set_weekday($1::uuid, 1, false)`, [ousmane])).rejects.toThrow(/mardi au samedi/);
+    await owner(`select public.admin_set_weekday($1::uuid, 0, true)`, [ousmane]);
+    await owner(`select public.admin_set_weekday($1::uuid, 0, false)`, [ousmane]);
+    await expect(owner(`select public.admin_set_weekday($1::uuid, 99, true)`, [ousmane])).rejects.toThrow(/^Choisis un jour de la semaine/);
     await expect(
       withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal1' }, (client) => client.query(`select public.admin_set_weekday($1::uuid, 3, false)`, [ousmane])),
     ).rejects.toThrow(/Vérification renforcée requise/);
@@ -880,7 +887,7 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
     const schedule = await pool.query<{ days: number[] }>(`select array_agg(weekday order by weekday) as days from public.schedules where barber_id = $1`, [ousmane]);
     expect(schedule.rows[0].days).toEqual([2, 3, 4, 5, 6]);
     const dayAudit = await pool.query(`select count(*)::int as n from public.audit_log where action = 'coiffeur_jour' and entity_id = $1`, [ousmane]);
-    expect(dayAudit.rows[0].n).toBe(8);
+    expect(dayAudit.rows[0].n).toBe(10);
     await freeClient();
 
     // F-4 : deux retraits simultanés ne laissent pas Ousmane sans prestation.
@@ -1201,6 +1208,153 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
           : `select has_function_privilege('anon', 'public.admin_reactivate_service(uuid,uuid[])', 'execute') as ok`,
       );
       expect(allowed.rows[0].ok ?? false, role).toBe(false);
+    }
+  });
+
+  it('suivis de la revue : horaires du salon, prix, fiche prestation, réassignation et tableau 30 jours', async () => {
+    const owner = <T,>(sql: string, params: unknown[] = []) =>
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) => client.query<T & pg.QueryResultRow>(sql, params));
+    const ownerAal1 = (sql: string, params: unknown[] = []) =>
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal1' }, (client) => client.query(sql, params));
+    const asClient = <T,>(sql: string, params: unknown[] = []) =>
+      withRole(pool, 'authenticated', { sub: clientId, aal: 'aal1' }, (client) => client.query<T & pg.QueryResultRow>(sql, params));
+    const freeClient = async () => {
+      await pool.query(`delete from public.booking_attempts where user_id = $1`, [clientId]);
+      await pool.query(
+        `update public.bookings set status = 'annule', cancelled_at = now()
+         where client_id = $1 and starts_at > now() and status in ('confirme', 'en_attente_paiement')`,
+        [clientId],
+      );
+    };
+    type Day = { weekday: number; open: boolean; openMinute: number; closeMinute: number };
+    const allDay = (): Day[] => [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, open: true, openMinute: 0, closeMinute: 1440 }));
+    const withDay = (weekday: number, patch: Partial<Day>) => JSON.stringify(allDay().map((day) => (day.weekday === weekday ? { ...day, ...patch } : day)));
+    const setHours = (week: string, force = false) => owner(`select public.admin_set_salon_hours($1::jsonb, $2)`, [week, force]);
+    await freeClient();
+
+    // Par défaut : 7 jours, 24 h sur 24, et salon_public le dit.
+    const salon = await withRole(pool, 'anon', {}, (client) => client.query<{ data: { week: Day[] }[] }>(`select public.salon_public() as data`));
+    expect(salon.rows[0].data[0].week).toHaveLength(7);
+    expect(salon.rows[0].data[0].week.every((day) => day.open && day.openMinute === 0 && day.closeMinute === 1440)).toBe(true);
+
+    // Horaires : propriétaire aal2 seulement, validation en français.
+    await expect(ownerAal1(`select public.admin_set_salon_hours($1::jsonb, false)`, [JSON.stringify(allDay())])).rejects.toThrow(/Vérification renforcée requise/);
+    await expect(asClient(`select public.admin_set_salon_hours($1::jsonb, false)`, [JSON.stringify(allDay())])).rejects.toThrow(/Accès refusé/);
+    await expect(setHours(withDay(3, { openMinute: 900, closeMinute: 600 }))).rejects.toThrow(/^L’heure de fermeture doit suivre l’heure d’ouverture/);
+    await expect(setHours(JSON.stringify(allDay().map((day) => ({ ...day, open: false }))))).rejects.toThrow(/^Le salon doit ouvrir au moins un jour/);
+    await expect(setHours(JSON.stringify(allDay().slice(0, 6)))).rejects.toThrow(/^Réglage invalide/);
+    await expect(setHours(withDay(3, { openMinute: 7 }))).rejects.toThrow(/^Réglage invalide/);
+
+    const service = (
+      await owner<{ id: string }>(`select public.admin_create_service('Coupe revue', '', 30, 3000, array[$1::uuid]) as id`, [barberId])
+    ).rows[0].id;
+    const amine = (
+      await owner<{ id: string }>(`select public.admin_create_barber('Amine Revue', 'Amine', '', array[0,1,2,3,4,5,6], array[$1::uuid]) as id`, [service])
+    ).rows[0].id;
+    const sami = (
+      await owner<{ id: string }>(`select public.admin_create_barber('Sami Revue', 'Sami', '', array[0,1,2,3,4,5,6], array[$1::uuid]) as id`, [service])
+    ).rows[0].id;
+    const slots = (date: string) =>
+      withRole(pool, 'anon', {}, (client) =>
+        client.query<{ data: { startMinute: number }[] }>(`select public.list_slots($1::uuid, $2::date, $3::uuid) as data`, [service, date, amine]),
+      ).then((result) => result.rows[0].data.map((slot) => slot.startMinute));
+    const book = (barber: string, date: string, start: number) =>
+      asClient<{ data: { ok: boolean; id?: string; error?: string } }>(
+        `select public.create_booking($1::uuid, $2::uuid, $3::date, $4, 'sur_place'::public.payment_method, false, null) as data`,
+        [service, barber, date, start],
+      );
+
+    // Créneaux = horaires du salon ∩ disponibilités du coiffeur ; journée complète par défaut.
+    const sunday = upcoming(0);
+    const sundaySlots = await slots(sunday);
+    expect(sundaySlots[0]).toBe(0);
+    expect(sundaySlots.at(-1)).toBe(1410);
+    const early = await book(amine, sunday, 60);
+    expect(early.rows[0].data.ok).toBe(true);
+
+    // Fermer le dimanche touche un rendez-vous : refusé sans force, puis forcé et journalisé.
+    await expect(setHours(withDay(0, { open: false }))).rejects.toThrow(/sortent des nouvelles heures \(1\)/);
+    await setHours(withDay(0, { open: false }), true);
+    expect(await slots(sunday)).toEqual([]);
+    const closed = await book(amine, sunday, 600);
+    expect(closed.rows[0].data.ok).toBe(false);
+    const audit = await pool.query<{ detail: { force: boolean } }>(`select detail from public.audit_log where action = 'salon_horaires' order by created_at desc limit 1`);
+    expect(audit.rows[0].detail.force).toBe(true);
+    await pool.query(`update public.bookings set status = 'annule', cancelled_at = now() where id = $1`, [early.rows[0].data.id]);
+    await freeClient();
+
+    // Heures sur mesure le mercredi : 10 h à 14 h.
+    const wednesday = upcoming(3);
+    await setHours(withDay(3, { openMinute: 600, closeMinute: 840 }));
+    const wednesdaySlots = await slots(wednesday);
+    expect(wednesdaySlots[0]).toBe(600);
+    expect(wednesdaySlots.at(-1)).toBe(810);
+    expect((await book(amine, wednesday, 540)).rows[0].data.ok).toBe(false);
+    await freeClient();
+    await setHours(JSON.stringify(allDay()));
+
+    // Prix : aal2, journal ancien/nouveau, historique lisible par le propriétaire seulement.
+    await expect(ownerAal1(`select public.admin_update_service($1::uuid, 3200)`, [service])).rejects.toThrow(/Vérification renforcée requise/);
+    await owner(`select public.admin_update_service($1::uuid, 3200)`, [service]);
+    await owner(`select public.admin_update_service($1::uuid, 3200)`, [service]);
+    await owner(`select public.admin_update_service($1::uuid, 3400)`, [service]);
+    const history = await owner<{ data: { oldCents: number; newCents: number }[] }>(`select public.admin_service_price_history($1::uuid) as data`, [service]);
+    expect(history.rows[0].data.map((row) => [row.oldCents, row.newCents])).toEqual([
+      [3200, 3400],
+      [3000, 3200],
+    ]);
+    await expect(asClient(`select public.admin_service_price_history($1::uuid)`, [service])).rejects.toThrow(/Accès refusé/);
+
+    // Fiche prestation : nom, description, durée.
+    await expect(owner(`select public.admin_update_service_details($1::uuid, 'Coupe classique', '', 30)`, [service])).rejects.toThrow(/porte déjà ce nom/);
+    await expect(owner(`select public.admin_update_service_details($1::uuid, 'Coupe revue', '', 7)`, [service])).rejects.toThrow(/^Durée invalide/);
+    await owner(`select public.admin_update_service_details($1::uuid, '  Coupe revue longue ', 'Avec finition', 45)`, [service]);
+    const details = await pool.query(`select name, description, duration_minutes from public.services where id = $1`, [service]);
+    expect(details.rows[0]).toEqual({ name: 'Coupe revue longue', description: 'Avec finition', duration_minutes: 45 });
+    const detailAudit = await pool.query(`select count(*)::int as n from public.audit_log where action = 'prestation_modification' and entity_id = $1`, [service]);
+    expect(detailAudit.rows[0].n).toBe(1);
+
+    await pool.query(`insert into public.notification_prefs (user_id, enabled) values ($1, true) on conflict (user_id) do update set enabled = true`, [clientId]);
+    // Réassignation : un rendez-vous part chez Sami, l’autre reste (Sami est déjà pris).
+    const thursday = upcoming(4);
+    const first = await book(amine, thursday, 600);
+    expect(first.rows[0].data.ok).toBe(true);
+    await freeClientAttempts();
+    const second = await book(amine, thursday, 720);
+    expect(second.rows[0].data.ok).toBe(true);
+    await pool.query(
+      `insert into public.blocked_slots (barber_id, starts_at, ends_at, reason)
+       values ($1, ($2::date + time '12:00') at time zone 'America/Toronto', ($2::date + time '13:30') at time zone 'America/Toronto', 'Congé')`,
+      [sami, thursday],
+    );
+    await expect(owner(`select public.admin_reassign_barber_bookings($1::uuid, $1::uuid)`, [amine])).rejects.toThrow(/^Choisis un autre coiffeur actif/);
+    await expect(ownerAal1(`select public.admin_reassign_barber_bookings($1::uuid, $2::uuid)`, [amine, sami])).rejects.toThrow(/Vérification renforcée requise/);
+    const moved = await owner<{ data: { moved: number; kept: number } }>(`select public.admin_reassign_barber_bookings($1::uuid, $2::uuid) as data`, [amine, sami]);
+    expect(moved.rows[0].data).toEqual({ moved: 1, kept: 1 });
+    const owners = await pool.query(`select id, barber_id from public.bookings where id = any($1::uuid[])`, [[first.rows[0].data.id, second.rows[0].data.id]]);
+    expect(Object.fromEntries(owners.rows.map((row) => [row.id, row.barber_id]))).toEqual({
+      [first.rows[0].data.id!]: sami,
+      [second.rows[0].data.id!]: amine,
+    });
+    const notice = await pool.query(`select count(*)::int as n from public.notification_jobs where booking_id = $1 and kind = 'changement'`, [first.rows[0].data.id]);
+    expect(notice.rows[0].n).toBeGreaterThan(0);
+    const reassignAudit = await pool.query(`select detail from public.audit_log where action = 'coiffeur_reassignation' and entity_id = $1`, [amine]);
+    expect(reassignAudit.rows[0].detail).toMatchObject({ reassignes: 1, restants: 1 });
+    await freeClient();
+
+    // Tableau 30 jours : bornes et annulations par coiffeur.
+    const today = torontoToday();
+    const board = await owner<{ data: { from: string; to: string; perBarber: { name: string; cancelled: number }[] } }>(
+      `select public.admin_dashboard($1::date, '30j') as data`,
+      [today],
+    );
+    expect(board.rows[0].data.from).toBe(addDays(today, -29));
+    expect(board.rows[0].data.to).toBe(today);
+    expect(board.rows[0].data.perBarber.every((row) => typeof row.cancelled === 'number')).toBe(true);
+    await expect(ownerAal1(`select public.admin_dashboard($1::date, '30j')`, [today])).rejects.toThrow(/Vérification renforcée requise/);
+
+    async function freeClientAttempts() {
+      await pool.query(`delete from public.booking_attempts where user_id = $1`, [clientId]);
     }
   });
 });

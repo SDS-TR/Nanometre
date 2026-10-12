@@ -1,3 +1,4 @@
+import { defaultSalonWeek } from './salonWeek';
 import { describe, expect, it } from 'vitest';
 import { createLocalRepository } from '../data/localRepository';
 import { memoryStore } from '../data/storage';
@@ -72,6 +73,7 @@ describe('revue critique', () => {
         openMinute: 540,
         closeMinute: 1140,
         openWeekdays: [2, 3, 4, 5, 6],
+        salonOpen: false,
         eligible: true,
         busy: [],
         blocked: [],
@@ -79,14 +81,16 @@ describe('revue critique', () => {
       }),
     ).toThrow('fermé');
 
-    const data = createLocalRepository(memoryStore());
+    const data = createLocalRepository(memoryStore(), { now: () => new Date('2026-10-06T12:00:00Z') });
     await data.ready;
     await data.signIn('karim@lenanometre.ca', 'nanometre');
     const before = (await data.getAgenda({ date: '2026-10-06' })).find((entry) => entry.id === THOMAS);
     expect(before?.title).toBe('Thomas Moreau');
     await expect(data.moveBooking({ bookingId: THOMAS, date: 'demain', startMinute: Number.NaN })).rejects.toThrow('Date invalide.');
     await expect(data.moveBooking({ bookingId: THOMAS, date: '2026-10-07', startMinute: Number.NaN })).rejects.toThrow('Heure invalide.');
-    await expect(data.moveBooking({ bookingId: THOMAS, date: '2026-10-12', startMinute: 15 * 60 })).rejects.toThrow('fermé');
+    // Le lundi est ouvert par défaut ; le propriétaire le ferme dans Horaires.
+    await data.setSalonHours({ week: defaultSalonWeek().map((day) => (day.weekday === 1 ? { ...day, open: false } : day)) });
+    await expect(data.moveBooking({ bookingId: THOMAS, date: '2026-10-19', startMinute: 15 * 60 })).rejects.toThrow('fermé');
     const still = (await data.getAgenda({ date: '2026-10-06' })).find((entry) => entry.id === THOMAS);
     expect(still?.startMinute).toBe(540);
     const gone = (await data.getAgenda({ date: '2026-10-07' })).find((entry) => entry.id === THOMAS);

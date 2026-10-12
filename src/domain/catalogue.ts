@@ -5,11 +5,13 @@ import { OPEN_WEEKDAYS } from './slots';
 export const SERVICE_DURATIONS = [15, 20, 30, 40, 45, 60, 75, 90, 120] as const;
 
 export const WEEKDAY_CHIPS = [
+  { weekday: 1, label: 'Lun', long: 'lundi' },
   { weekday: 2, label: 'Mar', long: 'mardi' },
   { weekday: 3, label: 'Mer', long: 'mercredi' },
   { weekday: 4, label: 'Jeu', long: 'jeudi' },
   { weekday: 5, label: 'Ven', long: 'vendredi' },
   { weekday: 6, label: 'Sam', long: 'samedi' },
+  { weekday: 0, label: 'Dim', long: 'dimanche' },
 ] as const;
 
 export type NewBarberInput = {
@@ -69,7 +71,7 @@ export function validateNewBarber(input: NewBarberInput, activeServiceIds: Reado
   }
   const weekdays = [...new Set(input.weekdays)].sort((a, b) => a - b);
   if (weekdays.length === 0 || weekdays.some((day) => !OPEN_WEEKDAYS.some((open) => open === day))) {
-    throw new Error('Choisis au moins un jour d’ouverture (mardi au samedi).');
+    throw new Error('Choisis au moins un jour de travail.');
   }
   const serviceIds = [...new Set(input.serviceIds)];
   if (serviceIds.length === 0 || serviceIds.some((id) => !activeServiceIds.has(id))) {
@@ -127,7 +129,7 @@ export function isUpcomingBooking(input: { status: string; endsAt: Date }, now: 
 const WEEKDAY_NAMES = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'] as const;
 
 /** F-3 : mêmes textes que admin_set_weekday. */
-export const INVALID_WEEKDAY_MESSAGE = 'Choisis un jour d’ouverture du salon (mardi au samedi).';
+export const INVALID_WEEKDAY_MESSAGE = 'Choisis un jour de la semaine.';
 
 export function lastWeekdayMessage(shortName: string): string {
   return `${shortName} doit garder au moins un jour de travail.`;
@@ -143,7 +145,7 @@ export function reactivateWithoutServiceMessage(shortName: string): string {
 }
 
 export function reactivateWithoutWeekdayMessage(shortName: string): string {
-  return `${shortName} n’a aucun jour de travail (mardi au samedi). Ajoute-lui un jour, puis réactive-le.`;
+  return `${shortName} n’a aucun jour de travail. Ajoute-lui un jour, puis réactive-le.`;
 }
 
 /** F-1 : même texte que admin_set_active et admin_set_role. */
@@ -164,4 +166,59 @@ export function upcomingBarberServiceMessage(shortName: string, count: number, s
 /** N-4 : même texte que admin_reactivate_service. */
 export function reactivateServiceWithoutBarberMessage(name: string): string {
   return `« ${name} » n’est faite par aucun coiffeur actif. Choisis au moins un coiffeur, puis réactive-la.`;
+}
+
+export type ServiceDetailsInput = { name: string; description?: string; durationMinutes: number };
+
+/** Même texte que admin_update_service_details. `otherActiveNames` exclut la prestation modifiée. */
+export function validateServiceDetails(input: ServiceDetailsInput, otherActiveNames: Iterable<string>) {
+  const name = input.name.trim();
+  const description = (input.description ?? '').trim();
+  if (name.length < 2 || name.length > 60) {
+    throw new Error('Indique le nom de la prestation (2 à 60 caractères).');
+  }
+  if (description.length > 240) {
+    throw new Error('La description est trop longue (240 caractères au plus).');
+  }
+  const lower = name.toLocaleLowerCase('fr-CA');
+  for (const existing of otherActiveNames) {
+    if (existing.toLocaleLowerCase('fr-CA') === lower) {
+      throw new Error('Une prestation porte déjà ce nom.');
+    }
+  }
+  const duration = input.durationMinutes;
+  if (!Number.isInteger(duration) || duration < 10 || duration > 240 || duration % 5 !== 0) {
+    throw new Error('Durée invalide (10 à 240 minutes, par pas de 5).');
+  }
+  return { name, description, durationMinutes: duration };
+}
+
+/** Même texte que admin_reassign_barber_bookings. */
+export const REASSIGN_TARGET_MESSAGE = 'Choisis un autre coiffeur actif.';
+
+export type ReassignResult = { moved: number; kept: number };
+
+/** Résumé après une réassignation : jamais de chiffre brut sans phrase. */
+export function reassignSummary(result: ReassignResult, toShortName: string, fromShortName: string): string {
+  const moved =
+    result.moved === 0
+      ? `Aucun rendez-vous n’a pu passer à ${toShortName}.`
+      : `${result.moved} rendez-vous ${result.moved > 1 ? 'passent' : 'passe'} à ${toShortName}. Les clients sont avisés.`;
+  if (result.kept === 0) {
+    return moved;
+  }
+  return `${moved} ${result.kept} ${result.kept > 1 ? 'restent' : 'reste'} à ${fromShortName} : créneau pris, jour non travaillé ou prestation non offerte. Déplace-les ou annule-les dans l’agenda.`;
+}
+
+/** Durée personnalisée saisie au clavier (« 50 »), mêmes bornes que le serveur. */
+export function parseDurationMinutes(raw: string): number {
+  const trimmed = raw.trim();
+  if (!/^\d{2,3}$/.test(trimmed)) {
+    throw new Error('Durée invalide (10 à 240 minutes, par pas de 5).');
+  }
+  const minutes = Number(trimmed);
+  if (minutes < 10 || minutes > 240 || minutes % 5 !== 0) {
+    throw new Error('Durée invalide (10 à 240 minutes, par pas de 5).');
+  }
+  return minutes;
 }

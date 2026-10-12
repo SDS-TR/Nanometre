@@ -49,3 +49,21 @@ export function mergePromo(existing: PromoCode | undefined, next: PromoCode): Pr
   }
   return { ...next, usageCount: existing.usageCount };
 }
+
+export type PriceDraftState = { changed: boolean; cents: number | null; error: string | null };
+
+/**
+ * État du champ prix d’une prestation. « Enregistrer » ne s’active que si le prix
+ * change et qu’il est valide ; l’erreur s’affiche sous le champ, pas en haut de page.
+ */
+export function priceDraftState(draft: string | undefined, currentCents: number): PriceDraftState {
+  if (draft === undefined) {
+    return { changed: false, cents: currentCents, error: null };
+  }
+  try {
+    const cents = parsePriceCents(draft);
+    return { changed: cents !== currentCents, cents, error: null };
+  } catch {
+    return { changed: true, cents: null, error: draft.trim() ? 'Tarif invalide. Exemple : 35,00' : 'Indique un prix. Exemple : 35,00' };
+  }
+}

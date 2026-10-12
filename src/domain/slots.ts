@@ -1,3 +1,5 @@
+import { isSalonOpen, salonDayHours, type SalonDay } from './salonWeek';
+
 export const OPEN_MINUTE = 9 * 60;
 export const CLOSE_MINUTE = 19 * 60;
 export const STEP_MINUTES = 15;
@@ -24,11 +26,12 @@ export function occupancyMinutes(durationMinutes: number): number {
   return Math.ceil(durationMinutes / STEP_MINUTES) * STEP_MINUTES;
 }
 
-/** Dimanche = 0 … samedi = 6. Le salon est ouvert du mardi au samedi. */
-export const OPEN_WEEKDAYS = [2, 3, 4, 5, 6] as const;
+/** Dimanche = 0 … samedi = 6. Par défaut, le salon ouvre 7 jours sur 7 ; le propriétaire ferme des jours dans Horaires. */
+export const OPEN_WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
 
-export function isOpenWeekday(weekday: number): boolean {
-  return OPEN_WEEKDAYS.some((day) => day === weekday);
+/** Sans semaine : tous les jours. Avec la semaine du salon : les jours que le propriétaire a laissés ouverts. */
+export function isOpenWeekday(weekday: number, week?: readonly SalonDay[] | null): boolean {
+  return week ? isSalonOpen(weekday, week) : OPEN_WEEKDAYS.some((day) => day === weekday);
 }
 
 export function intervalsOverlap(a: Interval, b: Interval): boolean {
@@ -49,12 +52,15 @@ export function generateSlots(input: {
   earliestStartMinute?: number;
   openMinute?: number;
   closeMinute?: number;
+  /** Semaine du salon : jour fermé = aucun créneau, sinon les heures de ce jour. */
+  week?: readonly SalonDay[] | null;
 }): Slot[] {
-  if (!isOpenWeekday(input.weekday)) {
+  if (!isOpenWeekday(input.weekday, input.week)) {
     return [];
   }
-  const openMinute = input.openMinute ?? OPEN_MINUTE;
-  const closeMinute = input.closeMinute ?? CLOSE_MINUTE;
+  const day = input.week ? salonDayHours(input.weekday, input.week) : null;
+  const openMinute = day?.openMinute ?? input.openMinute ?? OPEN_MINUTE;
+  const closeMinute = day?.closeMinute ?? input.closeMinute ?? CLOSE_MINUTE;
   const occupancy = occupancyMinutes(input.durationMinutes);
   const lastStart = closeMinute - occupancy;
   const busy = [...(input.busy ?? []), ...(input.blocked ?? [])];

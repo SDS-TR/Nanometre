@@ -74,7 +74,8 @@ describe('revue élevée', () => {
   });
 
   it('retire un coiffeur qui ne fait pas la prestation', async () => {
-    const data = createLocalRepository(memoryStore());
+    // Seed non décalé : les rendez-vous de Marco du 6 octobre sont passés.
+    const data = createLocalRepository(memoryStore(), { now: () => new Date('2026-10-06T12:00:00Z') });
     await data.ready;
     await data.signIn('karim@lenanometre.ca', 'nanometre');
     const services = await data.getServices();

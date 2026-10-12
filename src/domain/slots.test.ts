@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { openDaysPhrase } from './format';
+import { defaultSalonWeek, salonWeekSummary } from './salonWeek';
 import { freeSlots, generateSlots, isOpenWeekday, occupancyMinutes, OPEN_WEEKDAYS } from './slots';
 
 /** Julien Morel, mardi 6 oct. 2026, sans le rendez-vous en cours d’Alex (14 h 30). */
@@ -24,17 +25,28 @@ describe('créneaux', () => {
     expect(occupancyMinutes(60)).toBe(60);
   });
 
-  it('ferme le dimanche et le lundi', () => {
-    expect(generateSlots({ weekday: 0, durationMinutes: 30 })).toEqual([]);
-    expect(generateSlots({ weekday: 1, durationMinutes: 30 })).toEqual([]);
+  it('ouvre 7 jours sur 7 par défaut et ferme seulement les jours que le propriétaire ferme', () => {
+    expect(generateSlots({ weekday: 0, durationMinutes: 30 }).length).toBeGreaterThan(0);
+    expect(generateSlots({ weekday: 1, durationMinutes: 30 }).length).toBeGreaterThan(0);
+    const week = defaultSalonWeek().map((day) => (day.weekday === 1 ? { ...day, open: false } : day));
+    expect(generateSlots({ weekday: 1, durationMinutes: 30, week })).toEqual([]);
+    // Toute la journée par défaut : 96 départs de 15 min pour 15 min de prestation.
+    const all = generateSlots({ weekday: 3, durationMinutes: 15, week: defaultSalonWeek() });
+    expect(all[0].startMinute).toBe(0);
+    expect(all.at(-1)?.startMinute).toBe(24 * 60 - 15);
+    expect(all).toHaveLength(96);
+    // Heures du jour : la semaine prime sur les heures globales.
+    const short = defaultSalonWeek().map((day) => (day.weekday === 3 ? { ...day, openMinute: 600, closeMinute: 660 } : day));
+    expect(generateSlots({ weekday: 3, durationMinutes: 30, week: short, openMinute: 0, closeMinute: 1440 }).map((slot) => slot.startMinute)).toEqual([600, 615, 630]);
   });
 
   it('publie les mêmes jours ouverts que la phrase d’accueil', () => {
-    expect([...OPEN_WEEKDAYS]).toEqual([2, 3, 4, 5, 6]);
+    expect([...OPEN_WEEKDAYS]).toEqual([0, 1, 2, 3, 4, 5, 6]);
     for (let day = 0; day <= 6; day += 1) {
-      expect(isOpenWeekday(day)).toBe(OPEN_WEEKDAYS.some((open) => open === day));
+      expect(isOpenWeekday(day)).toBe(true);
     }
-    expect(openDaysPhrase([...OPEN_WEEKDAYS])).toBe('Du mardi au samedi');
+    expect(openDaysPhrase([...OPEN_WEEKDAYS])).toBe('Du dimanche au samedi');
+    expect(salonWeekSummary(defaultSalonWeek())).toEqual(['Ouvert 7 jours sur 7, 24 h sur 24']);
   });
 
   it('aligne les départs sur 15 min et rien ne dépasse 19 h', () => {

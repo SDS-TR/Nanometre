@@ -145,3 +145,19 @@ export function chairSpanLabel(openMinute: number, closeMinute: number): string 
   const label = String(hours).replace('.', ',');
   return `Sur ${label} h par chaise`;
 }
+
+/** « 12 oct. » */
+export function formatShortDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  return new Intl.DateTimeFormat('fr-CA', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(
+    new Date(Date.UTC(year, month - 1, day, 12)),
+  );
+}
+
+/** Période du tableau, en français : « 12 oct. » ou « du 6 oct. au 10 oct. ». Jamais d’ISO à l’écran. */
+export function formatDateRange(from: string, to: string): string {
+  if (from === to) {
+    return formatShortDate(from);
+  }
+  return `du ${formatShortDate(from)} au ${formatShortDate(to)}`;
+}
