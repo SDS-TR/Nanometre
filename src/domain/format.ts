@@ -119,6 +119,10 @@ const AUDIT_LABELS: Record<string, string> = {
   prestation_reactivation: 'Prestation réactivée',
   coiffeur_jour: 'Jours de travail',
   coiffeur_prestation: 'Prestations du coiffeur',
+  prestation_prix: 'Prix modifié',
+  prestation_modification: 'Prestation modifiée',
+  coiffeur_reassignation: 'Rendez-vous réassignés',
+  salon_horaires: 'Horaires du salon',
 };
 
 export function readableAudit(action: string, detail: string): string {
