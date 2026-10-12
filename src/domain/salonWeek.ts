@@ -15,8 +15,16 @@ export function weekdayLong(weekday: number): string {
 }
 
 /** Par défaut : ouvert 7 jours sur 7, toute la journée (0 h à 24 h). */
+/**
+ * Horaires par défaut du salon : demandé par Daouda le 12 octobre 2026, 7 jours sur 7,
+ * de 00:00 à 24:00. Pour changer le défaut, modifier CETTE constante et le bloc
+ * « DEFAULT_SALON_HOURS » de la migration 20261012120000 (mêmes valeurs).
+ * Les créneaux restent bornés par les heures de travail de chaque coiffeur.
+ */
+export const DEFAULT_SALON_DAY = { open: true, openMinute: 0, closeMinute: DAY_MINUTES } as const;
+
 export function defaultSalonWeek(): SalonDay[] {
-  return ALL_WEEKDAYS.map((weekday) => ({ weekday, open: true, openMinute: 0, closeMinute: DAY_MINUTES }));
+  return ALL_WEEKDAYS.map((weekday) => ({ weekday, ...DEFAULT_SALON_DAY }));
 }
 
 /** Heures du jour, ou null si le propriétaire a fermé ce jour-là. Sans semaine : ouvert toute la journée. */

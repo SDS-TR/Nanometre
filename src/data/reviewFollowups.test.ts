@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   closedDayMessage,
+  DEFAULT_SALON_DAY,
+  hoursConflictMessage,
   defaultSalonWeek,
   demoRebaseDays,
   formatDateRange,
@@ -155,6 +157,28 @@ describe('suivis de la revue du 12 octobre (démo locale)', () => {
     await expect(data.reassignBarberBookings({ fromBarberId: amine, toBarberId: amine })).rejects.toThrow('Choisis un autre coiffeur actif.');
     expect(await data.reassignBarberBookings({ fromBarberId: amine, toBarberId: sami })).toEqual({ moved: 1, kept: 0 });
     await expect(data.archiveBarber(amine)).resolves.not.toThrow();
+  });
+
+  it('défaut documenté 7 jours 00:00–24:00 ; message de conflit avec le total réel (F-1)', () => {
+    expect(DEFAULT_SALON_DAY).toEqual({ open: true, openMinute: 0, closeMinute: 1440 });
+    expect(defaultSalonWeek().every((day) => day.open && day.openMinute === 0 && day.closeMinute === 1440)).toBe(true);
+    const ids = Array.from({ length: 12 }, (_, index) => `id${index}`);
+    const message = hoursConflictMessage(ids);
+    expect(message).toMatch(/\(12\)/);
+    expect(message.split('Identifiants : ')[1].replace(/\.$/, '').split(', ')).toHaveLength(8);
+  });
+
+  it('réassignation : respecte les heures du salon ; forcé, le journal compte les rendez-vous maintenus (M-2, F-2)', async () => {
+    const data = await owner();
+    const amine = (await data.createBarber({ fullName: 'Amine Heures', shortName: 'Amine', weekdays: [0, 1, 2, 3, 4, 5, 6], serviceIds: [CLASSIQUE] })).id;
+    const sami = (await data.createBarber({ fullName: 'Sami Heures', shortName: 'Sami', weekdays: [0, 1, 2, 3, 4, 5, 6], serviceIds: [CLASSIQUE] })).id;
+    const date = nextWeekday(4);
+    await book(data, amine, date, 600);
+    const shortThursday = defaultSalonWeek().map((day) => (day.weekday === 4 ? { ...day, openMinute: 0, closeMinute: 540 } : day));
+    await data.setSalonHours({ week: shortThursday, force: true });
+    const audit = await data.listAudit();
+    expect(audit.some((entry) => entry.action === 'salon_horaires' && /\d+ rendez-vous hors horaires maintenus/.test(entry.detail))).toBe(true);
+    expect(await data.reassignBarberBookings({ fromBarberId: amine, toBarberId: sami })).toEqual({ moved: 0, kept: 1 });
   });
 
   it('réinitialise la démo', async () => {

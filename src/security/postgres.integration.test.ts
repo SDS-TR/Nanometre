@@ -1342,6 +1342,135 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
     expect(reassignAudit.rows[0].detail).toMatchObject({ reassignes: 1, restants: 1 });
     await freeClient();
 
+    // M-2 : la réassignation respecte les heures de travail du coiffeur cible et les heures du salon.
+    const friday = upcoming(5);
+    const morning = await book(amine, friday, 600);
+    expect(morning.rows[0].data.ok).toBe(true);
+    await freeClientAttempts();
+    const afternoon = await book(amine, friday, 900);
+    expect(afternoon.rows[0].data.ok).toBe(true);
+    await pool.query(`update public.schedules set start_minute = 540, end_minute = 720 where barber_id = $1 and weekday = 5`, [sami]);
+    await pool.query(`update public.salon_hours set close_minute = 630 where weekday = 5`);
+    const blockedByHours = await owner<{ data: { moved: number; kept: number } }>(`select public.admin_reassign_barber_bookings($1::uuid, $2::uuid) as data`, [amine, sami]);
+    expect(blockedByHours.rows[0].data).toMatchObject({ moved: 0 });
+    await pool.query(`update public.salon_hours set close_minute = 1440 where weekday = 5`);
+    await owner(`select public.admin_reassign_barber_bookings($1::uuid, $2::uuid) as data`, [amine, sami]);
+    const fridayOwners = await pool.query(`select id, barber_id from public.bookings where id = any($1::uuid[])`, [[morning.rows[0].data.id, afternoon.rows[0].data.id]]);
+    expect(Object.fromEntries(fridayOwners.rows.map((row) => [row.id, row.barber_id]))).toEqual({
+      [morning.rows[0].data.id!]: sami,
+      [afternoon.rows[0].data.id!]: amine,
+    });
+    // Les créneaux et la réservation suivent aussi les heures du coiffeur (salon ∩ coiffeur).
+    await freeClient();
+    const samiSlots = await withRole(pool, 'anon', {}, (client) =>
+      client.query<{ data: { startMinute: number; available: boolean }[] }>(`select public.list_slots($1::uuid, $2::date, $3::uuid) as data`, [service, friday, sami]),
+    );
+    const samiOpen = samiSlots.rows[0].data.filter((slot) => slot.available).map((slot) => slot.startMinute);
+    expect(Math.min(...samiOpen)).toBe(540);
+    expect((await book(sami, friday, 900)).rows[0].data.ok).toBe(false);
+    await pool.query(`update public.schedules set start_minute = 0, end_minute = 1440 where barber_id = $1 and weekday = 5`, [sami]);
+    await freeClient();
+
+    // F-1 et F-2 : 10 rendez-vous hors horaires, total réel dans le message, 8 identifiants listés,
+    // puis enregistrement forcé : journal (conflits, ids) et clients avisés.
+    const saturday = upcoming(6);
+    const many = await pool.query<{ id: string }>(
+      `insert into public.bookings (client_id, client_name, barber_id, service_id, starts_at, ends_at, duration_minutes,
+         price_cents, gst_cents, qst_cents, total_cents, payment_method, status)
+       select $1, 'Client revue', $2, $3,
+         ($4::date + make_interval(mins => 60 * g)) at time zone 'America/Toronto',
+         ($4::date + make_interval(mins => 60 * g + 30)) at time zone 'America/Toronto',
+         30, 3000, 0, 0, 3000, 'sur_place', 'confirme'
+       from generate_series(1, 10) g returning id`,
+      [clientId, sami, service, saturday],
+    );
+    const manyIds = many.rows.map((row) => row.id);
+    const refused = await setHours(withDay(6, { open: false })).then(
+      () => '',
+      (error: Error) => error.message,
+    );
+    expect(refused).toMatch(/sortent des nouvelles heures \(10\)/);
+    expect(refused.split('Identifiants : ')[1].split(', ')).toHaveLength(8);
+    await setHours(withDay(6, { open: false }), true);
+    const forcedAudit = await pool.query<{ detail: { force: boolean; conflits: number; ids: string[] } }>(
+      `select detail from public.audit_log where action = 'salon_horaires' order by created_at desc limit 1`,
+    );
+    expect(forcedAudit.rows[0].detail).toMatchObject({ force: true, conflits: 10 });
+    expect([...forcedAudit.rows[0].detail.ids].sort()).toEqual([...manyIds].sort());
+    const warned = await pool.query(
+      `select count(distinct booking_id)::int as n from public.notification_jobs where booking_id = any($1::uuid[]) and kind = 'changement'`,
+      [manyIds],
+    );
+    expect(warned.rows[0].n).toBe(10);
+    await pool.query(`update public.bookings set status = 'annule', cancelled_at = now() where id = any($1::uuid[])`, [manyIds]);
+    await setHours(JSON.stringify(allDay()));
+    await freeClient();
+
+    // M-1 sous concurrence : le changement d’heures tient les 7 jours ; la réservation attend et lit les nouvelles heures.
+    const monday = upcoming(1);
+    const hoursSession = await openSession(pool, { sub: ownerId, aal: 'aal2' });
+    const bookingSession = await openSession(pool, { sub: clientId, aal: 'aal1' });
+    try {
+      await hoursSession.query(`select public.admin_set_salon_hours($1::jsonb, false)`, [withDay(1, { open: false })]);
+      const pending = bookingSession.query<{ data: { ok: boolean; error?: string } }>(
+        `select public.create_booking($1::uuid, $2::uuid, $3::date, 600, 'sur_place'::public.payment_method, false, null) as data`,
+        [service, amine, monday],
+      );
+      await sleep(300);
+      await hoursSession.query('commit');
+      expect((await pending).rows[0].data).toMatchObject({ ok: false, error: 'Créneau invalide.' });
+      await bookingSession.query('rollback');
+    } finally {
+      hoursSession.release();
+      bookingSession.release();
+    }
+    await setHours(JSON.stringify(allDay()));
+    await freeClient();
+    // Sens inverse : la réservation passe d’abord ; le changement d’heures attend puis la voit comme conflit.
+    const firstBooking = await openSession(pool, { sub: clientId, aal: 'aal1' });
+    const laterHours = await openSession(pool, { sub: ownerId, aal: 'aal2' });
+    try {
+      const made = await firstBooking.query<{ data: { ok: boolean } }>(
+        `select public.create_booking($1::uuid, $2::uuid, $3::date, 600, 'sur_place'::public.payment_method, false, null) as data`,
+        [service, amine, monday],
+      );
+      expect(made.rows[0].data.ok).toBe(true);
+      const outcome = laterHours.query(`select public.admin_set_salon_hours($1::jsonb, false)`, [withDay(1, { open: false })]).then(
+        () => 'ok',
+        (error: Error) => error.message,
+      );
+      await sleep(300);
+      await firstBooking.query('commit');
+      expect(await outcome).toMatch(/sortent des nouvelles heures \(1\)/);
+      await laterHours.query('rollback');
+    } finally {
+      firstBooking.release();
+      laterHours.release();
+    }
+    await freeClient();
+
+    // F-3 : la durée modifiée pendant une réservation est celle enregistrée.
+    const detailsSession = await openSession(pool, { sub: ownerId, aal: 'aal2' });
+    const durationBooking = await openSession(pool, { sub: clientId, aal: 'aal1' });
+    try {
+      await detailsSession.query(`select public.admin_update_service_details($1::uuid, 'Coupe revue longue', 'Avec finition', 60)`, [service]);
+      const pending = durationBooking.query<{ data: { ok: boolean; id?: string } }>(
+        `select public.create_booking($1::uuid, $2::uuid, $3::date, 600, 'sur_place'::public.payment_method, false, null) as data`,
+        [service, amine, monday],
+      );
+      await sleep(300);
+      await detailsSession.query('commit');
+      const made = (await pending).rows[0].data;
+      expect(made.ok).toBe(true);
+      await durationBooking.query('commit');
+      const stored = await pool.query(`select duration_minutes from public.bookings where id = $1`, [made.id]);
+      expect(stored.rows[0].duration_minutes).toBe(60);
+    } finally {
+      detailsSession.release();
+      durationBooking.release();
+    }
+    await freeClient();
+
     // Tableau 30 jours : bornes et annulations par coiffeur.
     const today = torontoToday();
     const board = await owner<{ data: { from: string; to: string; perBarber: { name: string; cancelled: number }[] } }>(

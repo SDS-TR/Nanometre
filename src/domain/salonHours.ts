@@ -38,6 +38,7 @@ export function futureOutsideHours(
 }
 
 /** Identifiants seulement : le message SQL et les journaux ne portent pas de nom. */
+/** F-1 : le total est réel ; seuls les 8 premiers identifiants sont listés. */
 export function hoursConflictMessage(ids: string[]): string {
-  return `Ces rendez-vous à venir sortent des nouvelles heures (${ids.length}). Identifiants : ${ids.join(', ')}.`;
+  return `Ces rendez-vous à venir sortent des nouvelles heures (${ids.length}). Identifiants : ${ids.slice(0, 8).join(', ')}.`;
 }

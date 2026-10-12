@@ -27,6 +27,7 @@ import {
   dayHoursLabel,
   futureOutsideWeek,
   hoursConflictMessage,
+  salonDayHours,
   validateSalonWeek,
   weekdayLong,
   type SalonDay,
@@ -1172,15 +1173,23 @@ export function createLocalRepository(storage: KeyValueStore, options: { now?: (
           .filter((booking) => ACTIVE.has(booking.status) && zonedDateTime(booking.date, booking.startMinute).getTime() > now.getTime())
           .map((booking) => ({ id: booking.id, weekday: weekdayOfIso(booking.date), startMinute: booking.startMinute, durationMinutes: booking.durationMinutes })),
         clean,
-      ).slice(0, 8);
+      );
       if (outside.length > 0 && !force) {
         throw new Error(hoursConflictMessage(outside));
       }
       state.salonWeek = clean;
+      // F-2 : forcé, les rendez-vous hors horaires restent ; le client est avisé et le journal en garde le nombre.
+      for (const id of outside) {
+        const booking = state.bookings.find((item) => item.id === id);
+        if (booking) {
+          admin.notifyChange(booking, 'changement', `Le salon a changé ses heures. Ton rendez-vous du ${formatLongDate(booking.date)} à ${formatTime(booking.startMinute)} est maintenu ; on te contactera au besoin.`);
+        }
+      }
       auditEntry(
         state,
         'salon_horaires',
-        clean.map((day) => `${weekdayLong(day.weekday)} ${day.open ? dayHoursLabel(day.openMinute, day.closeMinute) : 'fermé'}`).join(' · '),
+        clean.map((day) => `${weekdayLong(day.weekday)} ${day.open ? dayHoursLabel(day.openMinute, day.closeMinute) : 'fermé'}`).join(' · ') +
+          (outside.length > 0 ? ` · ${outside.length} rendez-vous hors horaires maintenus` : ''),
       );
       emit();
       return repository.getSalon();
@@ -1254,7 +1263,10 @@ export function createLocalRepository(storage: KeyValueStore, options: { now?: (
               other.startMinute + occupancyMinutes(other.durationMinutes) > start,
           ) ||
           state.blocks.some((block) => block.barberId === to.id && block.date === booking.date && block.startMinute < end && block.endMinute > start);
-        if (!offered.includes(booking.serviceId) || !days.includes(weekdayOfIso(booking.date)) || clash) {
+        // M-2 : le créneau doit aussi tenir dans les heures du salon ce jour-là.
+        const hours = salonDayHours(weekdayOfIso(booking.date), state.salonWeek);
+        const inHours = hours !== null && start >= hours.openMinute && end <= hours.closeMinute;
+        if (!offered.includes(booking.serviceId) || !days.includes(weekdayOfIso(booking.date)) || clash || !inHours) {
           continue;
         }
         booking.barberId = to.id;

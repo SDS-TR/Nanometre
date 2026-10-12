@@ -19,7 +19,8 @@
 -- Toutes les fonctions : RPC seulement, SECURITY DEFINER, search_path vide,
 -- noms qualifiés, propriétaire en aal2 (assert_owner / assert_staff), journal.
 -- Ordre des verrous inchangé : chaise(s) triées par id, puis prestation, puis
--- rendez-vous. admin_set_salon_hours verrouille salon_settings puis salon_hours.
+-- rendez-vous, puis jour de salon_hours (FOR SHARE). admin_set_salon_hours verrouille
+-- salon_settings puis les 7 lignes de salon_hours (FOR UPDATE) avant de chercher les conflits.
 
 create table if not exists public.salon_hours (
   weekday int primary key check (weekday between 0 and 6),
@@ -33,6 +34,10 @@ create table if not exists public.salon_hours (
 alter table public.salon_hours enable row level security;
 revoke all on table public.salon_hours from public, anon, authenticated;
 
+-- DEFAULT_SALON_HOURS : défaut voulu par Daouda (12 octobre 2026), 7 jours sur 7,
+-- 00:00 à 24:00 (0 à 1440 minutes). Pour changer le défaut, modifier CES valeurs et
+-- DEFAULT_SALON_DAY dans src/domain/salonWeek.ts. Les créneaux restent bornés par
+-- schedules.start_minute / end_minute de chaque coiffeur (heures du salon ∩ coiffeur).
 insert into public.salon_hours (weekday, is_open, open_minute, close_minute)
 select d, true, 0, 1440 from generate_series(0, 6) d
 on conflict (weekday) do nothing;
@@ -90,6 +95,8 @@ declare
   v_price int;
   v_open int;
   v_close int;
+  v_sched_from int;
+  v_sched_to int;
   v_occupancy int;
   v_dow int;
   v_starts timestamptz;
@@ -125,8 +132,10 @@ begin
   end if;
   perform 1 from public.barbers where id = p_barber_id for update;
   select full_name into v_name from public.profiles where id = v_user;
+  -- F-3 : lue après le verrou de la chaise et verrouillée (FOR SHARE) : une modification
+  -- concurrente de la fiche attend la fin de la réservation, ou la réservation lit la nouvelle valeur.
   select duration_minutes, price_cents into v_duration, v_price
-  from public.services where id = p_service_id and active;
+  from public.services where id = p_service_id and active for share;
   if v_duration is null then
     return jsonb_build_object('ok', false, 'error', 'Prestation introuvable.');
   end if;
@@ -138,14 +147,25 @@ begin
   ) then
     return jsonb_build_object('ok', false, 'error', 'Ce coiffeur ne fait pas cette prestation.');
   end if;
-  select h.open_minute, h.close_minute into v_open, v_close from public.salon_hours h where h.weekday = extract(dow from p_date)::int and h.is_open;
   v_dow := extract(dow from p_date)::int;
+  -- M-1 : ligne du jour relue après le verrou de la chaise, en FOR SHARE :
+  -- admin_set_salon_hours (FOR UPDATE) ne peut pas la changer avant notre commit.
+  select case when h.is_open then h.open_minute end, case when h.is_open then h.close_minute end
+    into v_open, v_close
+  from public.salon_hours h where h.weekday = v_dow for share;
   v_occupancy := public.occupancy_minutes(v_duration);
-  if not exists (
-    select 1 from public.schedules s where s.barber_id = p_barber_id and s.weekday = v_dow
-  ) then
+  select s.start_minute, s.end_minute into v_sched_from, v_sched_to
+  from public.schedules s where s.barber_id = p_barber_id and s.weekday = v_dow;
+  if not found then
     return jsonb_build_object('ok', false, 'error', 'Ce coiffeur ne travaille pas ce jour-là.');
   end if;
+  -- Jour fermé : greatest/least ignorent les null, on refuse avant l’intersection.
+  if v_open is null then
+    return jsonb_build_object('ok', false, 'error', 'Créneau invalide.');
+  end if;
+  -- Heures du salon ∩ heures du coiffeur.
+  v_open := greatest(v_open, v_sched_from);
+  v_close := least(v_close, v_sched_to);
   if v_open is null or p_start_minute < v_open or p_start_minute % 15 <> 0 or p_start_minute + v_occupancy > v_close then
     return jsonb_build_object('ok', false, 'error', 'Créneau invalide.');
   end if;
@@ -263,7 +283,11 @@ begin
         join public.barber_services bs on bs.barber_id = b.id and bs.service_id = p_service_id
         where b.active
           and (p_barber_id is null or b.id = p_barber_id)
-          and exists (select 1 from public.schedules sc where sc.barber_id = b.id and sc.weekday = v_dow)
+          and exists (
+            select 1 from public.schedules sc
+            where sc.barber_id = b.id and sc.weekday = v_dow
+              and sc.start_minute <= v_start and v_start + v_occupancy <= sc.end_minute
+          )
         order by (
           select count(*) from public.bookings bk
           where bk.barber_id = b.id
@@ -311,6 +335,8 @@ declare
   v_barber uuid;
   v_open int;
   v_close int;
+  v_sched_from int;
+  v_sched_to int;
   v_dow int;
   v_occupancy int;
   v_starts timestamptz;
@@ -335,17 +361,22 @@ begin
   if not exists (select 1 from public.services where id = b.service_id and active) then
     raise exception 'Cette prestation est retirée.';
   end if;
-  select h.open_minute, h.close_minute into v_open, v_close from public.salon_hours h where h.weekday = extract(dow from p_date)::int and h.is_open;
   v_dow := extract(dow from p_date)::int;
+  -- M-1 : relue après les verrous (chaise, rendez-vous), en FOR SHARE.
+  select case when h.is_open then h.open_minute end, case when h.is_open then h.close_minute end
+    into v_open, v_close
+  from public.salon_hours h where h.weekday = v_dow for share;
   v_occupancy := public.occupancy_minutes(b.duration_minutes);
   if v_open is null then
     raise exception 'Le salon est fermé ce jour-là.';
   end if;
-  if not exists (
-    select 1 from public.schedules s where s.barber_id = b.barber_id and s.weekday = v_dow
-  ) then
+  select s.start_minute, s.end_minute into v_sched_from, v_sched_to
+  from public.schedules s where s.barber_id = b.barber_id and s.weekday = v_dow;
+  if not found then
     raise exception 'Ce coiffeur ne travaille pas ce jour-là.';
   end if;
+  v_open := greatest(v_open, v_sched_from);
+  v_close := least(v_close, v_sched_to);
   if p_start < v_open or p_start + v_occupancy > v_close then
     raise exception 'Ce créneau est hors des heures d’ouverture.';
   end if;
@@ -550,7 +581,9 @@ declare
   v_to int;
   v_seen int[] := '{}';
   v_conflicts text;
+  v_ids uuid[];
   v_count int;
+  v_id uuid;
 begin
   perform public.assert_owner('settings');
   if p_week is null or jsonb_typeof(p_week) <> 'array' or jsonb_array_length(p_week) <> 7 then
@@ -558,6 +591,10 @@ begin
   end if;
   -- Même ligne que admin_update_salon : un seul réglage d’heures à la fois.
   perform 1 from public.salon_settings where id = 1 for update;
+  -- M-1 : les 7 jours, triés, verrouillés AVANT la vérification des conflits.
+  -- create_booking et admin_move relisent leur jour en FOR SHARE : soit ils ont
+  -- fini (leur rendez-vous est vu ci-dessous), soit ils attendent et lisent les nouvelles heures.
+  perform 1 from public.salon_hours order by weekday for update;
   create temporary table if not exists pg_temp.next_hours (weekday int primary key, is_open boolean, open_minute int, close_minute int) on commit drop;
   delete from pg_temp.next_hours;
   for v_day in select value from jsonb_array_elements(p_week) loop
@@ -583,8 +620,9 @@ begin
     raise exception 'Le salon doit ouvrir au moins un jour.';
   end if;
   -- Rendez-vous à venir qui sortiraient des nouvelles heures : identifiants seulement.
-  select count(*), string_agg(id::text, ', ') into v_count, v_conflicts from (
-    select b.id
+  -- F-1 : total réel ; le message ne liste que les 8 premiers.
+  select coalesce(array_agg(x.id order by x.starts_at), '{}') into v_ids from (
+    select b.id, b.starts_at
     from public.bookings b
     join pg_temp.next_hours h on h.weekday = extract(dow from b.starts_at at time zone 'America/Toronto')::int
     where b.status in ('en_attente_paiement', 'confirme')
@@ -594,13 +632,13 @@ begin
         or (extract(hour from b.starts_at at time zone 'America/Toronto') * 60 + extract(minute from b.starts_at at time zone 'America/Toronto'))::int < h.open_minute
         or (extract(hour from b.starts_at at time zone 'America/Toronto') * 60 + extract(minute from b.starts_at at time zone 'America/Toronto'))::int + b.duration_minutes > h.close_minute
       )
-    order by b.starts_at
-    limit 8
   ) x;
+  v_count := coalesce(array_length(v_ids, 1), 0);
+  select string_agg(i::text, ', ' order by o) into v_conflicts
+  from unnest(v_ids[1:8]) with ordinality as u(i, o);
   if v_count > 0 and not coalesce(p_force, false) then
     raise exception 'Ces rendez-vous à venir sortent des nouvelles heures (%). Identifiants : %.', v_count, v_conflicts;
   end if;
-  perform 1 from public.salon_hours order by weekday for update;
   insert into public.salon_hours (weekday, is_open, open_minute, close_minute)
   select weekday, is_open, open_minute, close_minute from pg_temp.next_hours
   on conflict (weekday) do update set
@@ -610,8 +648,15 @@ begin
   insert into public.audit_log (actor_id, action, entity, entity_id, detail)
   values (auth.uid(), 'salon_horaires', 'salon', '1', jsonb_build_object(
     'semaine', (select jsonb_agg(jsonb_build_object('jour', weekday, 'ouvert', is_open, 'ouverture', open_minute, 'fermeture', close_minute) order by weekday) from pg_temp.next_hours),
-    'force', coalesce(p_force, false) and v_count > 0
+    'force', coalesce(p_force, false) and v_count > 0,
+    'conflits', v_count,
+    'ids', to_jsonb(v_ids)
   ));
+  -- F-2 : enregistrement forcé, les rendez-vous hors horaires sont maintenus et le client est avisé.
+  foreach v_id in array v_ids loop
+    perform public.enqueue_booking_notifications(v_id, 'changement', 'Horaires du salon',
+      'Le salon a changé ses heures. Ton rendez-vous est maintenu ; on te contactera au besoin.');
+  end loop;
 end;
 $$;
 
@@ -729,6 +774,7 @@ declare
   v_to_active boolean;
   v_moved int := 0;
   v_kept int := 0;
+  v_start int;
   v_window tstzrange;
 begin
   perform public.assert_owner('barbers');
@@ -754,10 +800,21 @@ begin
     for update
   loop
     v_window := tstzrange(b.starts_at, b.starts_at + make_interval(mins => public.occupancy_minutes(b.duration_minutes)), '[)');
+    v_start := (extract(hour from b.starts_at at time zone 'America/Toronto') * 60
+      + extract(minute from b.starts_at at time zone 'America/Toronto'))::int;
     if exists (select 1 from public.barber_services bs where bs.barber_id = p_to and bs.service_id = b.service_id)
+      -- M-2 : dans les heures de travail du coiffeur cible ET les heures du salon ce jour-là.
       and exists (
         select 1 from public.schedules s
         where s.barber_id = p_to and s.weekday = extract(dow from b.starts_at at time zone 'America/Toronto')::int
+          and s.start_minute <= v_start
+          and v_start + public.occupancy_minutes(b.duration_minutes) <= s.end_minute
+      )
+      and exists (
+        select 1 from public.salon_hours h
+        where h.weekday = extract(dow from b.starts_at at time zone 'America/Toronto')::int
+          and h.is_open and h.open_minute <= v_start
+          and v_start + public.occupancy_minutes(b.duration_minutes) <= h.close_minute
       )
       and not exists (
         select 1 from public.bookings bk
