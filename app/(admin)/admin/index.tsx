@@ -68,7 +68,7 @@ export default function TableauScreen() {
                 </View>
               ) : (
                 <View style={{ gap: theme.space[1] }}>
-                  <Text variant="heading-md">{`${board.data.cuts} coupes`}</Text>
+                  <Text variant="heading-md">{`${board.data.cuts} ${board.data.cuts > 1 ? 'coupes' : 'coupe'}`}</Text>
                   <Text variant="body-sm" color={theme.color.text.secondary}>
                     {formatDateRange(board.data.from, board.data.to)}
                   </Text>
