@@ -231,7 +231,11 @@ export default function AgendaScreen() {
               />
             ))}
         </View>
-        {moveSlots.data && moveSlots.data.every((slot) => !slot.available) ? (
+        {closedDayMessage(moveDate, salon.data?.week) ? (
+          <Text variant="body-sm" color={theme.color.text.secondary} accessibilityLiveRegion="polite">
+            {closedDayMessage(moveDate, salon.data?.week)}
+          </Text>
+        ) : moveSlots.data && moveSlots.data.every((slot) => !slot.available) ? (
           <Text variant="body-sm" color={theme.color.text.secondary}>
             Aucun créneau libre ce jour-là.
           </Text>

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { SlideInDown, runOnJS, useReducedMotion } from 'react-native-reanimated';
 import { SPRING } from '../motion';
@@ -16,6 +16,7 @@ type Props = {
 export function BottomSheet({ visible, onClose, title, children }: Props) {
   const theme = useTheme();
   const reduced = useReducedMotion();
+  const { height } = useWindowDimensions();
   const dismiss = Gesture.Pan().onEnd((event) => {
     if (event.translationY > 72) {
       runOnJS(onClose)();
@@ -40,12 +41,16 @@ export function BottomSheet({ visible, onClose, title, children }: Props) {
             padding: theme.space[4],
             paddingBottom: theme.space[8],
             gap: theme.space[4],
+            // Avec un salon ouvert 24 h sur 24, les puces d’heures dépassent l’écran : la feuille défile.
+            maxHeight: Math.round(height * 0.9),
             ...theme.shadow.lg,
           }}
         >
           <View style={{ alignSelf: 'center', width: 40, height: 4, borderRadius: theme.radius.full, backgroundColor: theme.color.border.strong }} />
           {title ? <Text variant="heading-md">{title}</Text> : null}
-          {children}
+          <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ gap: theme.space[4] }} keyboardShouldPersistTaps="handled">
+            {children}
+          </ScrollView>
         </Animated.View>
         </GestureDetector>
       </KeyboardAvoidingView>
