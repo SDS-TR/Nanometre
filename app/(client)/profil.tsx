@@ -27,6 +27,7 @@ export default function ProfilScreen() {
   const [password, setPassword] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [resetStep, setResetStep] = useState<'idle' | 'confirm' | 'busy' | 'done'>('idle');
   return (
     <Screen>
       <Header title="Profil" />
@@ -67,7 +68,9 @@ export default function ProfilScreen() {
         </View>
         {user ? (
           <View style={{ gap: theme.space[1] }}>
-            <ListItem title="Carte de fidélité" subtitle="1 point par dollar, 10 coupes = 1 offerte" onPress={() => router.push('/fidelite')} />
+            {user.role === 'client' ? (
+              <ListItem title="Carte de fidélité" subtitle="1 point par dollar, 10 coupes = 1 offerte" onPress={() => router.push('/fidelite')} />
+            ) : null}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44, gap: theme.space[3] }}>
               <Text variant="label-md">Rappels</Text>
               <Switch
@@ -90,7 +93,7 @@ export default function ProfilScreen() {
               />
             </View>
             {note ? (
-              <Text variant="body-sm" color={theme.color.text.secondary}>
+              <Text variant="body-sm" color={theme.color.text.secondary} accessibilityLiveRegion="polite">
                 {note}
               </Text>
             ) : null}
@@ -157,6 +160,39 @@ export default function ProfilScreen() {
                 }}
               />
             </BottomSheet>
+          </View>
+        ) : null}
+        {repo.mode === 'local' && repo.resetDemo ? (
+          <View style={{ gap: theme.space[2] }}>
+            <Text variant="label-sm" color={theme.color.text.muted}>
+              Mode démo
+            </Text>
+            {resetStep === 'confirm' ? (
+              <Text variant="body-sm" color={theme.color.warning.default} accessibilityLiveRegion="polite">
+                Appuie encore pour tout remettre comme au départ : rendez-vous, prix, équipe et horaires. Rien ne quitte cet appareil.
+              </Text>
+            ) : null}
+            {resetStep === 'done' ? (
+              <Text variant="body-sm" color={theme.color.success.default} accessibilityRole="alert" accessibilityLiveRegion="polite">
+                Démo réinitialisée.
+              </Text>
+            ) : null}
+            <Button
+              label={resetStep === 'confirm' ? 'Confirmer la réinitialisation' : 'Réinitialiser la démo'}
+              variant={resetStep === 'confirm' ? 'destructive' : 'secondary'}
+              loading={resetStep === 'busy'}
+              onPress={() => {
+                if (resetStep !== 'confirm') {
+                  setResetStep('confirm');
+                  return;
+                }
+                setResetStep('busy');
+                void repo.resetDemo!().then(
+                  () => setResetStep('done'),
+                  () => setResetStep('idle'),
+                );
+              }}
+            />
           </View>
         ) : null}
         <Text variant="caption" color={theme.color.text.muted}>

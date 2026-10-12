@@ -25,7 +25,7 @@ export function SelecteurDate({ date, onChange, onToday }: Props) {
   return (
     <View style={{ gap: theme.space[2] }}>
       {Platform.OS === 'android' ? (
-        <Pressable accessibilityRole="button" onPress={() => setOpen(true)} style={{ minHeight: theme.touchTarget.min, justifyContent: 'center' }}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Choisir une autre date. Date choisie : ${formatLongDate(date)}`} onPress={() => setOpen(true)} style={{ minHeight: theme.touchTarget.min, justifyContent: 'center' }}>
           <Text variant="label-md">{formatLongDate(date)}</Text>
         </Pressable>
       ) : null}
@@ -45,7 +45,7 @@ export function SelecteurDate({ date, onChange, onToday }: Props) {
         />
       ) : null}
       {onToday ? (
-        <Pressable accessibilityRole="button" onPress={onToday} style={{ minHeight: theme.touchTarget.min, justifyContent: 'center' }}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Revenir à aujourd’hui" onPress={onToday} style={{ minHeight: theme.touchTarget.min, justifyContent: 'center' }}>
           <Text variant="label-sm" color={theme.color.accent.default}>
             Aujourd’hui
           </Text>

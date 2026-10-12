@@ -101,7 +101,7 @@ export default function RendezVousScreen() {
             {query.status === 'ready' && visible.length === 0 ? (
               <StateMessage
                 title={tab === 'avenir' ? 'Rien à l’horaire' : 'Pas encore de visite passée'}
-                body={tab === 'avenir' ? 'Réserve une chaise, mardi au samedi.' : 'Tes coupes honorées s’afficheront ici.'}
+                body={tab === 'avenir' ? 'Réserve une chaise quand ça te convient.' : 'Tes coupes honorées s’afficheront ici.'}
                 actionLabel={tab === 'avenir' ? 'Réserver' : undefined}
                 onAction={tab === 'avenir' ? () => router.push('/reserver/prestation') : undefined}
               />

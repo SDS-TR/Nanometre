@@ -89,7 +89,7 @@ export function openDaysPhrase(weekdays: number[]): string {
 }
 
 export function slotLegend(closeMinute: number): string {
-  return `Créneaux libres uniquement · pas de 15 min · fin au plus tard à ${formatTime(closeMinute)}`;
+  return `Créneaux libres uniquement · pas de 15 min · fin au plus tard à ${closeMinute >= 24 * 60 ? 'minuit' : formatTime(closeMinute)}`;
 }
 
 export function shiftMonth(isoDate: string, delta: number): string {

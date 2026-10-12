@@ -9,7 +9,7 @@ import { SelecteurDeCreneaux } from '../../src/components/SelecteurDeCreneaux';
 import { LoadingBlock, StateMessage } from '../../src/components/StateView';
 import { Text } from '../../src/components/Text';
 import type { SlotView } from '../../src/data/types';
-import { isOpenWeekday, upcomingDates, weekdayOfIso } from '../../src/domain';
+import { dayHoursLabel, isOpenWeekday, salonDayHours, upcomingDates, weekdayOfIso } from '../../src/domain';
 import { useAsync } from '../../src/hooks/useAsync';
 import { useDraft } from '../../src/providers/BookingDraft';
 import { useTheme } from '../../src/theme';
@@ -18,8 +18,14 @@ export default function CreneauScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { draft, update } = useDraft();
-  const dates = useMemo(() => upcomingDates(new Date(), 12, isOpenWeekday), []);
-  const [date, setDate] = useState(draft.date && dates.includes(draft.date) ? draft.date : dates[0]);
+  // Horaires du salon : seuls les jours ouverts par le propriétaire sont proposés.
+  const salon = useAsync((repo) => repo.getSalon(), []);
+  const week = salon.data?.week;
+  const dates = useMemo(() => upcomingDates(new Date(), 12, (weekday) => isOpenWeekday(weekday, week)), [week]);
+  const [picked, setPicked] = useState<string | undefined>(draft.date);
+  const date = picked && dates.includes(picked) ? picked : dates[0];
+  const setDate = setPicked;
+  const hours = date ? salonDayHours(weekdayOfIso(date), week) : null;
   const [period, setPeriod] = useState<'tout' | 'matin' | 'apres-midi'>('tout');
   const serviceId = draft.serviceId;
   const barberId = draft.barberId ?? 'any';
@@ -32,8 +38,6 @@ export default function CreneauScreen() {
     },
     [serviceId, barberId, date],
   );
-  // M-2 : la légende suit l’heure de fermeture réglée pour le salon.
-  const salon = useAsync((repo) => repo.getSalon(), []);
   const selected = query.data?.find((slot) => slot.startMinute === draft.startMinute && slot.available) ?? null;
   return (
     <Screen
@@ -64,7 +68,7 @@ export default function CreneauScreen() {
         <ProgressSteps step={3} total={5} />
         <Text variant="heading-lg">Quand ?</Text>
         <Text variant="body-sm" color={theme.color.text.secondary}>
-          {date ? `Ouvert ${weekdayLabel(date)}. Les créneaux déjà pris ne s’affichent pas.` : ''}
+          {date && hours ? `Ouvert ce jour-là, ${dayHoursLabel(hours.openMinute, hours.closeMinute)}. Les créneaux déjà pris ne s’affichent pas.` : ''}
         </Text>
       </View>
       {!serviceId || !draft.barberId ? (
@@ -86,13 +90,9 @@ export default function CreneauScreen() {
           slots={query.data ?? []}
           selectedStart={draft.date === date ? (draft.startMinute ?? null) : null}
           onSelect={(slot) => update({ date, startMinute: slot.startMinute, endMinute: slot.endMinute, assignedBarberId: slot.barberId ?? undefined })}
-          closeMinute={salon.data?.closeMinute}
+          closeMinute={hours?.closeMinute ?? salon.data?.closeMinute}
         />
       )}
     </Screen>
   );
-}
-
-function weekdayLabel(isoDate: string) {
-  return isOpenWeekday(weekdayOfIso(isoDate)) ? 'ce jour-là' : 'exceptionnellement';
 }

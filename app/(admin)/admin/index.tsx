@@ -9,7 +9,7 @@ import { SelecteurDate } from '../../../src/components/SelecteurDate';
 import { StatCard } from '../../../src/components/StatCard';
 import { StateMessage, LoadingBlock } from '../../../src/components/StateView';
 import { Text } from '../../../src/components/Text';
-import { chairSpanLabel, formatCad, formatTime, teamDate, zonedParts } from '../../../src/domain';
+import { formatCad, formatDateRange, formatTime, teamDate, zonedParts, type DashboardPeriod } from '../../../src/domain';
 import { useAsync } from '../../../src/hooks/useAsync';
 import { useAppState } from '../../../src/providers/AppState';
 import { useTheme } from '../../../src/theme';
@@ -21,8 +21,7 @@ export default function TableauScreen() {
   const { user } = useAppState();
   const owner = user?.role === 'proprietaire';
   const [date, setDate] = useState(() => teamDate(new Date()));
-  const [period, setPeriod] = useState<'jour' | 'semaine' | 'mois'>('jour');
-  const salon = useAsync((repository) => repository.getSalon(), []);
+  const [period, setPeriod] = useState<DashboardPeriod>('jour');
   const board = useAsync(
     (repo) => (owner ? repo.getDashboard({ anchor: date, period }) : repo.getDay(date)),
     [owner, date, period],
@@ -48,6 +47,7 @@ export default function TableauScreen() {
               { value: 'jour', label: 'Jour' },
               { value: 'semaine', label: 'Semaine' },
               { value: 'mois', label: 'Mois' },
+              { value: '30j', label: '30 jours' },
             ]}
           />
         ) : null}
@@ -63,26 +63,36 @@ export default function TableauScreen() {
                   </Text>
                   <Text variant="display-lg">{formatCad(board.data.revenueHtCents)}</Text>
                   <Text variant="body-sm" color={theme.color.text.secondary}>
-                    {`TTC ${formatCad(board.data.revenueTtcCents ?? 0)} · ${board.data.from} → ${board.data.to}`}
+                    {`TTC ${formatCad(board.data.revenueTtcCents ?? 0)} · ${formatDateRange(board.data.from, board.data.to)}`}
                   </Text>
                 </View>
               ) : (
-                <Text variant="heading-md">{`${board.data.cuts} coupes`}</Text>
+                <View style={{ gap: theme.space[1] }}>
+                  <Text variant="heading-md">{`${board.data.cuts} coupes`}</Text>
+                  <Text variant="body-sm" color={theme.color.text.secondary}>
+                    {formatDateRange(board.data.from, board.data.to)}
+                  </Text>
+                </View>
               )}
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space[3] }}>
                 <StatCard label="Coupes" value={String(board.data.cuts)} hint={`${board.data.booked} rendez-vous`} />
                 <StatCard label="Annulations" value={String(board.data.cancelled)} />
-                <StatCard label="Occupation" value={percent(board.data.occupancy)} hint={chairSpanLabel(salon.data?.openMinute ?? 9 * 60, salon.data?.closeMinute ?? 19 * 60)} />
+                <StatCard label="Occupation" value={percent(board.data.occupancy)} hint="Selon les horaires du salon" />
               </View>
             </View>
             <View style={{ flex: 1, gap: theme.space[3] }}>
+              {board.data.perBarber.length > 0 ? (
+                <Text variant="overline" color={theme.color.text.muted}>
+                  Par coiffeur · coupes · annulations · occupation
+                </Text>
+              ) : null}
               {board.data.perBarber.map((barber) => (
                 <View key={barber.name} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.space[3] }}>
                   <Text variant="label-md" style={{ flex: 1 }}>
                     {barber.name}
                   </Text>
                   <Text variant="body-sm" color={theme.color.text.secondary}>
-                    {`${barber.cuts} · ${percent(barber.occupancy)}`}
+                    {`${barber.cuts} ${barber.cuts > 1 ? 'coupes' : 'coupe'} · ${barber.cancelled} ${barber.cancelled > 1 ? 'annulations' : 'annulation'} · ${percent(barber.occupancy)}`}
                     {barber.revenueHtCents != null ? ` · ${formatCad(barber.revenueHtCents)}` : ''}
                   </Text>
                 </View>

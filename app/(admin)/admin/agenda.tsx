@@ -11,7 +11,7 @@ import { Screen } from '../../../src/components/Screen';
 import { SelecteurDate } from '../../../src/components/SelecteurDate';
 import { LoadingBlock, StateMessage } from '../../../src/components/StateView';
 import { Text } from '../../../src/components/Text';
-import { formatTime, friendlyError, teamDate, zonedParts } from '../../../src/domain';
+import { closedDayMessage, formatTime, friendlyError, nextOpenDate, salonDayHours, teamDate, weekdayOfIso, zonedParts } from '../../../src/domain';
 import { hapticSelect } from '../../../src/lib/haptics';
 import { useAsync } from '../../../src/hooks/useAsync';
 import { useAppState } from '../../../src/providers/AppState';
@@ -39,6 +39,9 @@ export default function AgendaScreen() {
   const [cancelling, setCancelling] = useState<AgendaEntry | null>(null);
   const barbers = useAsync((repository) => repository.getBarbers(), []);
   const salon = useAsync((repository) => repository.getSalon(), []);
+  // « Salon fermé » seulement si le propriétaire a fermé ce jour dans Horaires du salon.
+  const closed = closedDayMessage(date, salon.data?.week);
+  const dayHours = salonDayHours(weekdayOfIso(date), salon.data?.week) ?? (salon.data?.week ? null : { openMinute: 0, closeMinute: 24 * 60 });
   const agenda = useAsync((repository) => repository.getAgenda({ date, barberId }), [date, barberId, user?.id]);
   const moveSlots = useAsync(
     (repository) =>
@@ -128,7 +131,19 @@ export default function AgendaScreen() {
             </View>
           ))}
         </View>
-        {agenda.data?.length === 0 ? (
+        {closed ? (
+          <View style={{ gap: theme.space[2] }} accessibilityLiveRegion="polite">
+            <Text variant="body-sm" color={theme.color.text.secondary}>
+              {`${closed} Change-le dans Gestion > Horaires du salon.`}
+            </Text>
+            <Button
+              label="Prochain jour ouvert"
+              size="sm"
+              variant="secondary"
+              onPress={() => setDate(nextOpenDate(date, salon.data?.week))}
+            />
+          </View>
+        ) : agenda.data?.length === 0 ? (
           <Text variant="body-sm" color={theme.color.text.muted}>
             Journée libre.
           </Text>
@@ -136,8 +151,8 @@ export default function AgendaScreen() {
       </View>
       <FeuilleBlocage
         visible={blockOpen}
-        openMinute={salon.data?.openMinute ?? 9 * 60}
-        closeMinute={salon.data?.closeMinute ?? 19 * 60}
+        openMinute={dayHours?.openMinute ?? 0}
+        closeMinute={dayHours?.closeMinute ?? 24 * 60}
         error={blockError}
         loading={busyId != null}
         barbers={owner && barberId == null ? (barbers.data ?? undefined) : undefined}

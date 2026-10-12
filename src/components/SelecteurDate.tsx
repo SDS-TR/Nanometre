@@ -12,7 +12,7 @@ export function SelecteurDate({ date, onChange, onToday }: Props) {
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space[2] }}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Jour précédent"
+        accessibilityLabel={`Jour précédent : ${formatLongDate(addDaysIso(date, -1))}`}
         onPress={() => onChange(addDaysIso(date, -1))}
         style={{ width: theme.touchTarget.min, height: theme.touchTarget.min, alignItems: 'center', justifyContent: 'center' }}
       >
@@ -23,14 +23,14 @@ export function SelecteurDate({ date, onChange, onToday }: Props) {
       </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Jour suivant"
+        accessibilityLabel={`Jour suivant : ${formatLongDate(addDaysIso(date, 1))}`}
         onPress={() => onChange(addDaysIso(date, 1))}
         style={{ width: theme.touchTarget.min, height: theme.touchTarget.min, alignItems: 'center', justifyContent: 'center' }}
       >
         <ChevronRight color={theme.color.text.primary} size={22} />
       </Pressable>
       {onToday ? (
-        <Pressable accessibilityRole="button" onPress={onToday} style={{ minHeight: theme.touchTarget.min, justifyContent: 'center', paddingHorizontal: theme.space[2] }}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Revenir à aujourd’hui" onPress={onToday} style={{ minHeight: theme.touchTarget.min, justifyContent: 'center', paddingHorizontal: theme.space[2] }}>
           <Text variant="label-sm" color={theme.color.accent.default}>
             Aujourd’hui
           </Text>

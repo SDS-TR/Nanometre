@@ -11,7 +11,7 @@ import { Screen } from '../../../../src/components/Screen';
 import { LoadingBlock, StateMessage } from '../../../../src/components/StateView';
 import { Text } from '../../../../src/components/Text';
 import type { ManagedBarber } from '../../../../src/data/types';
-import { friendlyError, upcomingBarberMessage, WEEKDAY_CHIPS } from '../../../../src/domain';
+import { friendlyError, reassignSummary, upcomingBarberMessage, WEEKDAY_CHIPS } from '../../../../src/domain';
 import { useAsync } from '../../../../src/hooks/useAsync';
 import { useAppState } from '../../../../src/providers/AppState';
 import { useTheme } from '../../../../src/theme';
@@ -32,6 +32,8 @@ export default function CoiffeursScreen() {
   const [pending, setPending] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ id: string; text: string; tone: 'warning' | 'error' } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // Retrait bloqué par des rendez-vous à venir : on propose de les passer à un autre coiffeur.
+  const [reassign, setReassign] = useState<{ fromId: string; toId: string | null } | null>(null);
 
   if (user?.role !== 'proprietaire') {
     return (
@@ -68,7 +70,12 @@ export default function CoiffeursScreen() {
     const key = `retirer:${barber.id}`;
     if (barber.upcomingCount > 0) {
       setPending(null);
-      setNotice({ id: barber.id, text: upcomingBarberMessage(barber.fullName, barber.upcomingCount), tone: 'error' });
+      setNotice({
+        id: barber.id,
+        text: `${upcomingBarberMessage(barber.fullName, barber.upcomingCount)} Tu peux les passer à un autre coiffeur ci-dessous.`,
+        tone: 'error',
+      });
+      setReassign({ fromId: barber.id, toId: null });
       return;
     }
     if (pending !== key) {
@@ -99,6 +106,26 @@ export default function CoiffeursScreen() {
         setNotice({ id: barber.id, text: message(reason, 'Retrait impossible.'), tone: 'error' });
         reload();
       })
+      .finally(() => setBusy(null));
+  };
+
+  const runReassign = (barber: ManagedBarber, toId: string) => {
+    const target = working.find((item) => item.id === toId);
+    setBusy(`reassigner:${barber.id}`);
+    repo
+      .reassignBarberBookings({ fromBarberId: barber.id, toBarberId: toId })
+      .then((result) => {
+        const text = reassignSummary(result, target?.shortName ?? 'l’autre coiffeur', barber.shortName);
+        setReassign(null);
+        setNotice({
+          id: barber.id,
+          tone: result.kept > 0 ? 'error' : 'warning',
+          text: result.kept > 0 ? text : `${text} Appuie sur « Retirer ce coiffeur » pour finir.`,
+        });
+        toast({ message: text, tone: result.moved > 0 ? 'success' : 'info' });
+        reload();
+      })
+      .catch((reason: unknown) => setNotice({ id: barber.id, text: message(reason, 'Réassignation impossible.'), tone: 'error' }))
       .finally(() => setBusy(null));
   };
 
@@ -194,6 +221,35 @@ export default function CoiffeursScreen() {
                 >
                   {notice.text}
                 </Text>
+              ) : null}
+              {reassign?.fromId === barber.id ? (
+                <View style={{ gap: theme.space[2] }}>
+                  <Text variant="label-sm">{`Passer les rendez-vous de ${barber.shortName} à :`}</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space[2] }}>
+                    {working
+                      .filter((other) => other.id !== barber.id)
+                      .map((other) => (
+                        <Chip
+                          key={other.id}
+                          label={other.shortName}
+                          selected={reassign.toId === other.id}
+                          disabled={busy !== null}
+                          onPress={() => setReassign({ fromId: barber.id, toId: other.id })}
+                        />
+                      ))}
+                  </View>
+                  <Text variant="caption" color={theme.color.text.muted}>
+                    Seuls les rendez-vous que l’autre coiffeur peut prendre passent : même prestation, jour travaillé, créneau libre. Les clients sont avisés.
+                  </Text>
+                  <Button
+                    label="Réassigner"
+                    size="sm"
+                    loading={busy === `reassigner:${barber.id}`}
+                    disabled={!reassign.toId || busy !== null}
+                    accessibilityLabel={`Réassigner les rendez-vous à venir de ${barber.fullName}`}
+                    onPress={() => reassign.toId && runReassign(barber, reassign.toId)}
+                  />
+                </View>
               ) : null}
               <Button
                 label={pending === retireKey ? 'Confirmer le retrait' : 'Retirer ce coiffeur'}

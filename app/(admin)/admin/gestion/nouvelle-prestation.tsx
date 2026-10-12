@@ -78,7 +78,8 @@ export default function NouvellePrestationScreen() {
     try {
       await repo.createService(input);
       toast({ message: `« ${name.trim()} » est ajoutée au catalogue.`, tone: 'success' });
-      router.back();
+      // Ouvert par lien direct : on revient à la liste, pas au Tableau.
+    router.dismissTo('/admin/gestion/prestations');
     } catch (reason) {
       setError(friendlyError(reason, 'Ajout impossible.'));
     } finally {
@@ -89,14 +90,22 @@ export default function NouvellePrestationScreen() {
   return (
     <Screen
       footer={
-        <Button
-          label="Ajouter la prestation"
-          size="lg"
-          fullWidth
-          loading={saving}
-          disabled={saving || catalogue.status !== 'ready'}
-          onPress={() => void submit()}
-        />
+        // L’erreur vit au-dessus du bouton collant : jamais cachée derrière lui.
+        <View style={{ gap: theme.space[2] }}>
+          {(error ?? priceError) ? (
+            <Text variant="body-sm" color={theme.color.error.default} accessibilityRole="alert" accessibilityLiveRegion="polite">
+              {error ?? priceError}
+            </Text>
+          ) : null}
+          <Button
+            label="Ajouter la prestation"
+            size="lg"
+            fullWidth
+            loading={saving}
+            disabled={saving || catalogue.status !== 'ready'}
+            onPress={() => void submit()}
+          />
+        </View>
       }
     >
       <Header back title="Nouvelle prestation" />
@@ -141,11 +150,6 @@ export default function NouvellePrestationScreen() {
             />
           ))}
         </View>
-        {error ? (
-          <Text variant="body-sm" color={theme.color.error.default} accessibilityLiveRegion="polite">
-            {error}
-          </Text>
-        ) : null}
       </View>
     </Screen>
   );

@@ -90,20 +90,29 @@ export default function NouveauCoiffeurScreen() {
       toast({ message: `${display} est ajouté. Les clients peuvent le réserver.`, tone: 'success' });
     }
     setSaving(false);
-    router.back();
+    // Ouvert par lien direct : on revient à la liste, pas au Tableau.
+    router.dismissTo('/admin/gestion/coiffeurs');
   };
 
   return (
     <Screen
       footer={
-        <Button
-          label="Ajouter le coiffeur"
-          size="lg"
-          fullWidth
-          loading={saving}
-          disabled={saving || services.status !== 'ready'}
-          onPress={() => void submit()}
-        />
+        // L’erreur vit au-dessus du bouton collant : jamais cachée derrière lui.
+        <View style={{ gap: theme.space[2] }}>
+          {(error ?? emailError) ? (
+            <Text variant="body-sm" color={theme.color.error.default} accessibilityRole="alert" accessibilityLiveRegion="polite">
+              {error ?? emailError}
+            </Text>
+          ) : null}
+          <Button
+            label="Ajouter le coiffeur"
+            size="lg"
+            fullWidth
+            loading={saving}
+            disabled={saving || services.status !== 'ready'}
+            onPress={() => void submit()}
+          />
+        </View>
       }
     >
       <Header back title="Nouveau coiffeur" />
@@ -176,11 +185,6 @@ export default function NouveauCoiffeurScreen() {
           textContentType="emailAddress"
           error={emailError ?? undefined}
         />
-        {error ? (
-          <Text variant="body-sm" color={theme.color.error.default} accessibilityLiveRegion="polite">
-            {error}
-          </Text>
-        ) : null}
       </View>
     </Screen>
   );

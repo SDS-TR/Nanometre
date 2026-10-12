@@ -14,7 +14,8 @@ const links = [
   { href: '/admin/gestion/clients', title: 'Clients', subtitle: 'Notes, historique, fidélité' },
   { href: '/admin/gestion/promos', title: 'Codes promo', subtitle: 'Pourcentage ou montant' },
   { href: '/admin/gestion/equipe', title: 'Équipe', subtitle: 'Inviter, rôle, désactiver' },
-  { href: '/admin/gestion/salon', title: 'Salon', subtitle: 'Heures et annulation sur place' },
+  { href: '/admin/gestion/horaires', title: 'Horaires du salon', subtitle: 'Jours ouverts et heures, jour par jour' },
+  { href: '/admin/gestion/salon', title: 'Salon', subtitle: 'Annulation sur place' },
 ] as const;
 
 export default function GestionScreen() {

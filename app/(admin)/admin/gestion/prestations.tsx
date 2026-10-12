@@ -9,14 +9,16 @@ import { Input } from '../../../../src/components/Input';
 import { Screen } from '../../../../src/components/Screen';
 import { LoadingBlock, StateMessage } from '../../../../src/components/StateView';
 import { Text } from '../../../../src/components/Text';
-import type { ManagedService } from '../../../../src/data/types';
+import type { ManagedService, PriceHistoryEntry } from '../../../../src/data/types';
 import {
   formatCad,
   formatDuration,
   friendlyError,
-  parsePriceCents,
+  formatLongDate,
+  priceDraftState,
   priceDropNeedsConfirm,
   upcomingServiceMessage,
+  zonedParts,
 } from '../../../../src/domain';
 import { useAsync } from '../../../../src/hooks/useAsync';
 import { useToast } from '../../../../src/components/Toast';
@@ -40,7 +42,8 @@ export default function PrestationsScreen() {
   const barbers = useAsync((repository) => repository.listManagedBarbers(), [user?.id]);
   const toast = useToast();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [history, setHistory] = useState<Record<string, PriceHistoryEntry[] | 'loading' | 'error'>>({});
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [pendingRemove, setPendingRemove] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ id: string; text: string; tone: 'warning' | 'error' } | null>(null);
@@ -111,9 +114,21 @@ export default function PrestationsScreen() {
         {services.status === 'error' ? (
           <StateMessage title="Chargement impossible" body={services.error ?? ''} actionLabel="Réessayer" onAction={services.reload} />
         ) : null}
-        {error ? <Text variant="body-sm" color={theme.color.error.default}>{error}</Text> : null}
         {active.map((service) => {
           const removing = pendingRemove === service.id;
+          const price = priceDraftState(drafts[service.id], service.priceCents);
+          const fieldError = price.error ?? errors[service.id];
+          const setFieldError = (text: string | null) =>
+            setErrors((current) => {
+              const next = { ...current };
+              if (text) {
+                next[service.id] = text;
+              } else {
+                delete next[service.id];
+              }
+              return next;
+            });
+          const rows = history[service.id];
           return (
             <View
               key={service.id}
@@ -135,8 +150,10 @@ export default function PrestationsScreen() {
               <Input
                 label="Prix HT, en dollars"
                 value={drafts[service.id] ?? (service.priceCents / 100).toFixed(2).replace('.', ',')}
+                error={fieldError ?? undefined}
                 onChangeText={(value) => {
                   setConfirmId(null);
+                  setFieldError(null);
                   setDrafts((current) => ({ ...current, [service.id]: value }));
                 }}
                 keyboardType="default"
@@ -150,29 +167,67 @@ export default function PrestationsScreen() {
                 <Button
                   label={confirmId === service.id ? 'Confirmer le nouveau prix' : 'Enregistrer'}
                   size="sm"
-                  disabled={busy !== null}
+                  // Actif seulement si le prix change et qu’il est valide.
+                  disabled={busy !== null || !price.changed || price.cents === null}
+                  accessibilityLabel={price.changed ? `Enregistrer le prix de ${service.name}` : `Enregistrer le prix de ${service.name}, inchangé`}
                   onPress={() => {
-                    let cents = 0;
-                    try {
-                      cents = parsePriceCents(drafts[service.id] ?? (service.priceCents / 100).toFixed(2).replace('.', ','));
-                    } catch (reason) {
-                      setError(message(reason, 'Tarif invalide.'));
+                    const cents = price.cents;
+                    if (cents === null) {
                       return;
                     }
                     if (priceDropNeedsConfirm(service.priceCents, cents) && confirmId !== service.id) {
                       setConfirmId(service.id);
-                      setError(null);
+                      setFieldError(null);
                       return;
                     }
-                    setError(null);
+                    setFieldError(null);
                     setConfirmId(null);
                     void repo.updateService({ serviceId: service.id, priceCents: cents }).then(
                       () => {
-                        toast({ message: 'Prix enregistré.', tone: 'success' });
+                        toast({ message: `Prix de « ${service.name} » enregistré : ${formatCad(cents)}.`, tone: 'success' });
+                        setDrafts((current) => {
+                          const next = { ...current };
+                          delete next[service.id];
+                          return next;
+                        });
+                        setHistory((current) => {
+                          const next = { ...current };
+                          delete next[service.id];
+                          return next;
+                        });
                         services.reload();
                       },
-                      (reason: unknown) => setError(message(reason, 'Tarif refusé.')),
+                      (reason: unknown) => setFieldError(message(reason, 'Tarif refusé.')),
                     );
+                  }}
+                />
+                <Button
+                  label="Modifier"
+                  variant="secondary"
+                  size="sm"
+                  disabled={busy !== null}
+                  accessibilityLabel={`Modifier le nom, la durée ou la description de ${service.name}`}
+                  onPress={() => router.push({ pathname: '/admin/gestion/modifier-prestation', params: { id: service.id } })}
+                />
+                <Button
+                  label={rows && rows !== 'error' ? 'Masquer l’historique' : 'Historique des prix'}
+                  variant="ghost"
+                  size="sm"
+                  accessibilityLabel={`Historique des prix de ${service.name}`}
+                  onPress={() => {
+                    if (rows && rows !== 'error') {
+                      setHistory((current) => {
+                        const next = { ...current };
+                        delete next[service.id];
+                        return next;
+                      });
+                      return;
+                    }
+                    setHistory((current) => ({ ...current, [service.id]: 'loading' }));
+                    repo
+                      .listPriceHistory(service.id)
+                      .then((entries) => setHistory((current) => ({ ...current, [service.id]: entries })))
+                      .catch(() => setHistory((current) => ({ ...current, [service.id]: 'error' })));
                   }}
                 />
                 <Button
@@ -185,6 +240,27 @@ export default function PrestationsScreen() {
                   onPress={() => askArchive(service)}
                 />
               </View>
+              {rows === 'loading' ? <LoadingBlock /> : null}
+              {rows === 'error' ? (
+                <Text variant="body-sm" color={theme.color.error.default}>
+                  Historique indisponible.
+                </Text>
+              ) : null}
+              {Array.isArray(rows) ? (
+                <View style={{ gap: theme.space[1] }} accessibilityLabel={`Historique des prix de ${service.name}`}>
+                  {rows.length === 0 ? (
+                    <Text variant="body-sm" color={theme.color.text.secondary}>
+                      Aucun changement de prix enregistré.
+                    </Text>
+                  ) : (
+                    rows.map((entry) => (
+                      <Text key={entry.id} variant="body-sm" color={theme.color.text.secondary}>
+                        {`${formatLongDate(zonedParts(new Date(entry.at)).isoDate)} : ${formatCad(entry.oldCents)} → ${formatCad(entry.newCents)}`}
+                      </Text>
+                    ))
+                  )}
+                </View>
+              ) : null}
               {notice?.id === service.id ? (
                 <Text
                   variant="body-sm"
