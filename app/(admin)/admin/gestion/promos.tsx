@@ -7,7 +7,7 @@ import { Screen } from '../../../../src/components/Screen';
 import { SegmentedControl } from '../../../../src/components/SegmentedControl';
 import { LoadingBlock, StateMessage } from '../../../../src/components/StateView';
 import { Text } from '../../../../src/components/Text';
-import { assertPromoDraft, formatCad } from '../../../../src/domain';
+import { assertPromoDraft, formatCad, friendlyError } from '../../../../src/domain';
 import { useToast } from '../../../../src/components/Toast';
 import { useAsync } from '../../../../src/hooks/useAsync';
 import { useAppState } from '../../../../src/providers/AppState';
@@ -82,7 +82,7 @@ export default function PromosScreen() {
             try {
               assertPromoDraft(draft);
             } catch (reason) {
-              setError(reason instanceof Error ? reason.message : 'Code refusé.');
+              setError(friendlyError(reason, 'Code refusé.'));
               return;
             }
             const exists = promos.data?.some((promo) => promo.code === draft.code) ?? false;
@@ -92,7 +92,7 @@ export default function PromosScreen() {
                 toast({ message: exists ? 'Code mis à jour. Le compteur est inchangé.' : 'Code enregistré.', tone: 'success' });
                 setCode('');
               },
-              (reason: unknown) => setError(reason instanceof Error ? reason.message : 'Code refusé.'),
+              (reason: unknown) => setError(friendlyError(reason, 'Code refusé.')),
             );
           }}
         />

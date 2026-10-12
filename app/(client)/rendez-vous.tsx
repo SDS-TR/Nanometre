@@ -10,7 +10,7 @@ import { SegmentedControl } from '../../src/components/SegmentedControl';
 import { LoadingBlock, StateMessage } from '../../src/components/StateView';
 import { useToast } from '../../src/components/Toast';
 import type { BookingView } from '../../src/data/types';
-import { quoteCancellation, zonedDateTime } from '../../src/domain';
+import { friendlyError, quoteCancellation, zonedDateTime } from '../../src/domain';
 import { useAsync } from '../../src/hooks/useAsync';
 import { useAppState } from '../../src/providers/AppState';
 import { useTheme } from '../../src/theme';
@@ -67,7 +67,7 @@ export default function RendezVousScreen() {
       toast({ message: 'Rendez-vous annulé', tone: 'success' });
       setTarget(null);
     } catch (reason) {
-      toast({ message: reason instanceof Error ? reason.message : 'Annulation impossible', tone: 'error' });
+      toast({ message: friendlyError(reason, 'Annulation impossible'), tone: 'error' });
     } finally {
       setBusy(false);
     }

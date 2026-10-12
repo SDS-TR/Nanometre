@@ -193,7 +193,8 @@ export interface Repository {
   listManagedServices(): Promise<ManagedService[]>;
   createService(input: NewServiceInput): Promise<{ id: string }>;
   archiveService(serviceId: string): Promise<void>;
-  reactivateService(serviceId: string): Promise<void>;
+  /** N-4 : `barberIds` ajoute des coiffeurs actifs à la prestation avant de la réactiver. */
+  reactivateService(serviceId: string, barberIds?: string[]): Promise<void>;
 }
 
 export type ManagedBarber = {

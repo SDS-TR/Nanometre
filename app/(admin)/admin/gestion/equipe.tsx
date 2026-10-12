@@ -8,7 +8,7 @@ import { Screen } from '../../../../src/components/Screen';
 import { SegmentedControl } from '../../../../src/components/SegmentedControl';
 import { LoadingBlock, StateMessage } from '../../../../src/components/StateView';
 import { Text } from '../../../../src/components/Text';
-import { readableAudit } from '../../../../src/domain';
+import { friendlyError, readableAudit } from '../../../../src/domain';
 import type { Role } from '../../../../src/data/types';
 import { useAsync } from '../../../../src/hooks/useAsync';
 import { useAppState } from '../../../../src/providers/AppState';
@@ -62,7 +62,7 @@ export default function EquipeScreen() {
                 setPending(null);
                 setError(null);
                 void repo.setMemberRole(member.id, next).catch((reason: unknown) => {
-                  setError(reason instanceof Error ? reason.message : 'Rôle refusé.');
+                  setError(friendlyError(reason, 'Rôle refusé.'));
                 });
               }}
               options={[
@@ -84,7 +84,7 @@ export default function EquipeScreen() {
                 setPending(null);
                 setError(null);
                 void repo.setMemberActive(member.id, !member.active).catch((reason: unknown) => {
-                  setError(reason instanceof Error ? reason.message : 'Action refusée.');
+                  setError(friendlyError(reason, 'Action refusée.'));
                 });
               }}
             />
@@ -126,7 +126,7 @@ export default function EquipeScreen() {
                     : 'Invitation envoyée. Le lien dure au plus 24 h (réglage Auth « Email OTP expiration »). Le compte s’active à la première connexion. Tu peux renvoyer la même invitation.',
                 ),
               )
-              .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Invitation impossible.'));
+              .catch((reason: unknown) => setError(friendlyError(reason, 'Invitation impossible.')));
           }}
         />
         <Text variant="heading-sm">Journal</Text>

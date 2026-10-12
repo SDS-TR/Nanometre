@@ -153,17 +153,15 @@ export const ARCHIVED_CHAIR_MESSAGE = 'La chaise de ce coiffeur est retirée. R�
 export const INVITES_PER_HOUR = 10;
 export const INVITE_LIMIT_MESSAGE = 'Trop d’invitations envoyées. Réessaie dans une heure.';
 
-const TECHNICAL_ERROR =
-  /failing row|violates|constraint|duplicate key|null value|syntax error|relation "|column "|function .*does not exist|permission denied|invalid input|pgrst|jwt|sqlstate|\berror:/i;
+/** N-2 : panne du compteur d’invitations (503), distincte du plafond. */
+export const INVITE_UNAVAILABLE_MESSAGE = 'Invitation momentanément impossible. Réessaie dans quelques minutes.';
 
-/**
- * Message à afficher dans un toast. Les messages en français de nos fonctions passent ;
- * un message brut de Postgres ou de PostgREST est remplacé par le texte de repli.
- */
-export function friendlyError(reason: unknown, fallback: string): string {
-  const text = reason instanceof Error ? reason.message.trim() : typeof reason === 'string' ? reason.trim() : '';
-  if (!text || text.length > 240 || TECHNICAL_ERROR.test(text)) {
-    return fallback;
-  }
-  return text;
+/** N-1 : même texte que admin_set_service. */
+export function upcomingBarberServiceMessage(shortName: string, count: number, serviceName: string): string {
+  return `${shortName} a encore ${count} rendez-vous à venir pour « ${serviceName} ». Déplace-les ou annule-les dans l’agenda, puis réessaie.`;
+}
+
+/** N-4 : même texte que admin_reactivate_service. */
+export function reactivateServiceWithoutBarberMessage(name: string): string {
+  return `« ${name} » n’est faite par aucun coiffeur actif. Choisis au moins un coiffeur, puis réactive-la.`;
 }

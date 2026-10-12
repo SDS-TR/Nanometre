@@ -1,4 +1,11 @@
-import { handleInviteRequest, INVITE_LIMIT_MESSAGE, type InviteRuntime } from './handler.ts';
+import {
+  handleInviteRequest,
+  INVITE_LIMIT_MESSAGE,
+  INVITE_UNAVAILABLE_MESSAGE,
+  safeErrorCode,
+  type InviteClaim,
+  type InviteRuntime,
+} from './handler.ts';
 
 const ownerId = '22222222-2222-4222-8222-222222222222';
 const chairId = '20000000-0000-4000-8000-000000000003';
@@ -9,10 +16,12 @@ function token(claims: Record<string, unknown>): string {
   return `Bearer ${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ sub: ownerId, ...claims })}.signature`;
 }
 
-type Calls = { invites: string[]; claims: number; audits: number };
+type Calls = { invites: string[]; claims: number; audits: number; logs: string[] };
 
-function fakeRuntime(options: { limit?: number; chairActive?: boolean; role?: string } = {}): InviteRuntime & { calls: Calls } {
-  const calls: Calls = { invites: [], claims: 0, audits: 0 };
+function fakeRuntime(
+  options: { limit?: number; chairActive?: boolean; role?: string; claim?: () => Promise<InviteClaim> } = {},
+): InviteRuntime & { calls: Calls } {
+  const calls: Calls = { invites: [], claims: 0, audits: 0, logs: [] };
   const limit = options.limit ?? 10;
   return {
     calls,
@@ -20,7 +29,10 @@ function fakeRuntime(options: { limit?: number; chairActive?: boolean; role?: st
     getActor: () => Promise.resolve({ role: options.role ?? 'proprietaire', active: true }),
     claimInviteAttempt: () => {
       calls.claims += 1;
-      return Promise.resolve(calls.claims <= limit);
+      if (options.claim) {
+        return options.claim();
+      }
+      return Promise.resolve<InviteClaim>(calls.claims <= limit ? { ok: true } : { ok: false, reason: 'limit' });
     },
     getBarber: (id) => Promise.resolve(id === chairId ? { id, active: options.chairActive ?? true } : null),
     inviteUserByEmail: (email) => {
@@ -33,6 +45,9 @@ function fakeRuntime(options: { limit?: number; chairActive?: boolean; role?: st
       return Promise.resolve({ ok: true });
     },
     redirectTo: 'https://lenanometre.ca/auth/callback',
+    logError: (event, detail) => {
+      calls.logs.push(JSON.stringify({ event, ...detail }));
+    },
   };
 }
 
@@ -107,5 +122,61 @@ Deno.test('F-5 : au-delà du plafond, 429 en français et aucun courriel', async
   );
   if (runtime.calls.invites.length !== 10 || runtime.calls.invites.includes('onze@exemple.ca')) {
     throw new Error(`le plafond doit bloquer l’envoi ${JSON.stringify(runtime.calls.invites)}`);
+  }
+});
+
+Deno.test('N-2 : une panne du compteur répond 503, sans courriel, et se journalise sans donnée personnelle', async () => {
+  const failures: (() => Promise<InviteClaim>)[] = [
+    () => Promise.resolve({ ok: false, reason: 'error', code: '42501' }),
+    () => Promise.resolve({ ok: false, reason: 'error', code: 'PGRST202' }),
+    () => Promise.reject(new Error('fetch failed: connect ECONNREFUSED')),
+  ];
+  for (const claim of failures) {
+    const runtime = fakeRuntime({ claim });
+    const authorization = token({ aal: 'aal2' });
+    const response = await handleInviteRequest(request(authorization, coiffeur), runtime);
+    const body = await response.json();
+    if (response.status !== 503 || body.error !== INVITE_UNAVAILABLE_MESSAGE || body.error === INVITE_LIMIT_MESSAGE) {
+      throw new Error(`attendu 503, reçu ${response.status} ${JSON.stringify(body)}`);
+    }
+    if (runtime.calls.invites.length !== 0 || runtime.calls.audits !== 0) {
+      throw new Error(`aucun envoi en cas de panne ${JSON.stringify(runtime.calls)}`);
+    }
+    if (runtime.calls.logs.length !== 1) {
+      throw new Error(`une ligne de journal attendue ${JSON.stringify(runtime.calls.logs)}`);
+    }
+    const line = runtime.calls.logs[0];
+    for (const secret of [coiffeur.email, coiffeur.fullName, authorization.slice(7), ownerId, 'ECONNREFUSED']) {
+      if (line.includes(secret)) {
+        throw new Error(`fuite dans le journal: ${line}`);
+      }
+    }
+    if (!line.includes('claim_invite_attempt_echec')) {
+      throw new Error(`événement absent: ${line}`);
+    }
+  }
+});
+
+Deno.test('N-2 : le plafond garde son 429 et ne se journalise pas comme une panne', async () => {
+  const runtime = fakeRuntime({ claim: () => Promise.resolve({ ok: false, reason: 'limit' }) });
+  await expectStatus(await handleInviteRequest(request(token({ aal: 'aal2' }), coiffeur), runtime), 429, INVITE_LIMIT_MESSAGE);
+  if (runtime.calls.logs.length !== 0 || runtime.calls.invites.length !== 0) {
+    throw new Error(`plafond inattendu ${JSON.stringify(runtime.calls)}`);
+  }
+});
+
+Deno.test('N-2 : seul un code court et sûr est journalisé', () => {
+  const cases: [unknown, string][] = [
+    [{ code: '42501', message: 'permission denied for function claim_invite_attempt' }, '42501'],
+    [{ code: 'PGRST202' }, 'PGRST202'],
+    [{ code: 'noah@exemple.ca' }, 'inconnu'],
+    [{ code: 'Bearer eyJ.abc.def' }, 'inconnu'],
+    [{ message: 'sans code' }, 'inconnu'],
+    [null, 'inconnu'],
+  ];
+  for (const [error, expected] of cases) {
+    if (safeErrorCode(error) !== expected) {
+      throw new Error(`code ${JSON.stringify(error)} => ${safeErrorCode(error)}`);
+    }
   }
 });

@@ -9,7 +9,7 @@ import { Screen } from '../../../../src/components/Screen';
 import { LoadingBlock, StateMessage } from '../../../../src/components/StateView';
 import { Text } from '../../../../src/components/Text';
 import { useToast } from '../../../../src/components/Toast';
-import { formatCad, formatDuration, parsePriceCents, SERVICE_DURATIONS, validateNewService } from '../../../../src/domain';
+import { formatCad, formatDuration, friendlyError, parsePriceCents, SERVICE_DURATIONS, validateNewService } from '../../../../src/domain';
 import { useAsync } from '../../../../src/hooks/useAsync';
 import { useAppState } from '../../../../src/providers/AppState';
 import { useTheme } from '../../../../src/theme';
@@ -71,7 +71,7 @@ export default function NouvellePrestationScreen() {
     try {
       validateNewService(input, new Set(catalogue.data?.barbers.map((barber) => barber.id) ?? []), catalogue.data?.names ?? []);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Formulaire incomplet.');
+      setError(friendlyError(reason, 'Formulaire incomplet.'));
       return;
     }
     setSaving(true);
@@ -80,7 +80,7 @@ export default function NouvellePrestationScreen() {
       toast({ message: `« ${name.trim()} » est ajoutée au catalogue.`, tone: 'success' });
       router.back();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Ajout impossible.');
+      setError(friendlyError(reason, 'Ajout impossible.'));
     } finally {
       setSaving(false);
     }

@@ -520,8 +520,11 @@ export function createSupabaseRepository(
       const { error } = await supabase.rpc('admin_archive_service', { p_service: serviceId });
       fail(error);
     },
-    async reactivateService(serviceId) {
-      const { error } = await supabase.rpc('admin_reactivate_service', { p_service: serviceId });
+    async reactivateService(serviceId, barberIds = []) {
+      const { error } = await supabase.rpc(
+        'admin_reactivate_service',
+        barberIds.length > 0 ? { p_service: serviceId, p_barbers: barberIds } : { p_service: serviceId },
+      );
       fail(error);
     },
   };

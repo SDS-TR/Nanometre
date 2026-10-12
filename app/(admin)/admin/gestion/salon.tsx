@@ -6,7 +6,7 @@ import { Screen } from '../../../../src/components/Screen';
 import { SegmentedControl } from '../../../../src/components/SegmentedControl';
 import { LoadingBlock, StateMessage } from '../../../../src/components/StateView';
 import { Text } from '../../../../src/components/Text';
-import { formatTime, OPEN_WEEKDAYS, openDaysPhrase } from '../../../../src/domain';
+import { formatTime, friendlyError, OPEN_WEEKDAYS, openDaysPhrase } from '../../../../src/domain';
 import { useAsync } from '../../../../src/hooks/useAsync';
 import { useAppState } from '../../../../src/providers/AppState';
 import { useTheme } from '../../../../src/theme';
@@ -75,7 +75,7 @@ export default function SalonScreen() {
             void repo
               .updateSalonSettings({ openMinute, closeMinute, onsiteLatePolicy: currentPolicy, force })
               .then(() => setSaved(true))
-              .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Réglage refusé.'));
+              .catch((reason: unknown) => setError(friendlyError(reason, 'Réglage refusé.')));
           }}
         />
       </View>

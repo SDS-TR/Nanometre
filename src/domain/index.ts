@@ -18,3 +18,4 @@ export * from './eligibility';
 export * from './holds';
 export * from './salonHours';
 export * from './catalogue';
+export * from './serverMessages';

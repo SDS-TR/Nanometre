@@ -10,6 +10,7 @@ import {
   AccessDeniedError,
   isUpcomingBooking,
   orphanServiceMessage,
+  reactivateServiceWithoutBarberMessage,
   reactivateWithoutServiceMessage,
   reactivateWithoutWeekdayMessage,
   quoteCancellation,
@@ -1290,7 +1291,7 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       auditEntry(state, 'prestation_retrait', service.name);
       emit();
     },
-    async reactivateService(serviceId) {
+    async reactivateService(serviceId, barberIds = []) {
       await ready;
       requireOwner('services');
       const service = state.services.find((item) => item.id === serviceId);
@@ -1300,8 +1301,24 @@ export function createLocalRepository(storage: KeyValueStore): Repository {
       if (service.active !== false) {
         throw new Error('Cette prestation est déjà active.');
       }
+      const chosen = [...new Set(barberIds)];
+      const activeBarbers = new Set(state.barbers.filter((barber) => barber.active).map((barber) => barber.id));
+      if (chosen.length > 50 || chosen.some((id) => !activeBarbers.has(id))) {
+        throw new Error('Choisis au moins un coiffeur actif pour cette prestation.');
+      }
+      // N-4 : comme admin_reactivate_service, au moins un coiffeur actif doit la faire.
+      const offered = state.barbers.some((barber) => barber.active && (chosen.includes(barber.id) || offeredBy(barber.id).includes(serviceId)));
+      if (!offered) {
+        throw new Error(reactivateServiceWithoutBarberMessage(service.name));
+      }
+      for (const id of chosen) {
+        const current = state.eligibility.get(id);
+        if (current && !current.includes(serviceId)) {
+          state.eligibility.set(id, [...current, serviceId]);
+        }
+      }
       service.active = true;
-      auditEntry(state, 'prestation_reactivation', service.name);
+      auditEntry(state, 'prestation_reactivation', chosen.length > 0 ? `${service.name} · ${chosen.length} coiffeur(s) ajouté(s)` : service.name);
       emit();
     },
   };

@@ -3,20 +3,33 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { Badge } from '../../../../src/components/Badge';
 import { Button } from '../../../../src/components/Button';
+import { Chip } from '../../../../src/components/Chip';
 import { Header } from '../../../../src/components/Header';
 import { Input } from '../../../../src/components/Input';
 import { Screen } from '../../../../src/components/Screen';
 import { LoadingBlock, StateMessage } from '../../../../src/components/StateView';
 import { Text } from '../../../../src/components/Text';
 import type { ManagedService } from '../../../../src/data/types';
-import { formatCad, formatDuration, parsePriceCents, priceDropNeedsConfirm, upcomingServiceMessage } from '../../../../src/domain';
+import {
+  formatCad,
+  formatDuration,
+  friendlyError,
+  parsePriceCents,
+  priceDropNeedsConfirm,
+  upcomingServiceMessage,
+} from '../../../../src/domain';
 import { useAsync } from '../../../../src/hooks/useAsync';
 import { useToast } from '../../../../src/components/Toast';
 import { useAppState } from '../../../../src/providers/AppState';
 import { useTheme } from '../../../../src/theme';
 
+/** N-3 : seuls les messages connus du serveur passent, jamais un message brut. */
 function message(reason: unknown, fallback: string): string {
-  return reason instanceof Error && reason.message ? reason.message : fallback;
+  return friendlyError(reason, fallback);
+}
+
+function toggle(list: string[], value: string): string[] {
+  return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 }
 
 export default function PrestationsScreen() {
@@ -24,6 +37,7 @@ export default function PrestationsScreen() {
   const router = useRouter();
   const { user, repo } = useAppState();
   const services = useAsync((repository) => repository.listManagedServices(), [user?.id]);
+  const barbers = useAsync((repository) => repository.listManagedBarbers(), [user?.id]);
   const toast = useToast();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +45,7 @@ export default function PrestationsScreen() {
   const [pendingRemove, setPendingRemove] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ id: string; text: string; tone: 'warning' | 'error' } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [revivers, setRevivers] = useState<Record<string, string[]>>({});
   if (user?.role !== 'proprietaire') {
     return (
       <Screen>
@@ -41,6 +56,8 @@ export default function PrestationsScreen() {
   }
   const active = (services.data ?? []).filter((service) => service.active);
   const archived = (services.data ?? []).filter((service) => !service.active);
+  const activeBarbers = (barbers.data ?? []).filter((barber) => barber.active);
+  const activeBarberIds = new Set(activeBarbers.map((barber) => barber.id));
 
   const askArchive = (service: ManagedService) => {
     if (service.upcomingCount > 0) {
@@ -139,7 +156,7 @@ export default function PrestationsScreen() {
                     try {
                       cents = parsePriceCents(drafts[service.id] ?? (service.priceCents / 100).toFixed(2).replace('.', ','));
                     } catch (reason) {
-                      setError(reason instanceof Error ? reason.message : 'Tarif invalide.');
+                      setError(message(reason, 'Tarif invalide.'));
                       return;
                     }
                     if (priceDropNeedsConfirm(service.priceCents, cents) && confirmId !== service.id) {
@@ -185,31 +202,63 @@ export default function PrestationsScreen() {
             <Text variant="heading-sm">Retirées</Text>
             {archived.map((service) => {
               const key = `reactiver:${service.id}`;
+              // N-4 : une prestation revient seulement si un coiffeur actif la fait.
+              const offeredByActive = service.barberIds.some((id) => activeBarberIds.has(id));
+              const chosen = (revivers[service.id] ?? []).filter((id) => activeBarberIds.has(id));
+              const barbersKnown = barbers.data !== null;
+              const needsBarber = barbersKnown && !offeredByActive;
+              // Sans la liste des coiffeurs, le serveur tranche et répond en français.
+              const canReactivate = barbersKnown ? offeredByActive || chosen.length > 0 : barbers.status === 'error';
               return (
-                <View key={service.id} style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space[3] }}>
-                  <View style={{ flex: 1, gap: theme.space[1] }}>
-                    <Text variant="label-md">{`${service.name} · ${formatCad(service.priceCents)}`}</Text>
-                    <Badge label="Retirée" tone="neutral" />
+                <View key={service.id} style={{ gap: theme.space[2] }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space[3] }}>
+                    <View style={{ flex: 1, gap: theme.space[1] }}>
+                      <Text variant="label-md">{`${service.name} · ${formatCad(service.priceCents)}`}</Text>
+                      <Badge label="Retirée" tone="neutral" />
+                    </View>
+                    <Button
+                      label="Réactiver"
+                      variant="secondary"
+                      size="sm"
+                      loading={busy === key}
+                      disabled={!canReactivate || (busy !== null && busy !== key)}
+                      accessibilityLabel={
+                        canReactivate ? `Réactiver ${service.name}` : `Réactiver ${service.name}, choisis d’abord au moins un coiffeur`
+                      }
+                      onPress={() => {
+                        setBusy(key);
+                        repo
+                          .reactivateService(service.id, needsBarber ? chosen : [])
+                          .then(() => {
+                            toast({ message: `« ${service.name} » est de retour au catalogue.`, tone: 'success' });
+                            setRevivers((current) => ({ ...current, [service.id]: [] }));
+                            services.reload();
+                          })
+                          .catch((reason: unknown) => toast({ message: message(reason, 'Réactivation impossible.'), tone: 'error' }))
+                          .finally(() => setBusy(null));
+                      }}
+                    />
                   </View>
-                  <Button
-                    label="Réactiver"
-                    variant="secondary"
-                    size="sm"
-                    loading={busy === key}
-                    disabled={busy !== null && busy !== key}
-                    accessibilityLabel={`Réactiver ${service.name}`}
-                    onPress={() => {
-                      setBusy(key);
-                      repo
-                        .reactivateService(service.id)
-                        .then(() => {
-                          toast({ message: `« ${service.name} » est de retour au catalogue.`, tone: 'success' });
-                          services.reload();
-                        })
-                        .catch((reason: unknown) => toast({ message: message(reason, 'Réactivation impossible.'), tone: 'error' }))
-                        .finally(() => setBusy(null));
-                    }}
-                  />
+                  {needsBarber ? (
+                    <View style={{ gap: theme.space[2] }}>
+                      <Text variant="body-sm" color={theme.color.text.secondary} accessibilityLiveRegion="polite">
+                        {activeBarbers.length === 0
+                          ? 'Aucun coiffeur actif. Réactive d’abord un coiffeur dans Coiffeurs.'
+                          : 'Aucun coiffeur actif ne fait cette prestation. Choisis qui la fera, puis réactive-la.'}
+                      </Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space[2] }}>
+                        {activeBarbers.map((barber) => (
+                          <Chip
+                            key={barber.id}
+                            label={barber.shortName}
+                            selected={chosen.includes(barber.id)}
+                            disabled={busy !== null}
+                            onPress={() => setRevivers((current) => ({ ...current, [service.id]: toggle(current[service.id] ?? [], barber.id) }))}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                  ) : null}
                 </View>
               );
             })}

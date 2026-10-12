@@ -9,7 +9,7 @@ import { RecapReservation } from '../../src/components/RecapReservation';
 import { Screen } from '../../src/components/Screen';
 import { StateMessage } from '../../src/components/StateView';
 import { Text } from '../../src/components/Text';
-import { computeLineTaxes } from '../../src/domain';
+import { computeLineTaxes, friendlyError } from '../../src/domain';
 import { useAsync } from '../../src/hooks/useAsync';
 import { useAppState } from '../../src/providers/AppState';
 import { useDraft } from '../../src/providers/BookingDraft';
@@ -71,7 +71,7 @@ export default function RecapScreen() {
       update({ promoCode: quote.code, discountCents: quote.discountCents });
     } catch (reason) {
       update({ promoCode: null, discountCents: 0 });
-      setPromoError(reason instanceof Error ? reason.message : 'Code refusé.');
+      setPromoError(friendlyError(reason, 'Code refusé.'));
     } finally {
       setChecking(false);
     }

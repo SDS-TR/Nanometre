@@ -11,7 +11,7 @@ import { Screen } from '../../../src/components/Screen';
 import { SelecteurDate } from '../../../src/components/SelecteurDate';
 import { LoadingBlock, StateMessage } from '../../../src/components/StateView';
 import { Text } from '../../../src/components/Text';
-import { formatTime, teamDate, zonedParts } from '../../../src/domain';
+import { formatTime, friendlyError, teamDate, zonedParts } from '../../../src/domain';
 import { hapticSelect } from '../../../src/lib/haptics';
 import { useAsync } from '../../../src/hooks/useAsync';
 import { useAppState } from '../../../src/providers/AppState';
@@ -54,7 +54,7 @@ export default function AgendaScreen() {
     try {
       await task();
     } catch (reason) {
-      const message = reason instanceof Error ? reason.message : 'Action impossible.';
+      const message = friendlyError(reason, 'Action impossible.');
       setError(message);
       toast({ message, tone: 'error' });
     } finally {
@@ -154,7 +154,7 @@ export default function AgendaScreen() {
               await repo.blockSlot({ barberId: targetBarber, date, ...input });
               setBlockOpen(false);
             } catch (reason) {
-              setBlockError(reason instanceof Error ? reason.message : 'Blocage impossible.');
+              setBlockError(friendlyError(reason, 'Blocage impossible.'));
               throw reason;
             }
           });
@@ -240,7 +240,7 @@ export default function AgendaScreen() {
                 await repo.moveBooking({ bookingId: moving.id, date: moveDate, startMinute: moveStart });
                 setMoving(null);
               } catch (reason) {
-                setMoveError(reason instanceof Error ? reason.message : 'Déplacement impossible.');
+                setMoveError(friendlyError(reason, 'Déplacement impossible.'));
               }
             });
           }}

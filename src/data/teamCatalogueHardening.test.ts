@@ -124,7 +124,7 @@ describe('durcissement équipe et catalogue (démo)', () => {
     expect(friendlyError(raw, 'Jour refusé.')).toBe('Jour refusé.');
     expect(friendlyError(new Error('duplicate key value violates unique constraint'), 'Jour refusé.')).toBe('Jour refusé.');
     expect(friendlyError(new Error(''), 'Jour refusé.')).toBe('Jour refusé.');
-    expect(friendlyError('n’importe quoi', 'Jour refusé.')).toBe('n’importe quoi');
+    expect(friendlyError('n’importe quoi', 'Jour refusé.')).toBe('Jour refusé.');
     expect(friendlyError(new Error(INVALID_WEEKDAY_MESSAGE), 'Jour refusé.')).toBe(INVALID_WEEKDAY_MESSAGE);
     expect(friendlyError(new Error('Ousmane doit garder au moins un jour de travail.'), 'Jour refusé.')).toBe(
       'Ousmane doit garder au moins un jour de travail.',

@@ -7,6 +7,7 @@ import { Button } from './Button';
 import { CarteAvis } from './CarteAvis';
 import { LoadingBlock, StateMessage } from './StateView';
 import { Text } from './Text';
+import { friendlyError } from '../domain';
 
 export function PanneauAvis({ moderate }: { moderate: boolean }) {
   const theme = useTheme();
@@ -19,7 +20,7 @@ export function PanneauAvis({ moderate }: { moderate: boolean }) {
     try {
       await repo.moderateReview(id, status);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Modération impossible.');
+      setError(friendlyError(reason, 'Modération impossible.'));
     }
   }
 

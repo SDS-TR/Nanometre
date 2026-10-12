@@ -132,7 +132,19 @@ describe('durcissement', () => {
     const cipher = await encryptSession(key, '{"access_token":"secret"}');
     expect(cipher).not.toContain('secret');
     expect(await decryptSession(key, cipher)).toBe('{"access_token":"secret"}');
-    await expect(decryptSession(key, `${cipher.slice(0, 20)}ff${cipher.slice(22)}`)).rejects.toThrow();
+    // N-5 : on inverse un bit (XOR 0x01), donc l’octet change toujours, quelle que soit sa valeur.
+    const flipHexByte = (value: string, at: number) =>
+      `${value.slice(0, at)}${(parseInt(value.slice(at, at + 2), 16) ^ 0x01).toString(16).padStart(2, '0')}${value.slice(at + 2)}`;
+    expect(flipHexByte('00ff00', 2)).toBe('00fe00');
+    expect(flipHexByte('0000', 0)).toBe('0100');
+    const ivTampered = flipHexByte(cipher, 20);
+    const bodyTampered = flipHexByte(cipher, cipher.indexOf('.') + 1);
+    const tagTampered = flipHexByte(cipher, cipher.length - 2);
+    for (const tampered of [ivTampered, bodyTampered, tagTampered]) {
+      expect(tampered).not.toBe(cipher);
+      expect(tampered).toHaveLength(cipher.length);
+      await expect(decryptSession(key, tampered)).rejects.toThrow();
+    }
     expect(() => assertRuntimeConfig({ dev: false, source: undefined, url: '', key: '' })).toThrow('Configuration de production incomplète.');
     expect(() => assertRuntimeConfig({ dev: false, source: 'supabase', url: '', key: '' })).toThrow('Configuration de production incomplète.');
     expect(() => assertRuntimeConfig({ dev: false, source: 'local', url: '', key: '' })).not.toThrow();

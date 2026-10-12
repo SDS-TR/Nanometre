@@ -25,6 +25,7 @@ import {
   INVITES_PER_HOUR,
   isUpcomingBooking,
   lastWeekdayMessage,
+  upcomingBarberServiceMessage,
   upcomingWeekdayMessage,
   weekdayOfIso,
   type PromoCode,
@@ -750,22 +751,44 @@ export function createAdmin(input: {
     async setBarberService(barberId: string, serviceId: string, eligible: boolean) {
       const user = actor();
       assertCan(user.role, 'barbers');
-      const all = state.services.map((service) => service.id);
+      const chair = state.barbers.find((item) => item.id === barberId);
+      if (!chair) {
+        throw new Error('Coiffeur introuvable.');
+      }
+      const service = state.services.find((item) => item.id === serviceId);
+      if (!service) {
+        throw new Error('Prestation introuvable.');
+      }
+      const all = state.services.map((item) => item.id);
       const current = new Set(state.eligibility.get(barberId) ?? all);
+      if (eligible && service.active === false) {
+        throw new Error('Cette prestation est retirée.');
+      }
+      if (eligible === current.has(serviceId)) {
+        return;
+      }
       if (eligible) {
-        if (state.services.find((service) => service.id === serviceId)?.active === false) {
-          throw new Error('Cette prestation est retirée.');
-        }
         current.add(serviceId);
       } else {
-        const chair = state.barbers.find((item) => item.id === barberId);
-        const remaining = state.services.filter((service) => service.active !== false && service.id !== serviceId && current.has(service.id));
-        if (chair?.active !== false && remaining.length === 0) {
+        const remaining = state.services.filter((item) => item.active !== false && item.id !== serviceId && current.has(item.id));
+        if (chair.active !== false && remaining.length === 0) {
           throw new Error('Un coiffeur actif doit garder au moins une prestation.');
+        }
+        // N-1 : comme admin_set_service, pas de retrait tant que des rendez-vous à venir l’utilisent.
+        const now = new Date();
+        const upcoming = state.bookings.filter(
+          (booking) =>
+            booking.barberId === barberId &&
+            booking.serviceId === serviceId &&
+            isUpcomingBooking({ status: booking.status, endsAt: zonedDateTime(booking.date, booking.startMinute + booking.durationMinutes) }, now),
+        ).length;
+        if (upcoming > 0) {
+          throw new Error(upcomingBarberServiceMessage(chair.shortName, upcoming, service.name));
         }
         current.delete(serviceId);
       }
       state.eligibility.set(barberId, [...current]);
+      auditEntry(state, 'coiffeur_prestation', `${chair.fullName} · ${service.name} · ${eligible ? 'offerte' : 'retirée'}`);
       emit();
     },
   };

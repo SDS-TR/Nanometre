@@ -6,8 +6,11 @@ export type InviteRuntime = {
   /** Vérifie la signature du jeton auprès d’Auth et rend l’utilisateur. */
   getUser(authorization: string): Promise<{ id: string } | null>;
   getActor(userId: string): Promise<{ role: string; active: boolean | null } | null>;
-  /** F-5 : compte la tentative en base. false au-delà du plafond horaire. */
-  claimInviteAttempt(ownerId: string): Promise<boolean>;
+  /**
+   * F-5 : compte la tentative en base. `limit` au-delà du plafond horaire,
+   * `error` si le compteur ne répond pas (N-2). Dans les deux cas, rien ne part.
+   */
+  claimInviteAttempt(ownerId: string): Promise<InviteClaim>;
   getBarber(barberId: string): Promise<{ id: string; active: boolean } | null>;
   inviteUserByEmail(
     email: string,
@@ -29,9 +32,20 @@ export type InviteRuntime = {
     detail: unknown;
   }): Promise<{ ok: boolean }>;
   redirectTo: string;
+  /** N-2 : journal serveur. Jamais de jeton, de courriel, de nom ni de clé. */
+  logError(event: string, detail: Record<string, string | number>): void;
 };
 
+export type InviteClaim = { ok: true } | { ok: false; reason: 'limit' } | { ok: false; reason: 'error'; code: string };
+
 export const INVITE_LIMIT_MESSAGE = 'Trop d’invitations envoyées. Réessaie dans une heure.';
+export const INVITE_UNAVAILABLE_MESSAGE = 'Invitation momentanément impossible. Réessaie dans quelques minutes.';
+
+/** Code d’erreur court et sûr à journaliser (SQLSTATE, PGRST…), sans le texte du message. */
+export function safeErrorCode(error: unknown): string {
+  const code = error && typeof error === 'object' && 'code' in error ? (error as { code: unknown }).code : undefined;
+  return typeof code === 'string' && /^[A-Za-z0-9_]{1,16}$/.test(code) ? code : 'inconnu';
+}
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -64,7 +78,16 @@ export function runtimeFromEnv(): InviteRuntime | { missing: true } {
     async claimInviteAttempt(ownerId) {
       const { data, error } = await admin.rpc('claim_invite_attempt', { p_owner: ownerId });
       // En cas d’erreur, on refuse : le plafond ne s’ouvre jamais par défaut.
-      return !error && data === true;
+      if (error) {
+        return { ok: false, reason: 'error', code: safeErrorCode(error) };
+      }
+      if (data === true) {
+        return { ok: true };
+      }
+      if (data === false) {
+        return { ok: false, reason: 'limit' };
+      }
+      return { ok: false, reason: 'error', code: 'reponse_inattendue' };
     },
     async getBarber(barberId) {
       const { data } = await admin.from('barbers').select('id, active').eq('id', barberId).maybeSingle();
@@ -86,6 +109,9 @@ export function runtimeFromEnv(): InviteRuntime | { missing: true } {
     // https://lenanometre.ca/auth/callback?token_hash={{ .TokenHash }}&type=invite
     // Le client est en PKCE et refuse le fragment #access_token= de l'invitation par défaut.
     redirectTo: Deno.env.get('INVITE_REDIRECT_URL') ?? 'https://lenanometre.ca/auth/callback',
+    logError(event, detail) {
+      console.error(JSON.stringify({ fonction: 'invite-team-member', event, ...detail }));
+    },
   };
 }
 
@@ -126,8 +152,19 @@ export async function handleInviteRequest(req: Request, runtime: InviteRuntime |
   }
 
   // F-5 (KEY-12) : plafond par propriétaire, compté en base avant tout envoi.
-  if (!(await runtime.claimInviteAttempt(user.id))) {
-    return json({ error: INVITE_LIMIT_MESSAGE }, 429);
+  let claim: InviteClaim;
+  try {
+    claim = await runtime.claimInviteAttempt(user.id);
+  } catch {
+    claim = { ok: false, reason: 'error', code: 'exception' };
+  }
+  if (!claim.ok) {
+    if (claim.reason === 'limit') {
+      return json({ error: INVITE_LIMIT_MESSAGE }, 429);
+    }
+    // N-2 : une panne du compteur n’est pas un plafond. 503, et la cause reste au serveur.
+    runtime.logError('claim_invite_attempt_echec', { code: claim.code });
+    return json({ error: INVITE_UNAVAILABLE_MESSAGE }, 503);
   }
 
   if (plan.barberId) {

@@ -9,7 +9,7 @@ import { StatCard } from '../../../src/components/StatCard';
 import { LoadingBlock, StateMessage } from '../../../src/components/StateView';
 import { Text } from '../../../src/components/Text';
 import type { PaymentLine } from '../../../src/data/types';
-import { extractIncludedTaxes, formatCad, monthTitle, periodBounds, shiftMonth, teamDate } from '../../../src/domain';
+import { extractIncludedTaxes, formatCad, friendlyError, monthTitle, periodBounds, shiftMonth, teamDate } from '../../../src/domain';
 import { useAsync } from '../../../src/hooks/useAsync';
 import { useAppState } from '../../../src/providers/AppState';
 import { useTheme } from '../../../src/theme';
@@ -41,7 +41,7 @@ export default function PaiementsScreen() {
       setConfirmRefund(false);
       setSelected(null);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Remboursement impossible.');
+      setError(friendlyError(reason, 'Remboursement impossible.'));
     } finally {
       setBusy(false);
     }

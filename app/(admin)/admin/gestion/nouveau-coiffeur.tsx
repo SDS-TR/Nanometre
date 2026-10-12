@@ -10,7 +10,7 @@ import { Screen } from '../../../../src/components/Screen';
 import { LoadingBlock, StateMessage } from '../../../../src/components/StateView';
 import { Text } from '../../../../src/components/Text';
 import { useToast } from '../../../../src/components/Toast';
-import { suggestShortName, validateNewBarber, WEEKDAY_CHIPS } from '../../../../src/domain';
+import { friendlyError, suggestShortName, validateNewBarber, WEEKDAY_CHIPS } from '../../../../src/domain';
 import { useAsync } from '../../../../src/hooks/useAsync';
 import { useAppState } from '../../../../src/providers/AppState';
 import { useTheme } from '../../../../src/theme';
@@ -62,7 +62,7 @@ export default function NouveauCoiffeurScreen() {
     try {
       validateNewBarber(input, new Set(active.map((service) => service.id)));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Formulaire incomplet.');
+      setError(friendlyError(reason, 'Formulaire incomplet.'));
       return;
     }
     setSaving(true);
@@ -71,7 +71,7 @@ export default function NouveauCoiffeurScreen() {
       created = await repo.createBarber(input);
     } catch (reason) {
       setSaving(false);
-      setError(reason instanceof Error ? reason.message : 'Ajout impossible.');
+      setError(friendlyError(reason, 'Ajout impossible.'));
       return;
     }
     const display = shortName.trim();
@@ -83,7 +83,7 @@ export default function NouveauCoiffeurScreen() {
           tone: 'success',
         });
       } catch (reason) {
-        const why = reason instanceof Error ? reason.message : 'Invitation impossible.';
+        const why = friendlyError(reason, 'Invitation impossible.');
         toast({ message: `${display} est ajouté, mais l’invitation a échoué : ${why} Tu peux la renvoyer dans Équipe.`, tone: 'error' });
       }
     } else {

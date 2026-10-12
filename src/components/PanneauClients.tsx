@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FlatList, View } from 'react-native';
-import { formatCad, formatLongDate } from '../domain';
+import { formatCad, formatLongDate, friendlyError } from '../domain';
 import type { ClientFile } from '../data/types';
 import { useAsync } from '../hooks/useAsync';
 import { useAppState } from '../providers/AppState';
@@ -28,7 +28,7 @@ export function PanneauClients() {
       await repo.saveClientNote(client.id, note);
       toast({ message: 'Note enregistrée.', tone: 'success' });
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Note impossible.');
+      setError(friendlyError(reason, 'Note impossible.'));
     }
   }
 

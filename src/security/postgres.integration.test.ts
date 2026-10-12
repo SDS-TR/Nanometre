@@ -1038,6 +1038,171 @@ describe.skipIf(!databaseUrl)('politiques et RPC sur Postgres', () => {
     await owner(`select public.admin_reactivate_service($1::uuid)`, [rasage]);
     await freeClient();
   });
+
+  it('suivis du catalogue : N-1 protège les rendez-vous d’une prestation, N-4 exige un coiffeur actif', async () => {
+    const owner = <T,>(sql: string, params: unknown[] = []) =>
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal2' }, (client) => client.query<T & pg.QueryResultRow>(sql, params));
+    const asClient = <T,>(sql: string, params: unknown[] = []) =>
+      withRole(pool, 'authenticated', { sub: clientId, aal: 'aal1' }, (client) => client.query<T & pg.QueryResultRow>(sql, params));
+    const freeClient = async () => {
+      await pool.query(`delete from public.booking_attempts where user_id = $1`, [clientId]);
+      await pool.query(
+        `update public.bookings set status = 'annule', cancelled_at = now()
+         where client_id = $1 and starts_at > now() and status in ('confirme', 'en_attente_paiement')`,
+        [clientId],
+      );
+    };
+    await freeClient();
+    const amadou = (
+      await owner<{ id: string }>(`select public.admin_create_barber('Amadou Ba', 'Amadou', '', array[2,3,4,5,6], array[$1::uuid]) as id`, [serviceId])
+    ).rows[0].id;
+    const taille = (
+      await owner<{ id: string }>(`select public.admin_create_service('Taille de barbe test', '', 30, 2000, array[$1::uuid]) as id`, [amadou])
+    ).rows[0].id;
+    const setService = `select public.admin_set_service($1::uuid, $2::uuid, $3::boolean)`;
+
+    // N-1 : un rendez-vous à venir pour ce couple bloque le retrait, avec le nombre et le nom.
+    const thursday = upcoming(4);
+    const booked = await asClient<{ data: { ok: boolean; id: string } }>(
+      `select public.create_booking($1::uuid, $2::uuid, $3::date, 660, 'sur_place'::public.payment_method, false, null) as data`,
+      [serviceId, amadou, thursday],
+    );
+    expect(booked.rows[0].data.ok).toBe(true);
+    await expect(owner(setService, [amadou, serviceId, false])).rejects.toThrow(
+      'Amadou a encore 1 rendez-vous à venir pour « Coupe classique ». Déplace-les ou annule-les dans l’agenda, puis réessaie.',
+    );
+    const kept = await pool.query(`select count(*)::int as n from public.barber_services where barber_id = $1 and service_id = $2`, [amadou, serviceId]);
+    expect(kept.rows[0].n).toBe(1);
+    // Le rendez-vous reste déplaçable, puisque le lien est gardé.
+    await owner(`select public.admin_move($1::uuid, $2::date, 600)`, [booked.rows[0].data.id, addDays(thursday, 7)]);
+    await expect(owner(setService, [amadou, serviceId, false])).rejects.toThrow(/Amadou a encore 1 rendez-vous à venir pour « Coupe classique »/);
+    // En attente de paiement compte aussi ; un rendez-vous annulé ou passé ne compte pas.
+    await pool.query(`update public.bookings set status = 'en_attente_paiement' where id = $1`, [booked.rows[0].data.id]);
+    await expect(owner(setService, [amadou, serviceId, false])).rejects.toThrow(/rendez-vous à venir pour/);
+    const pastId = '99999999-9999-4999-8999-999999999993';
+    await pool.query(
+      `insert into public.bookings (
+         id, client_id, client_name, barber_id, service_id, starts_at, ends_at, duration_minutes,
+         price_cents, gst_cents, qst_cents, total_cents, payment_method, status
+       ) values (
+         $1, $2, 'Alex Gagnon', $3, $4, '2026-09-02 14:00:00+00', '2026-09-02 14:30:00+00', 30,
+         3500, 175, 349, 4024, 'sur_place'::public.payment_method, 'confirme'::public.booking_status
+       )`,
+      [pastId, clientId, amadou, serviceId],
+    );
+    await pool.query(`update public.bookings set status = 'annule', cancelled_at = now() where id = $1`, [booked.rows[0].data.id]);
+    // aal1 et client restent refusés.
+    await expect(
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal1' }, (client) => client.query(setService, [amadou, serviceId, false])),
+    ).rejects.toThrow(/Vérification renforcée requise/);
+    await expect(asClient(setService, [amadou, serviceId, false])).rejects.toThrow(/Accès refusé/);
+    await owner(setService, [amadou, serviceId, false]);
+    await owner(setService, [amadou, serviceId, false]);
+    await owner(setService, [amadou, serviceId, true]);
+    await owner(setService, [amadou, serviceId, true]);
+    const serviceAudit = await pool.query<{ offerte: string }>(
+      `select detail->>'offerte' as offerte from public.audit_log
+       where action = 'coiffeur_prestation' and entity_id = $1 order by created_at, id`,
+      [amadou],
+    );
+    // Seuls les vrais changements sont journalisés.
+    expect(serviceAudit.rows.map((row) => row.offerte)).toEqual(['false', 'true']);
+
+    // N-1 sous concurrence : la réservation tient la chaise, le retrait attend puis voit le rendez-vous.
+    await freeClient();
+    const booking = await openSession(pool, { sub: clientId, aal: 'aal1' });
+    const removing = await openSession(pool, { sub: ownerId, aal: 'aal2' });
+    try {
+      const made = await booking.query<{ data: { ok: boolean } }>(
+        `select public.create_booking($1::uuid, $2::uuid, $3::date, 720, 'sur_place'::public.payment_method, false, null) as data`,
+        [serviceId, amadou, thursday],
+      );
+      expect(made.rows[0].data.ok).toBe(true);
+      const outcome = removing.query(setService, [amadou, serviceId, false]).then(
+        () => 'ok',
+        (error: Error) => error.message,
+      );
+      await sleep(300);
+      await booking.query('commit');
+      expect(await outcome).toMatch(/Amadou a encore 1 rendez-vous à venir pour « Coupe classique »/);
+      await removing.query('rollback');
+    } finally {
+      booking.release();
+      removing.release();
+    }
+    const orphanBookings = await pool.query(
+      `select count(*)::int as n from public.bookings bk
+       where bk.status in ('confirme', 'en_attente_paiement') and bk.ends_at > now()
+         and not exists (select 1 from public.barber_services bs where bs.barber_id = bk.barber_id and bs.service_id = bk.service_id)`,
+    );
+    expect(orphanBookings.rows[0].n).toBe(0);
+    await freeClient();
+
+    // N-4 : une prestation sans coiffeur actif ne revient pas au catalogue.
+    const reactivate = `select public.admin_reactivate_service($1::uuid)`;
+    const reactivateWith = `select public.admin_reactivate_service($1::uuid, $2::uuid[])`;
+    await owner(`select public.admin_archive_service($1::uuid)`, [taille]);
+    await owner(`select public.admin_archive_barber($1::uuid)`, [amadou]);
+    await expect(owner(reactivate, [taille])).rejects.toThrow(
+      '« Taille de barbe test » n’est faite par aucun coiffeur actif. Choisis au moins un coiffeur, puis réactive-la.',
+    );
+    await expect(owner(reactivateWith, [taille, [amadou]])).rejects.toThrow('Choisis au moins un coiffeur actif pour cette prestation.');
+    await expect(owner(reactivateWith, [taille, ['00000000-0000-4000-8000-000000000999']])).rejects.toThrow(/au moins un coiffeur actif/);
+    await expect(owner(`select public.admin_reactivate_service($1::uuid, array[null]::uuid[])`, [taille])).rejects.toThrow(/au moins un coiffeur actif/);
+    await expect(
+      withRole(pool, 'authenticated', { sub: ownerId, aal: 'aal1' }, (client) => client.query(reactivateWith, [taille, [barberId]])),
+    ).rejects.toThrow(/Vérification renforcée requise/);
+    await expect(asClient(reactivateWith, [taille, [barberId]])).rejects.toThrow(/Accès refusé/);
+    await expect(withRole(pool, 'anon', {}, (client) => client.query(reactivateWith, [taille, [barberId]]))).rejects.toThrow(/permission denied/);
+    const stillOff = await pool.query(`select active from public.services where id = $1`, [taille]);
+    expect(stillOff.rows[0].active).toBe(false);
+    const noLink = await pool.query(`select count(*)::int as n from public.barber_services where service_id = $1 and barber_id = $2`, [taille, barberId]);
+    expect(noLink.rows[0].n).toBe(0);
+    const anonView = await withRole(pool, 'anon', {}, (client) => client.query<{ data: { id: string }[] }>(`select public.visible_services() as data`));
+    expect(anonView.rows[0].data.map((item) => item.id)).not.toContain(taille);
+
+    // Choisir un coiffeur actif dans le même appel réactive la prestation et la rend réservable.
+    await owner(reactivateWith, [taille, [barberId, barberId]]);
+    const back = await pool.query(`select active from public.services where id = $1`, [taille]);
+    expect(back.rows[0].active).toBe(true);
+    const linked = await pool.query(`select count(*)::int as n from public.barber_services where service_id = $1 and barber_id = $2`, [taille, barberId]);
+    expect(linked.rows[0].n).toBe(1);
+    const slots = await withRole(pool, 'anon', {}, (client) =>
+      client.query<{ data: { available: boolean }[] }>(`select public.list_slots($1::uuid, $2::date, $3::uuid) as data`, [taille, addDays(thursday, 14), barberId]),
+    );
+    expect(slots.rows[0].data.some((slot) => slot.available)).toBe(true);
+    const revivalAudit = await pool.query<{ added: string }>(
+      `select detail->>'coiffeurs_ajoutes' as added from public.audit_log where action = 'prestation_reactivation' and entity_id = $1`,
+      [taille],
+    );
+    expect(revivalAudit.rows.map((row) => row.added)).toEqual(['1']);
+    await expect(owner(reactivate, [taille])).rejects.toThrow(/déjà active/);
+
+    // Sans choix, la réactivation passe quand un coiffeur actif la fait déjà.
+    await owner(`select public.admin_archive_service($1::uuid)`, [taille]);
+    await owner(reactivate, [taille]);
+
+    // Mêmes garanties que les autres RPC : search_path vide, SECURITY DEFINER, pas d’ancienne signature.
+    const fns = await pool.query<{ sig: string; cfg: string; secdef: boolean }>(
+      `select p.oid::regprocedure::text as sig, array_to_string(p.proconfig, ' ') as cfg, p.prosecdef as secdef
+       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public' and p.proname in ('admin_set_service', 'admin_reactivate_service') order by 1`,
+    );
+    expect(fns.rows.map((row) => row.sig)).toEqual(['admin_reactivate_service(uuid,uuid[])', 'admin_set_service(uuid,uuid,boolean)']);
+    for (const fn of fns.rows) {
+      expect(fn.secdef, fn.sig).toBe(true);
+      expect(fn.cfg, fn.sig).toMatch(/search_path=""/);
+    }
+    for (const role of ['anon', 'public'] as const) {
+      const allowed = await pool.query(
+        role === 'public'
+          ? `select bool_or(acl.privilege_type = 'EXECUTE') as ok from pg_proc p, aclexplode(p.proacl) acl
+             where p.oid = 'public.admin_reactivate_service(uuid,uuid[])'::regprocedure and acl.grantee = 0`
+          : `select has_function_privilege('anon', 'public.admin_reactivate_service(uuid,uuid[])', 'execute') as ok`,
+      );
+      expect(allowed.rows[0].ok ?? false, role).toBe(false);
+    }
+  });
 });
 
 async function insertUser(pool: pg.Pool, id: string, email: string, name: string, role: string, barber: string | null) {

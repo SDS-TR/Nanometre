@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppState } from '../providers/AppState';
 import type { Repository } from '../data/types';
+import { friendlyError } from '../domain';
 
 export function useAsync<T>(factory: (repo: Repository) => Promise<T>, deps: readonly unknown[] = []) {
   const { repo, ready, version } = useAppState();
@@ -35,7 +36,7 @@ export function useAsync<T>(factory: (repo: Repository) => Promise<T>, deps: rea
         if (current !== ticket.current) {
           return;
         }
-        setError(reason instanceof Error ? reason.message : 'Une erreur est survenue.');
+        setError(friendlyError(reason, 'Une erreur est survenue.'));
         setStatus(hasData.current ? 'ready' : 'error');
         setRefreshing(false);
       });
