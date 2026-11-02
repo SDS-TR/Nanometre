@@ -2,7 +2,6 @@ import { Tabs } from 'expo-router';
 import type { BottomTabBarProps } from 'expo-router/tabs';
 import { CalendarDays, Home, Scissors, UserRound } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../../src/components/Text';
 import { useTheme } from '../../src/theme';
 
@@ -24,9 +23,8 @@ export default function ClientLayout() {
   );
 }
 
-function ClientTabBar({ state, navigation }: BottomTabBarProps) {
+function ClientTabBar({ state, navigateToTab, insets }: BottomTabBarProps) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   return (
     <View
       style={{
@@ -51,7 +49,7 @@ function ClientTabBar({ state, navigation }: BottomTabBarProps) {
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             accessibilityLabel={item.label}
-            onPress={() => navigation.navigate(route.name)}
+            onPress={() => navigateToTab(route.key)}
             style={{ flex: 1, minHeight: 56, alignItems: 'center', justifyContent: 'center', gap: 2 }}
           >
             <Icon color={color} size={22} />

@@ -1,5 +1,5 @@
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useLocalSearchParams, usePreventRemove, useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Button } from '../../src/components/Button';
 import { Header } from '../../src/components/Header';
@@ -15,17 +15,19 @@ export default function ConfirmationScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
-  const navigation = useNavigation();
+  const [preventRemove, setPreventRemove] = useState(true);
+  const pendingRedirect = useRef(false);
+  const disablePrevention = usePreventRemove(preventRemove, () => {
+    pendingRedirect.current = true;
+    setPreventRemove(false);
+  });
   useEffect(() => {
-    navigation.setOptions({ gestureEnabled: false });
-    return navigation.addListener('beforeRemove', (event: { preventDefault: () => void; data: { action: { type: string } } }) => {
-      const type = event.data.action.type;
-      if (type === 'GO_BACK' || type === 'POP') {
-        event.preventDefault();
-        router.replace('/rendez-vous');
-      }
-    });
-  }, [navigation, router]);
+    if (!preventRemove && pendingRedirect.current) {
+      pendingRedirect.current = false;
+      disablePrevention();
+      router.replace('/rendez-vous');
+    }
+  }, [preventRemove, disablePrevention, router]);
   const query = useAsync((repo) => repo.getBooking(bookingId), [bookingId]);
   const booking = query.data;
   useEffect(() => {

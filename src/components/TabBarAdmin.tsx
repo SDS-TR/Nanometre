@@ -1,7 +1,6 @@
 import type { BottomTabBarProps } from 'expo-router/tabs';
 import { CalendarDays, LayoutDashboard, Star, SunMedium, Users, Wallet, Settings2 } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme';
 import { Text } from './Text';
 
@@ -23,9 +22,8 @@ const barberTabs = [
 
 type Props = BottomTabBarProps & { role: Role };
 
-export function TabBarAdmin({ role, state, navigation }: Props) {
+export function TabBarAdmin({ role, state, navigateToTab, insets }: Props) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const items = role === 'proprietaire' ? ownerTabs : barberTabs;
   return (
     <View
@@ -48,7 +46,10 @@ export function TabBarAdmin({ role, state, navigation }: Props) {
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             accessibilityLabel={item.label}
-            onPress={() => navigation.navigate(item.name)}
+            onPress={() => {
+            const route = state.routes.find((entry) => entry.name === item.name);
+            if (route) navigateToTab(route.key);
+          }}
             style={{ flex: 1, minHeight: 56, alignItems: 'center', justifyContent: 'center', gap: 2 }}
           >
             <Icon color={color} size={22} />
