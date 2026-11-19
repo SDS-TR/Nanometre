@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { createLocalRepository } from './localRepository';
 import { memoryStore } from './storage';
+import { weekdayOfIso, zonedParts } from '../domain';
+
+function nextWeekday(weekday: number): string {
+  const [year, month, day] = zonedParts(new Date()).isoDate.split('-').map(Number);
+  for (let offset = 3; offset < 20; offset += 1) {
+    const iso = new Date(Date.UTC(year, month - 1, day + offset)).toISOString().slice(0, 10);
+    if (weekdayOfIso(iso) === weekday) {
+      return iso;
+    }
+  }
+  throw new Error('date introuvable');
+}
+
+const BOOKING_DATE = nextWeekday(2);
 
 const JULIEN = '20000000-0000-4000-8000-000000000002';
 const KARIM = '20000000-0000-4000-8000-000000000001';
@@ -81,7 +95,7 @@ describe('droits équipe', () => {
     await data.signOut();
     await data.signIn('alex.gagnon@exemple.ca', 'nanometre');
     const service = (await data.getServices()).find((item) => item.slug === 'coupe-classique');
-    const slots = await data.getSlots({ barberId: JULIEN, serviceId: service!.id, date: '2026-11-10' });
+    const slots = await data.getSlots({ barberId: JULIEN, serviceId: service!.id, date: BOOKING_DATE });
     const freeSlots = slots.filter((slot) => slot.available);
     const gap = service!.durationMinutes;
     const free = freeSlots[0];
@@ -91,7 +105,7 @@ describe('droits équipe', () => {
     await data.createBooking({
       serviceId: service!.id,
       barberId: JULIEN,
-      date: '2026-11-10',
+      date: BOOKING_DATE,
       startMinute: free.startMinute,
       paymentMethod: 'sur_place',
       redeemReward: false,
@@ -102,7 +116,7 @@ describe('droits équipe', () => {
     await data.createBooking({
       serviceId: service!.id,
       barberId: JULIEN,
-      date: '2026-11-10',
+      date: BOOKING_DATE,
       startMinute: later!.startMinute,
       paymentMethod: 'sur_place',
       redeemReward: false,
@@ -121,7 +135,7 @@ describe('droits équipe', () => {
     await data.createBooking({
       serviceId: service!.id,
       barberId: JULIEN,
-      date: '2026-11-10',
+      date: BOOKING_DATE,
       startMinute: third!.startMinute,
       paymentMethod: 'sur_place',
       redeemReward: false,
